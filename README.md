@@ -35,18 +35,19 @@ npm start
 
 ## Scripts
 
-| Command                 | What it does                                                                 |
-| ----------------------- | ---------------------------------------------------------------------------- |
-| `npm start`             | Run the app in development with hot reload                                   |
-| `npm run check`         | **All quality gates:** typecheck, lint, format check, unit/component tests   |
-| `npm run typecheck`     | TypeScript, checked separately for main-process and renderer code            |
-| `npm run lint`          | oxlint, including import-boundary rules between processes                    |
-| `npm run format`        | Format with oxfmt (`format:check` to verify only)                            |
-| `npm test`              | Unit and component tests (Vitest)                                            |
-| `npm run test:e2e`      | Builds the app, then drives the real Electron app with Playwright            |
-| `npm run test:coverage` | Unit tests with a coverage report in `coverage/`                             |
-| `npm run package`       | Build an unpacked app in `out/`                                              |
-| `npm run make`          | Build Windows distributables (Squirrel `Setup.exe` and a ZIP) in `out/make/` |
+| Command                  | What it does                                                                 |
+| ------------------------ | ---------------------------------------------------------------------------- |
+| `npm start`              | Run the app in development with hot reload                                   |
+| `npm run check`          | **All quality gates:** typecheck, lint, format check, unit/component tests   |
+| `npm run typecheck`      | TypeScript, checked separately for main-process and renderer code            |
+| `npm run lint`           | oxlint, including import-boundary rules between processes                    |
+| `npm run format`         | Format with oxfmt (`format:check` to verify only)                            |
+| `npm test`               | Unit and component tests (Vitest)                                            |
+| `npm run test:e2e`       | Builds the app, then drives the real Electron app with Playwright            |
+| `npm run test:e2e:smoke` | Same, but only the five key tests tagged `@smoke` (the per-card check)       |
+| `npm run test:coverage`  | Unit tests with a coverage report in `coverage/`                             |
+| `npm run package`        | Build an unpacked app in `out/`                                              |
+| `npm run make`           | Build Windows distributables (Squirrel `Setup.exe` and a ZIP) in `out/make/` |
 
 ## Using the app
 

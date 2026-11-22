@@ -73,7 +73,7 @@ test('the presentation mode switches the audience view without touching the game
   await second.app.close();
 });
 
-test('BINGO banner and New Game work in the real app, and the confirmation traps and restores focus', async () => {
+test('BINGO banner, New Game and the dialog focus trap', { tag: '@smoke' }, async () => {
   const { app, controller } = await launchApp(userDataDir);
   await tapBall(controller, 'B-3');
   await tapBall(controller, 'I-17');
@@ -150,7 +150,7 @@ test('the BINGO control never forces horizontal scrolling at 150% laptop scaling
 
 const BANNER_TEXT = 'BINGO CALLED — PLEASE HOLD YOUR CARDS';
 
-test('BINGO CALLED shows the banner on Preview until Dismiss, without changing any call', async () => {
+test('BINGO CALLED shows the banner on Preview until Dismiss', { tag: '@smoke' }, async () => {
   const { app, controller } = await launchApp(userDataDir);
   await tapBall(controller, 'B-3');
   await tapBall(controller, 'I-17');
@@ -251,7 +251,7 @@ for (const [name, width, height] of [
   });
 }
 
-test('the mode tabs drive the real projector window and mirror the current mode', async () => {
+test('the mode tabs drive the projector and mirror the current mode', { tag: '@smoke' }, async () => {
   const { app, controller } = await launchApp(userDataDir);
   await tapBall(controller, 'B-3');
   await controller.getByRole('button', { name: 'Preview' }).click();
