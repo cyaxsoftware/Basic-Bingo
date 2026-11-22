@@ -69,8 +69,9 @@ count. The current call has a dark ring around it on the grid.
   patterns and images, and the selected presentation mode. Cancel (focused by default) and Escape both
   leave everything as it was.
 
-The audience-facing BINGO overlay on the projector is still to come (milestone 2); until then the
-Controller shows when the banner is enabled.
+On the projector the banner is a red band reading **BINGO CALLED — PLEASE HOLD YOUR CARDS** above the
+board, which stays fully visible. It shows in Game Board view only; switching to another mode and back
+brings it back, and it survives closing and reopening the Presentation window.
 
 ### Putting Windows in Extend mode
 
@@ -164,8 +165,8 @@ docs/            Product design, milestone brief, architecture, acceptance check
 Deliberately **not** in milestone 1 (see [docs/product-design.md §8](docs/product-design.md)):
 
 - Final touch-first Controller and projector visual design; responsive tuning for 125% / 150% scaling (M2)
-- The BINGO CALLED overlay on the projector and the presentation-mode tabs (M2; the Controller's BINGO and
-  New Game buttons are in)
+- The presentation-mode tabs on the Controller (M2; the BINGO and New Game controls and the projector banner
+  are in)
 - Winning patterns and the pattern library (M3)
 - Image import, slideshows, single image, countdown timer (M4)
 - Installer polish (icon, signing), accessibility pass, extended recovery testing (M5)

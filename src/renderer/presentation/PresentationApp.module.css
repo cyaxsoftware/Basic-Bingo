@@ -1,10 +1,22 @@
-/* Wide screens (16:9): call display on the left, board on the right. */
+/*
+ * .root stacks the optional BINGO banner above the .stage. .stage holds the
+ * game layout (or a placeholder) and takes whatever height is left.
+ */
 .root {
-  display: grid;
-  grid-template-columns: minmax(0, 30%) minmax(0, 1fr);
+  display: flex;
+  flex-direction: column;
   gap: 2vmin;
   height: 100vh;
   padding: 2.5vmin;
+}
+
+/* Wide screens (16:9): call display on the left, board on the right. */
+.stage {
+  flex: 1;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 30%) minmax(0, 1fr);
+  gap: 2vmin;
 }
 
 /* Projectors are output-only: hide the pointer when fullscreen. */
@@ -14,7 +26,7 @@
 
 /* Squarer screens (4:3, 5:4): call display becomes a band above the board. */
 @media (max-aspect-ratio: 3/2) {
-  .root {
+  .stage {
     grid-template-columns: minmax(0, 1fr);
     grid-template-rows: minmax(0, 30%) minmax(0, 1fr);
   }

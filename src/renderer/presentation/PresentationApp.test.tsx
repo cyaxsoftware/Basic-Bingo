@@ -59,6 +59,71 @@ describe('PresentationApp', () => {
     expect(screen.getByTestId('board-ball-3')).toHaveAttribute('data-status', 'called');
   });
 
+  describe('BINGO banner', () => {
+    const BANNER = 'BINGO CALLED — PLEASE HOLD YOUR CARDS';
+    const game = (bingoBannerVisible: boolean) => ({ calledNumbers: [3, 17, 9], bingoBannerVisible });
+
+    it('is absent until the operator raises it', async () => {
+      renderPresentation(makeSnapshot({ game: game(false) }));
+      await screen.findByRole('img', { name: 'B-9' });
+      expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+      expect(screen.queryByText(BANNER)).not.toBeInTheDocument();
+    });
+
+    it('appears and disappears with the game state, leaving the board and calls untouched', async () => {
+      const { api } = renderPresentation(makeSnapshot({ revision: 1, game: game(false) }));
+      await screen.findByRole('img', { name: 'B-9' });
+
+      act(() => api.push(makeSnapshot({ revision: 2, game: game(true) })));
+      expect(screen.getByRole('alert')).toHaveTextContent(BANNER);
+      // Board context stays visible with the banner up.
+      expect(screen.getByRole('img', { name: 'B-9' })).toBeInTheDocument();
+      expect(screen.getByLabelText('Bingo board')).toBeInTheDocument();
+      expect(screen.getByTestId('board-ball-3')).toHaveAttribute('data-status', 'called');
+
+      act(() => api.push(makeSnapshot({ revision: 3, game: game(false) })));
+      expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+      expect(screen.getByRole('img', { name: 'B-9' })).toBeInTheDocument();
+    });
+
+    it('stays up across later snapshots (new calls, redraws) until the flag clears', async () => {
+      const { api } = renderPresentation(makeSnapshot({ revision: 1, game: game(true) }));
+      expect(await screen.findByRole('alert')).toHaveTextContent(BANNER);
+
+      act(() =>
+        api.push(
+          makeSnapshot({ revision: 2, game: { calledNumbers: [3, 17, 9, 40], bingoBannerVisible: true } }),
+        ),
+      );
+      act(() => api.push(makeSnapshot({ revision: 3, game: game(true), presentation: { kind: 'preview' } })));
+      expect(screen.getByRole('alert')).toHaveTextContent(BANNER);
+    });
+
+    it('is shown on first render when the app starts or the window reopens with the flag set', async () => {
+      renderPresentation(makeSnapshot({ game: game(true) }));
+      expect(await screen.findByRole('alert')).toHaveTextContent(BANNER);
+    });
+
+    it('is not drawn over other modes but returns with the board, because the flag is untouched', async () => {
+      const { api } = renderPresentation(makeSnapshot({ revision: 1, game: game(true) }));
+      await screen.findByRole('alert');
+
+      act(() => api.push(makeSnapshot({ revision: 2, game: game(true), presentationMode: 'slideshow' })));
+      expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+      expect(screen.getByRole('heading', { name: 'Break Slideshow' })).toBeInTheDocument();
+
+      act(() => api.push(makeSnapshot({ revision: 3, game: game(true), presentationMode: 'gameBoard' })));
+      expect(screen.getByRole('alert')).toHaveTextContent(BANNER);
+    });
+
+    it('adds no controls', async () => {
+      renderPresentation(makeSnapshot({ game: game(true) }));
+      await screen.findByRole('alert');
+      expect(screen.queryAllByRole('button')).toHaveLength(0);
+      expect(document.querySelectorAll('input, select, textarea, a[href], [tabindex]')).toHaveLength(0);
+    });
+  });
+
   it('has no interactive controls', async () => {
     renderPresentation(makeSnapshot({ game: { calledNumbers: [1, 2, 3], bingoBannerVisible: false } }));
     await screen.findByRole('img', { name: 'B-3' });

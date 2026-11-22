@@ -1,0 +1,19 @@
+/*
+ * A band above the board, not an overlay on it: the board and the call display
+ * stay fully visible and simply get a little shorter. Sized from the smaller
+ * screen dimension (and capped by width) so it is legible from the back of the
+ * room at 1920x1080 and still fits at 1024x768, where it may wrap to two lines.
+ */
+.banner {
+  flex: none;
+  padding: 2vmin 3vmin;
+  border-radius: 1.5vmin;
+  background: #b91c1c;
+  color: #ffffff;
+  font-size: min(6.5vmin, 5vw);
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  line-height: 1.15;
+  text-align: center;
+  text-wrap: balance;
+}
