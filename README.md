@@ -157,7 +157,9 @@ The full dual-display checklist is in [docs/manual-acceptance-m1.md](docs/manual
 - **Controller layout checks** (`e2e/controllerLayout.spec.ts`) resize the real Controller to the logical
   sizes a Windows laptop gives the app (1024×640, 1280×720, 1280×800, 1366×768, 1536×864), plus a short
   150% window (910×480) and widths either side of the one-/two-column breakpoint (1101 to 1160 wide), with a
-  full call history and the BINGO banner idle and up. They assert no scrolling, every ball on screen and at least 44 px
+  full call history and the BINGO banner idle and up. The top bar is also checked while projecting on a
+  display with a very long name and on a single-display laptop (where it shows the "No second display" hint):
+  it must stay one row so the ball grid is never pushed out of a short window. They assert no scrolling, every ball on screen and at least 44 px
   (48 px from 1280 wide), and every control at least 44 px. Set `BINGO_SCREENSHOT_DIR` to a folder to keep a
   screenshot of each case, for example
   `$env:BINGO_SCREENSHOT_DIR = "$PWD\layout-shots"; npx playwright test e2e/controllerLayout.spec.ts`.

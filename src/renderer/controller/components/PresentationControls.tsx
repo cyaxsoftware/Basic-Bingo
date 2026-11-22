@@ -13,6 +13,8 @@ export interface PresentationControlsProps {
   readonly onRefreshDisplays: () => void;
 }
 
+const NO_SECOND_DISPLAY_HINT = 'No second display. Press Win+P → Extend, or use Preview.';
+
 export function describePresentation(status: PresentationStatus): string {
   switch (status.kind) {
     case 'closed':
@@ -83,7 +85,9 @@ export function PresentationControls({
           </button>
         </>
       ) : (
-        <span className={styles.hint}>No second display. Press Win+P → Extend, or use Preview.</span>
+        <span className={styles.hint} title={NO_SECOND_DISPLAY_HINT}>
+          {NO_SECOND_DISPLAY_HINT}
+        </span>
       )}
 
       {/* The accessible name keeps the full words; the short visible label saves top-bar width. */}
