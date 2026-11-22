@@ -36,7 +36,8 @@ Design doc §9 items, so nothing is left unchecked by accident.
 ## A. Setup
 
 - [ ] A1. Connect the external display. Press **Win + P → Extend**. Start the app.
-- [ ] A2. Press **Project**. The projector shows the board with **Game Board** selected on the Controller.
+- [ ] A2. Tap the **Game Board** tab (the app remembers the last mode, so it may open on another one). Press
+      **Project**. The projector shows the board.
 
 ## B. Touch calling at 100%, 125% and 150% scaling
 

@@ -111,9 +111,13 @@ export async function resizeController(
   width: number,
   height: number,
 ): Promise<{ width: number; height: number }> {
-  const isMaximized = () =>
-    app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0]?.isMaximized() ?? false);
-  await expect.poll(isMaximized).toBe(true);
+  // Only the first resize has to wait for that maximize; later ones find the window already resized.
+  const settled = () =>
+    app.evaluate(({ BrowserWindow }) => {
+      const window = BrowserWindow.getAllWindows()[0];
+      return window ? window.isMaximized() || window.getMinimumSize()[0] === 300 : false;
+    });
+  await expect.poll(settled).toBe(true);
   await app.evaluate(
     ({ BrowserWindow }, size) => {
       const window = BrowserWindow.getAllWindows()[0];
