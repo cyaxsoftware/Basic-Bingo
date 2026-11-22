@@ -50,7 +50,8 @@ const BallButton = memo(function BallButton({
       aria-label={`${formatBall(cell.ball)}, ${STATUS_TEXT[cell.status]}`}
       onClick={() => onToggle(cell.ball)}
     >
-      {cell.ball}
+      {/* The button is the tap target (the whole cell); the chip is only what is drawn inside it. */}
+      <span className={styles.chip}>{cell.ball}</span>
     </button>
   );
 });
