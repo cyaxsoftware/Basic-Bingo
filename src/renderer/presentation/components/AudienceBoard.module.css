@@ -50,17 +50,11 @@
   font-weight: 600;
 }
 
+/* The current call is shown in the large ball below the board, so on the board it looks like any other called
+ * number (it keeps data-status='current' for tests and assistive tech, but no special style). */
 .cell[data-status='called'],
 .cell[data-status='current'] {
   background: var(--ball-color);
   color: var(--ball-ink);
   font-weight: 800;
-}
-
-/* Current call: bright ring plus slight scale, so it is not signalled by color alone. */
-.cell[data-status='current'] {
-  box-shadow:
-    0 0 0 calc(var(--cell) * 0.06) var(--stage-panel),
-    0 0 0 calc(var(--cell) * 0.13) var(--current-ring);
-  transform: scale(1.06);
 }
