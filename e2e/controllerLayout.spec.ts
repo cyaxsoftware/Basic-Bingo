@@ -206,14 +206,11 @@ test('Controller Patterns screen at every size', async () => {
       const [box] = await rects(view);
       expect(box?.right, 'view right edge').toBeLessThanOrEqual(width);
       expect(box?.bottom, 'view bottom edge').toBeLessThanOrEqual(height);
-      const scrolling = await view.evaluate((el) =>
-        Array.from(el.querySelectorAll<HTMLElement>('input, button[aria-pressed]')).map((control) => {
-          const bounds = control.getBoundingClientRect();
-          const parent = el.getBoundingClientRect();
-          return bounds.bottom <= parent.bottom + 0.5 && bounds.right <= parent.right + 0.5;
-        }),
+      const editor = await rects(view.locator('input, button[aria-pressed]'));
+      const inside = editor.every(
+        (control) => control.bottom <= (box?.bottom ?? 0) + 0.5 && control.right <= (box?.right ?? 0) + 0.5,
       );
-      expect(scrolling.every(Boolean), 'the title and all 25 cells are inside the view').toBe(true);
+      expect(inside, 'the title and all 25 cells are inside the view').toBe(true);
 
       const cells = await rects(view.getByRole('button', { name: /^Row \d, column \d$/ }));
       expect(cells).toHaveLength(25);
