@@ -82,17 +82,26 @@ test('renderers are sandboxed and the Presentation bridge is read-only', { tag: 
   expect(nodeGlobals).toEqual({ require: 'undefined', process: 'undefined' });
   expect(await bridgeKeys(controller)).toEqual([
     'closePresentation',
+    'createPattern',
+    'deletePattern',
     'dismissBingoBanner',
     'dismissNotice',
+    'duplicatePattern',
     'getSnapshot',
     'listDisplays',
     'newGame',
     'onSnapshot',
     'openPresentation',
     'openPreview',
+    'renameActivePattern',
+    'renamePattern',
+    'saveActivePatternAsNew',
+    'selectPattern',
+    'setActivePatternCell',
     'setPresentationMode',
     'showBingoBanner',
     'toggleBall',
+    'updateSavedPattern',
   ]);
 
   await controller.getByRole('button', { name: 'Preview' }).click();

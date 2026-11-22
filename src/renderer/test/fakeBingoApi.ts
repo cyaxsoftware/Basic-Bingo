@@ -4,6 +4,13 @@
  */
 import { vi } from 'vitest';
 import { reduceGame, type GameCommand } from '../../shared/game/gameState';
+import {
+  blankActivePattern,
+  createDefaultLibrary,
+  reducePatterns,
+  type PatternCells,
+  type PatternCommand,
+} from '../../shared/patterns';
 import { isPresentationMode, type PresentationMode } from '../../shared/presentation/presentationMode';
 import {
   fail,
@@ -39,6 +46,8 @@ export function makeSnapshot(overrides: Partial<AppSnapshot> = {}): AppSnapshot 
     revision: 1,
     game: { calledNumbers: [], bingoBannerVisible: false },
     presentationMode: 'gameBoard',
+    patternLibrary: createDefaultLibrary(),
+    activePattern: blankActivePattern(),
     presentation: { kind: 'closed' },
     displays: [LAPTOP, PROJECTOR],
     preferredDisplayId: null,
@@ -73,6 +82,22 @@ export function createFakeBingoApi(initial: AppSnapshot = makeSnapshot()): FakeB
     }
   };
 
+  // Same shared rules as the real store; ids and time are predictable.
+  let patternIds = 0;
+  const dispatchPattern = (command: PatternCommand): CommandResult => {
+    try {
+      const current = { library: snapshot.patternLibrary, active: snapshot.activePattern };
+      const next = reducePatterns(current, command, {
+        now: '2026-01-02T00:00:00.000Z',
+        newId: () => `fake-pattern-${(patternIds += 1)}`,
+      });
+      if (next !== current) publish({ patternLibrary: next.library, activePattern: next.active });
+      return ok;
+    } catch (error) {
+      return fail((error as Error).message);
+    }
+  };
+
   return {
     push(next) {
       snapshot = next;
@@ -93,6 +118,29 @@ export function createFakeBingoApi(initial: AppSnapshot = makeSnapshot()): FakeB
       if (mode !== snapshot.presentationMode) publish({ presentationMode: mode });
       return ok;
     }),
+    selectPattern: vi.fn(async (patternId: string) => dispatchPattern({ type: 'selectPattern', patternId })),
+    setActivePatternCell: vi.fn(async (index: number, on: boolean) =>
+      dispatchPattern({ type: 'setActivePatternCell', index, on }),
+    ),
+    renameActivePattern: vi.fn(async (title: string) =>
+      dispatchPattern({ type: 'renameActivePattern', title }),
+    ),
+    updateSavedPattern: vi.fn(async () => dispatchPattern({ type: 'updateSavedPattern' })),
+    saveActivePatternAsNew: vi.fn(async (title?: string) =>
+      dispatchPattern(
+        title === undefined ? { type: 'saveActivePatternAsNew' } : { type: 'saveActivePatternAsNew', title },
+      ),
+    ),
+    createPattern: vi.fn(async (title: string, cells: PatternCells) =>
+      dispatchPattern({ type: 'createPattern', title, cells }),
+    ),
+    renamePattern: vi.fn(async (patternId: string, title: string) =>
+      dispatchPattern({ type: 'renamePattern', patternId, title }),
+    ),
+    duplicatePattern: vi.fn(async (patternId: string) =>
+      dispatchPattern({ type: 'duplicatePattern', patternId }),
+    ),
+    deletePattern: vi.fn(async (patternId: string) => dispatchPattern({ type: 'deletePattern', patternId })),
     listDisplays: vi.fn(async () => snapshot.displays),
     openPresentation: vi.fn(async (displayId: number) => {
       const display = snapshot.displays.find((d) => d.id === displayId);

@@ -1,6 +1,11 @@
 import { describe, expect, it, vi } from 'vitest';
 import type { AppSnapshot } from '../../shared/ipc/contract';
-import { createDefaultAppData, type PersistedState } from '../persistence/persistedState';
+import {
+  createDefaultAppData,
+  fromPersistedState,
+  parsePersistedState,
+  type PersistedState,
+} from '../persistence/persistedState';
 import type { StatePersister } from '../persistence/stateRepository';
 import { AppStore } from './appStore';
 
@@ -263,5 +268,149 @@ describe('AppStore save outcomes (audit finding 2, #19)', () => {
     const { store, persister } = setup();
     store.retrySave();
     expect(persister.saveCount).toBe(0);
+  });
+});
+
+describe('AppStore patterns', () => {
+  const CENTER = 12;
+
+  function patternStore() {
+    const persister = new FakePersister();
+    let n = 0;
+    const store = new AppStore({
+      initialData: createDefaultAppData(),
+      persister,
+      now: () => new Date('2026-11-22T12:00:00.000Z'),
+      newId: () => `p-${(n += 1)}`,
+    });
+    const snapshots: AppSnapshot[] = [];
+    store.subscribe((s) => snapshots.push(s));
+    return { store, persister, snapshots };
+  }
+
+  it('starts with the default library and an empty working pattern', () => {
+    const { store } = patternStore();
+    const snapshot = store.getSnapshot();
+    expect(snapshot.patternLibrary.map((p) => p.title)).toEqual([
+      'Four Corners',
+      'Big L',
+      'Letter X',
+      'Blackout',
+      'Small Diamond',
+    ]);
+    expect(snapshot.activePattern).toMatchObject({ sourcePatternId: null, editedFromLibrary: false });
+    expect(snapshot.activePattern.cells.some(Boolean)).toBe(false);
+  });
+
+  it('applies a pattern command, bumps the revision, emits and persists', async () => {
+    const { store, persister, snapshots } = patternStore();
+    expect(store.dispatchPattern({ type: 'selectPattern', patternId: 'seed-big-l' })).toEqual({ ok: true });
+    expect(snapshots.map((s) => s.revision)).toEqual([2]);
+    expect(store.getSnapshot().activePattern).toMatchObject({
+      sourcePatternId: 'seed-big-l',
+      title: 'Big L',
+    });
+    await flushPromises();
+    expect(persister.saved.at(-1)?.patterns.active.sourcePatternId).toBe('seed-big-l');
+  });
+
+  it('an edited working copy and a new library pattern are what a restart reads back', async () => {
+    const { store, persister } = patternStore();
+    store.dispatchPattern({ type: 'selectPattern', patternId: 'seed-big-l' });
+    store.dispatchPattern({ type: 'setActivePatternCell', index: CENTER, on: true });
+    store.dispatchPattern({ type: 'renameActivePattern', title: 'Big L plus' });
+    store.dispatchPattern({
+      type: 'createPattern',
+      title: 'Everything',
+      cells: Array<boolean>(25).fill(true),
+    });
+    await flushPromises();
+
+    // The file as it would be on disk, read back by a fresh store.
+    const onDisk = JSON.parse(JSON.stringify(persister.saved.at(-1)));
+    const parsed = parsePersistedState(onDisk);
+    if (!parsed.ok) throw new Error(parsed.error);
+    expect(parsed.warnings).toEqual([]);
+    const restarted = new AppStore({
+      initialData: fromPersistedState(parsed.state),
+      persister: new FakePersister(),
+    });
+
+    expect(restarted.getSnapshot().activePattern).toEqual(store.getSnapshot().activePattern);
+    expect(restarted.getSnapshot().activePattern).toMatchObject({
+      title: 'Big L plus',
+      editedFromLibrary: true,
+    });
+    expect(restarted.getSnapshot().activePattern.cells[CENTER]).toBe(true);
+    expect(restarted.getSnapshot().patternLibrary).toEqual(store.getSnapshot().patternLibrary);
+    expect(restarted.getSnapshot().patternLibrary.at(-1)).toMatchObject({ id: 'p-1', title: 'Everything' });
+    // The saved Big L itself was never changed by the edits.
+    expect(restarted.getSnapshot().patternLibrary.find((p) => p.id === 'seed-big-l')?.cells[CENTER]).toBe(
+      false,
+    );
+  });
+
+  it('a new game keeps the active pattern, including its title and edits', () => {
+    const { store } = patternStore();
+    store.dispatchPattern({ type: 'selectPattern', patternId: 'seed-big-l' });
+    store.dispatchPattern({ type: 'setActivePatternCell', index: CENTER, on: true });
+    store.dispatchPattern({ type: 'renameActivePattern', title: 'Big L plus' });
+    store.dispatch({ type: 'toggleBall', ball: 7 });
+    store.dispatch({ type: 'showBingoBanner' });
+    const patternBefore = store.getSnapshot().activePattern;
+    const libraryBefore = store.getSnapshot().patternLibrary;
+
+    store.dispatch({ type: 'newGame' });
+
+    expect(store.getSnapshot().game).toEqual({ calledNumbers: [], bingoBannerVisible: false });
+    expect(store.getSnapshot().activePattern).toBe(patternBefore);
+    expect(store.getSnapshot().patternLibrary).toBe(libraryBefore);
+    expect(store.getSnapshot().activePattern).toMatchObject({ title: 'Big L plus', editedFromLibrary: true });
+  });
+
+  it('pattern commands never change the game or the presentation mode, and vice versa', () => {
+    const { store } = patternStore();
+    store.dispatch({ type: 'toggleBall', ball: 7 });
+    store.setPresentationMode('slideshow');
+    const game = store.getSnapshot().game;
+    store.dispatchPattern({ type: 'selectPattern', patternId: 'seed-four-corners' });
+    expect(store.getSnapshot().game).toBe(game);
+    expect(store.getSnapshot().presentationMode).toBe('slideshow');
+
+    const pattern = store.getSnapshot().activePattern;
+    store.setPresentationMode('gameBoard');
+    expect(store.getSnapshot().activePattern).toBe(pattern);
+  });
+
+  it('rejects an invalid command without changing state, revision or saving', async () => {
+    const { store, persister, snapshots } = patternStore();
+    for (const command of [
+      { type: 'setActivePatternCell', index: 25, on: true },
+      { type: 'selectPattern', patternId: 'nope' },
+      { type: 'renameActivePattern', title: '' },
+    ] as const) {
+      expect(store.dispatchPattern(command).ok).toBe(false);
+    }
+    await flushPromises();
+    expect(snapshots).toHaveLength(0);
+    expect(store.getSnapshot().revision).toBe(1);
+    expect(persister.saved).toHaveLength(0);
+  });
+
+  it('publishes and saves nothing when a command changes nothing', async () => {
+    const { store, persister, snapshots } = patternStore();
+    store.dispatchPattern({ type: 'setActivePatternCell', index: 3, on: false }); // already off
+    await flushPromises();
+    expect(snapshots).toHaveLength(0);
+    expect(persister.saved).toHaveLength(0);
+  });
+
+  it('stamps new patterns with the store clock and id source', () => {
+    const { store } = patternStore();
+    store.dispatchPattern({ type: 'duplicatePattern', patternId: 'seed-big-l' });
+    expect(store.getSnapshot().patternLibrary.find((p) => p.id === 'p-1')).toMatchObject({
+      title: 'Big L (copy)',
+      createdAt: '2026-11-22T12:00:00.000Z',
+    });
   });
 });

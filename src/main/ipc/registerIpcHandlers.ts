@@ -59,6 +59,10 @@ export interface IpcDependencies {
 }
 
 const MAX_NOTICE_ID_LENGTH = 100;
+const MAX_PATTERN_ID_LENGTH = 200;
+
+const isPatternId = (value: unknown): value is string =>
+  typeof value === 'string' && value.length > 0 && value.length <= MAX_PATTERN_ID_LENGTH;
 
 export function registerIpcHandlers(ipc: IpcMainLike, deps: IpcDependencies): void {
   const { store, presentation, displays, senders } = deps;
@@ -114,6 +118,60 @@ export function registerIpcHandlers(ipc: IpcMainLike, deps: IpcDependencies): vo
     if (!isPresentationMode(mode)) return fail('Choose a valid presentation mode.');
     return store.setPresentationMode(mode);
   });
+
+  // Pattern commands. Here only the TYPES of the arguments are checked; the rules (cell 0 to 24, title 1 to 60
+  // characters, unknown ids, exactly 25 cells) live in the shared reducer, which the store runs, so they apply
+  // to every caller and come back as an ordinary failed result.
+  command(IpcChannel.selectPattern, (patternId) =>
+    isPatternId(patternId)
+      ? store.dispatchPattern({ type: 'selectPattern', patternId })
+      : fail('Invalid pattern id.'),
+  );
+
+  command(IpcChannel.setActivePatternCell, (index, on) =>
+    typeof index === 'number' && typeof on === 'boolean'
+      ? store.dispatchPattern({ type: 'setActivePatternCell', index, on })
+      : fail('Choose a pattern cell and whether it is on or off.'),
+  );
+
+  command(IpcChannel.renameActivePattern, (title) =>
+    typeof title === 'string'
+      ? store.dispatchPattern({ type: 'renameActivePattern', title })
+      : fail('A pattern title must be text.'),
+  );
+
+  command(IpcChannel.updateSavedPattern, () => store.dispatchPattern({ type: 'updateSavedPattern' }));
+
+  command(IpcChannel.saveActivePatternAsNew, (title) => {
+    if (title !== undefined && typeof title !== 'string') return fail('A pattern title must be text.');
+    return store.dispatchPattern(
+      title === undefined ? { type: 'saveActivePatternAsNew' } : { type: 'saveActivePatternAsNew', title },
+    );
+  });
+
+  command(IpcChannel.createPattern, (title, cells) =>
+    typeof title === 'string' && Array.isArray(cells)
+      ? store.dispatchPattern({ type: 'createPattern', title, cells: cells as boolean[] })
+      : fail('A new pattern needs a title and its 25 cells.'),
+  );
+
+  command(IpcChannel.renamePattern, (patternId, title) =>
+    isPatternId(patternId) && typeof title === 'string'
+      ? store.dispatchPattern({ type: 'renamePattern', patternId, title })
+      : fail('Choose a saved pattern and a new title.'),
+  );
+
+  command(IpcChannel.duplicatePattern, (patternId) =>
+    isPatternId(patternId)
+      ? store.dispatchPattern({ type: 'duplicatePattern', patternId })
+      : fail('Invalid pattern id.'),
+  );
+
+  command(IpcChannel.deletePattern, (patternId) =>
+    isPatternId(patternId)
+      ? store.dispatchPattern({ type: 'deletePattern', patternId })
+      : fail('Invalid pattern id.'),
+  );
 
   command(IpcChannel.openPresentation, (displayId) => {
     if (typeof displayId !== 'number' || !Number.isSafeInteger(displayId)) {

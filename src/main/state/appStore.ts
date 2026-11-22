@@ -10,6 +10,7 @@
  *
  * Nothing here imports Electron, so it is fully unit-testable.
  */
+import { randomUUID } from 'node:crypto';
 import { reduceGame, type GameCommand, type GameState } from '../../shared/game/gameState';
 import {
   fail,
@@ -23,6 +24,7 @@ import {
 } from '../../shared/ipc/contract';
 import type { PresentationMode } from '../../shared/presentation/presentationMode';
 import { toPersistedState, type AppData } from '../persistence/persistedState';
+import { reducePatterns, type PatternCommand } from '../../shared/patterns';
 import type { StatePersister } from '../persistence/stateRepository';
 
 export type SnapshotListener = (snapshot: AppSnapshot) => void;
@@ -39,6 +41,8 @@ export interface AppStoreOptions {
   readonly persister: StatePersister;
   readonly initialNotices?: readonly Notice[];
   readonly now?: () => Date;
+  /** Ids for new patterns. Defaults to random UUIDs; tests pass something predictable. */
+  readonly newId?: () => string;
 }
 
 type MutableFields = Omit<AppSnapshot, 'revision'>;
@@ -48,6 +52,7 @@ export class AppStore {
   private readonly listeners = new Set<SnapshotListener>();
   private readonly persister: StatePersister;
   private readonly now: () => Date;
+  private readonly newId: () => string;
   private requestedSaveId = 0;
   private completedSaveId = 0;
   private failedSaveId = 0;
@@ -56,10 +61,13 @@ export class AppStore {
   constructor(options: AppStoreOptions) {
     this.persister = options.persister;
     this.now = options.now ?? (() => new Date());
+    this.newId = options.newId ?? (() => randomUUID());
     this.snapshot = Object.freeze<AppSnapshot>({
       revision: 1,
       game: options.initialData.game,
       presentationMode: options.initialData.presentation.mode,
+      patternLibrary: options.initialData.patterns.library,
+      activePattern: options.initialData.patterns.active,
       presentation: { kind: 'closed' },
       displays: [],
       preferredDisplayId: options.initialData.settings.preferredDisplayId,
@@ -88,6 +96,25 @@ export class AppStore {
     }
     if (next !== this.snapshot.game) {
       this.update({ game: next });
+      this.persist();
+    }
+    return ok;
+  }
+
+  /**
+   * Validate and apply a pattern command (select, edit the working copy, save, library changes). Invalid
+   * commands leave state untouched. Touches no game state, so New Game and mode changes never affect patterns.
+   */
+  dispatchPattern(command: PatternCommand): CommandResult {
+    const current = { library: this.snapshot.patternLibrary, active: this.snapshot.activePattern };
+    let next;
+    try {
+      next = reducePatterns(current, command, { now: this.now().toISOString(), newId: this.newId });
+    } catch (error) {
+      return fail(error instanceof Error ? error.message : String(error));
+    }
+    if (next !== current) {
+      this.update({ patternLibrary: next.library, activePattern: next.active });
       this.persist();
     }
     return ok;
@@ -173,6 +200,7 @@ export class AppStore {
     return {
       game: this.snapshot.game,
       presentation: { mode: this.snapshot.presentationMode },
+      patterns: { library: this.snapshot.patternLibrary, active: this.snapshot.activePattern },
       settings: { preferredDisplayId: this.snapshot.preferredDisplayId },
     };
   }

@@ -10,13 +10,13 @@
  * document and AppData field by field, so adding a field to GameState cannot
  * silently change or leak into an existing file format.
  *
- * To change the format (this is how V2 added the BINGO banner to the game):
- *   1. Add PersistedStateV2 (with its own PersistedGameV2) and a zod schema.
+ * To change the format (this is how V3 added the pattern library):
+ *   1. Add PersistedStateV3 (with its own game and pattern shapes) and a zod schema.
  *      Point `PersistedState` at it and bump CURRENT_SCHEMA_VERSION.
- *   2. Add MIGRATIONS[1]: a V1 document -> a V2 document (fill new fields with defaults).
+ *   2. Add MIGRATIONS[2]: a V2 document -> a V3 document (fill new fields with defaults).
  *   3. Update toPersistedState / fromPersistedState. The compiler flags them
- *      when GameState gains a required field.
- *   4. Add a fixtures/state-v2.json and keep the state-v1.json test passing:
+ *      when AppData gains a required field.
+ *   4. Add a fixtures/state-v3.json and keep the older fixture tests passing:
  *      old files must still load.
  * Never edit a released document type, schema, or migration.
  *
@@ -26,9 +26,20 @@
 import { z } from 'zod';
 import { normalizeCalledNumbers } from '../../shared/game/calledNumbers';
 import type { GameState } from '../../shared/game/gameState';
+import {
+  blankActivePattern,
+  createDefaultLibrary,
+  isPatternCells,
+  normalizeTitle,
+  reconcileActive,
+  SEED_TIMESTAMP,
+  type ActivePattern,
+  type Pattern,
+  type PatternsState,
+} from '../../shared/patterns';
 import { DEFAULT_PRESENTATION_MODE, type PresentationMode } from '../../shared/presentation/presentationMode';
 
-export const CURRENT_SCHEMA_VERSION = 2;
+export const CURRENT_SCHEMA_VERSION = 3;
 
 // ---------------------------------------------------------------------------
 // Version 1 document (released in milestone 1; frozen)
@@ -49,12 +60,11 @@ export interface PersistedStateV1 {
   };
 }
 
-// There is no V1 schema: a V1 file is migrated to V2 first (see MIGRATIONS) and then
-// validated by the V2 schema, which has the same leniency rules.
+// There are no V1 or V2 schemas: an old file is migrated up to the current version first (see MIGRATIONS)
+// and then validated by the current schema, which has the same leniency rules.
 
 // ---------------------------------------------------------------------------
-// Version 2 document (milestone 2; UNRELEASED, so later M2 cards may still extend it.
-// Freeze it, like V1, when M2 ships.)
+// Version 2 document (released in milestone 2; frozen)
 // ---------------------------------------------------------------------------
 
 export interface PersistedGameV2 {
@@ -80,11 +90,61 @@ export interface PersistedStateV2 {
   };
 }
 
+// ---------------------------------------------------------------------------
+// Version 3 document (milestone 3; UNRELEASED, so later M3 cards may still extend it.
+// Freeze it, like V1 and V2, when M3 ships.)
+// ---------------------------------------------------------------------------
+
+export interface PersistedGameV3 {
+  /** Ordered, unique balls 1..75; last element is the current call. */
+  readonly calledNumbers: readonly number[];
+  readonly bingoBannerVisible: boolean;
+}
+
+export interface PersistedPresentationV3 {
+  readonly mode: 'gameBoard' | 'slideshow' | 'singleImage' | 'countdown';
+}
+
+/** A saved library pattern: 25 explicit booleans, row-major, no free-space rule. */
+export interface PersistedPatternV3 {
+  readonly id: string;
+  readonly title: string;
+  readonly cells: readonly boolean[];
+  readonly createdAt: string;
+  readonly updatedAt: string;
+}
+
+/** The working copy the game is showing. */
+export interface PersistedActivePatternV3 {
+  /** The library pattern it was copied from, or null for a one-off. */
+  readonly sourcePatternId: string | null;
+  readonly title: string;
+  readonly cells: readonly boolean[];
+  readonly editedFromLibrary: boolean;
+}
+
+export interface PersistedStateV3 {
+  readonly schemaVersion: 3;
+  /** ISO timestamp of the save. Informational only. */
+  readonly savedAt: string;
+  readonly game: PersistedGameV3;
+  readonly presentation: PersistedPresentationV3;
+  readonly patterns: {
+    readonly library: readonly PersistedPatternV3[];
+    readonly active: PersistedActivePatternV3;
+  };
+  readonly settings: {
+    readonly preferredDisplayId: number | null;
+  };
+}
+
 // Lenient where safe (bad optional fields fall back to defaults), strict where
 // it matters (unknown version, missing game section). calledNumbers is
 // normalized rather than rejected so one bad entry cannot discard a game.
-const PersistedStateV2Schema = z.object({
-  schemaVersion: z.literal(2),
+// `patterns` is checked entry by entry in normalizePatterns, so one damaged
+// pattern cannot cost the game, or the rest of the library.
+const PersistedStateV3Schema = z.object({
+  schemaVersion: z.literal(3),
   savedAt: z.string().catch(''),
   game: z.object({
     calledNumbers: z.array(z.unknown()),
@@ -96,6 +156,7 @@ const PersistedStateV2Schema = z.object({
       mode: z.enum(['gameBoard', 'slideshow', 'singleImage', 'countdown']).catch('gameBoard'),
     })
     .catch({ mode: 'gameBoard' }),
+  patterns: z.unknown(),
   settings: z
     .object({
       preferredDisplayId: z.number().int().nullable().catch(null),
@@ -108,23 +169,49 @@ const PersistedStateV2Schema = z.object({
 // ---------------------------------------------------------------------------
 
 /** The document version this build writes. */
-export type PersistedState = PersistedStateV2;
+export type PersistedState = PersistedStateV3;
 
 /** Durable state as the running app uses it (independent of the file format). */
 export interface AppData {
   readonly game: GameState;
   readonly presentation: { readonly mode: PresentationMode };
+  /** The pattern library and the working copy the game is showing. */
+  readonly patterns: PatternsState;
   readonly settings: {
     readonly preferredDisplayId: number | null;
   };
 }
 
+/** The default library and an empty working pattern, as plain on-disk data. */
+function defaultPersistedPatterns(): PersistedStateV3['patterns'] {
+  return toPersistedPatterns({ library: createDefaultLibrary(), active: blankActivePattern() });
+}
+
+function toPersistedPatterns(patterns: PatternsState): PersistedStateV3['patterns'] {
+  return {
+    library: patterns.library.map((pattern) => ({
+      id: pattern.id,
+      title: pattern.title,
+      cells: [...pattern.cells],
+      createdAt: pattern.createdAt,
+      updatedAt: pattern.updatedAt,
+    })),
+    active: {
+      sourcePatternId: patterns.active.sourcePatternId,
+      title: patterns.active.title,
+      cells: [...patterns.active.cells],
+      editedFromLibrary: patterns.active.editedFromLibrary,
+    },
+  };
+}
+
 export function createDefaultPersistedState(now: Date = new Date()): PersistedState {
   return {
-    schemaVersion: 2,
+    schemaVersion: 3,
     savedAt: now.toISOString(),
     game: { calledNumbers: [], bingoBannerVisible: false },
     presentation: { mode: DEFAULT_PRESENTATION_MODE },
+    patterns: defaultPersistedPatterns(),
     settings: { preferredDisplayId: null },
   };
 }
@@ -137,13 +224,14 @@ export function createDefaultAppData(): AppData {
 /** Convert app data to the current on-disk document. Copies fields explicitly. */
 export function toPersistedState(data: AppData, now: Date = new Date()): PersistedState {
   return {
-    schemaVersion: 2,
+    schemaVersion: 3,
     savedAt: now.toISOString(),
     game: {
       calledNumbers: [...data.game.calledNumbers],
       bingoBannerVisible: data.game.bingoBannerVisible,
     },
     presentation: { mode: data.presentation.mode },
+    patterns: toPersistedPatterns(data.patterns),
     settings: { preferredDisplayId: data.settings.preferredDisplayId },
   };
 }
@@ -154,9 +242,15 @@ export function fromPersistedState(document: PersistedState): AppData {
     calledNumbers: [...document.game.calledNumbers],
     bingoBannerVisible: document.game.bingoBannerVisible,
   };
+  const library: readonly Pattern[] = document.patterns.library.map((pattern) => ({
+    ...pattern,
+    cells: [...pattern.cells],
+  }));
+  const active: ActivePattern = { ...document.patterns.active, cells: [...document.patterns.active.cells] };
   return {
     game,
     presentation: { mode: document.presentation.mode },
+    patterns: { library, active },
     settings: { preferredDisplayId: document.settings.preferredDisplayId },
   };
 }
@@ -180,11 +274,92 @@ const MIGRATIONS: Record<number, (raw: Record<string, unknown>) => Record<string
     }
     return { ...raw, schemaVersion: 2, game: { ...game, bingoBannerVisible: false }, presentation };
   },
+  // V2 -> V3: patterns did not exist, so a migrated game starts with the default library and an empty
+  // working pattern. (These are what a fresh install gets; changing the seeds later only affects files
+  // migrated after that.)
+  2: (raw) => ({ ...raw, schemaVersion: 3, patterns: defaultPersistedPatterns() }),
 };
 
 export type ParseResult =
   | { readonly ok: true; readonly state: PersistedState; readonly warnings: readonly string[] }
   | { readonly ok: false; readonly error: string };
+
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+  typeof value === 'object' && value !== null && !Array.isArray(value);
+
+function validPattern(entry: unknown): PersistedPatternV3 | null {
+  if (!isRecord(entry)) return null;
+  const { id, title, cells, createdAt, updatedAt } = entry;
+  if (typeof id !== 'string' || id.length === 0 || !isPatternCells(cells)) return null;
+  let cleanTitle: string;
+  try {
+    cleanTitle = normalizeTitle(title);
+  } catch {
+    return null;
+  }
+  return {
+    id,
+    title: cleanTitle,
+    cells: [...cells],
+    createdAt: typeof createdAt === 'string' ? createdAt : SEED_TIMESTAMP,
+    updatedAt: typeof updatedAt === 'string' ? updatedAt : SEED_TIMESTAMP,
+  };
+}
+
+function validActive(entry: unknown): ActivePattern | null {
+  if (!isRecord(entry)) return null;
+  const { sourcePatternId, title, cells } = entry;
+  if (!isPatternCells(cells)) return null;
+  let cleanTitle: string;
+  try {
+    cleanTitle = normalizeTitle(title);
+  } catch {
+    return null;
+  }
+  // "Edited" is recomputed from the library afterwards, never trusted from the file.
+  return {
+    sourcePatternId: typeof sourcePatternId === 'string' ? sourcePatternId : null,
+    title: cleanTitle,
+    cells: [...cells],
+    editedFromLibrary: false,
+  };
+}
+
+/**
+ * Check the pattern section entry by entry. One damaged pattern is dropped (with a warning), never the whole
+ * library or the game; a missing or unreadable section restores the defaults. A deliberately empty library is
+ * respected.
+ */
+function normalizePatterns(raw: unknown): { patterns: PersistedStateV3['patterns']; warnings: string[] } {
+  if (!isRecord(raw) || !Array.isArray(raw['library'])) {
+    return {
+      patterns: defaultPersistedPatterns(),
+      warnings: ['The saved patterns were missing or damaged, so the default patterns were restored.'],
+    };
+  }
+  const warnings: string[] = [];
+  const library: Pattern[] = [];
+  const seen = new Set<string>();
+  let dropped = 0;
+  for (const entry of raw['library']) {
+    const pattern = validPattern(entry);
+    if (!pattern || seen.has(pattern.id)) {
+      dropped += 1;
+      continue;
+    }
+    seen.add(pattern.id);
+    library.push(pattern);
+  }
+  if (dropped > 0) warnings.push(`Removed ${dropped} damaged or duplicate saved pattern(s).`);
+
+  let active = validActive(raw['active']);
+  if (!active) {
+    warnings.push('The active pattern was missing or damaged, so it was reset.');
+    active = blankActivePattern();
+  }
+  // Re-derive "Edited", and detach the working copy if its template is gone.
+  return { patterns: toPersistedPatterns({ library, active: reconcileActive(active, library) }), warnings };
+}
 
 /** Validate and migrate parsed JSON into the current {@link PersistedState}. */
 export function parsePersistedState(raw: unknown): ParseResult {
@@ -209,7 +384,7 @@ export function parsePersistedState(raw: unknown): ParseResult {
     version += 1;
   }
 
-  const parsed = PersistedStateV2Schema.safeParse(data);
+  const parsed = PersistedStateV3Schema.safeParse(data);
   if (!parsed.success) {
     return { ok: false, error: `State file is malformed: ${z.prettifyError(parsed.error)}` };
   }
@@ -220,15 +395,18 @@ export function parsePersistedState(raw: unknown): ParseResult {
   if (calledNumbers.length !== rawCalls.length) {
     warnings.push(`Removed ${rawCalls.length - calledNumbers.length} invalid or duplicate called number(s).`);
   }
+  const { patterns, warnings: patternWarnings } = normalizePatterns(parsed.data.patterns);
+  warnings.push(...patternWarnings);
 
   return {
     ok: true,
     warnings,
     state: {
-      schemaVersion: 2,
+      schemaVersion: 3,
       savedAt: parsed.data.savedAt,
       game: { calledNumbers, bingoBannerVisible: parsed.data.game.bingoBannerVisible },
       presentation: { mode: parsed.data.presentation.mode },
+      patterns,
       settings: { preferredDisplayId: parsed.data.settings.preferredDisplayId },
     },
   };
