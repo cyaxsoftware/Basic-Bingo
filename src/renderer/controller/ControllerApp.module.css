@@ -103,11 +103,39 @@
   grid-area: bingo;
 }
 
+/* On the Patterns screen the card would point at itself, and a short window needs the height for the editor. */
+.layout[data-view='patterns'] .pattern {
+  display: none;
+}
+
+.back {
+  min-height: var(--touch-min);
+  padding: 0 var(--space-4);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--panel);
+  color: var(--text);
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+.back:focus-visible {
+  outline: 3px solid var(--accent);
+  outline-offset: 2px;
+}
+
 /* Holds the mode's content (the ball grid, or a placeholder) and gives it all the height left. */
 .panel {
   grid-area: panel;
   display: flex;
   flex-direction: column;
+}
+
+/* Stacked and on the Patterns screen: the call strip makes way for the editor (the BINGO button stays). */
+@media (max-width: 1140px) {
+  .layout[data-view='patterns'] .summary {
+    display: none;
+  }
 }
 
 @media (min-width: 1141px) {

@@ -1,4 +1,4 @@
-import { useId } from 'react';
+import { useId, useState } from 'react';
 import type { ControllerApi } from '../../shared/ipc/contract';
 import type { SnapshotStore } from '../shared/snapshotStore';
 import { useSnapshotState } from '../shared/useSnapshotState';
@@ -8,7 +8,8 @@ import { BingoBannerControl, NewGameControl } from './components/GameControls';
 import { ModePlaceholder } from './components/ModePlaceholder';
 import { modeTabId, ModeTabs } from './components/ModeTabs';
 import { NoticeArea } from './components/NoticeArea';
-import { PatternPanel } from './components/PatternPanel';
+import { PatternCard } from './components/PatternCard';
+import { PatternsView } from './components/PatternsView';
 import { PresentationControls } from './components/PresentationControls';
 import styles from './ControllerApp.module.css';
 import { useControllerActions } from './useControllerActions';
@@ -23,6 +24,9 @@ export function ControllerApp({ api, store }: ControllerAppProps) {
   const state = useSnapshotState(store);
   const actions = useControllerActions(api);
   const panelId = useId();
+  // Which screen the operator is on. Only the layout cares: the game, the patterns and the projector all
+  // live in the main process, so switching screens never changes (or loses) any of them.
+  const [view, setView] = useState<'game' | 'patterns'>('game');
 
   if (state.status === 'loading') {
     return <div className={styles.message}>Loading game…</div>;
@@ -39,7 +43,7 @@ export function ControllerApp({ api, store }: ControllerAppProps) {
   const { calledNumbers, bingoBannerVisible } = snapshot.game;
   const mode = snapshot.presentationMode;
   return (
-    <main className={styles.layout}>
+    <main className={styles.layout} data-view={view}>
       <header className={styles.header}>
         <h1 className={styles.title}>Offline Bingo</h1>
         <PresentationControls
@@ -59,7 +63,13 @@ export function ControllerApp({ api, store }: ControllerAppProps) {
       </header>
 
       <div className={styles.tabs}>
-        <ModeTabs mode={mode} onSelect={actions.setPresentationMode} panelId={panelId} />
+        {view === 'game' ? (
+          <ModeTabs mode={mode} onSelect={actions.setPresentationMode} panelId={panelId} />
+        ) : (
+          <button type="button" className={styles.back} onClick={() => setView('game')}>
+            <span aria-hidden="true">‹</span> Back to game
+          </button>
+        )}
       </div>
 
       {/* Empty (and hidden by CSS) unless there is something to tell the operator. */}
@@ -73,28 +83,34 @@ export function ControllerApp({ api, store }: ControllerAppProps) {
         />
       </div>
 
-      <div className={styles.panel} role="tabpanel" id={panelId} aria-labelledby={modeTabId(mode)}>
-        {mode === 'gameBoard' ? (
-          <BallGrid calledNumbers={calledNumbers} onToggle={actions.toggleBall} />
-        ) : (
-          <ModePlaceholder mode={mode} />
-        )}
-      </div>
+      {view === 'game' ? (
+        <div className={styles.panel} role="tabpanel" id={panelId} aria-labelledby={modeTabId(mode)}>
+          {mode === 'gameBoard' ? (
+            <BallGrid calledNumbers={calledNumbers} onToggle={actions.toggleBall} />
+          ) : (
+            <ModePlaceholder mode={mode} />
+          )}
+        </div>
+      ) : (
+        <div className={styles.panel}>
+          <PatternsView
+            library={snapshot.patternLibrary}
+            active={snapshot.activePattern}
+            onSwitch={actions.switchPattern}
+            onSetCell={actions.setPatternCell}
+            onRename={actions.renameActivePattern}
+            onUpdateSaved={actions.updateSavedPattern}
+            onSaveAsNew={actions.saveActivePatternAsNew}
+          />
+        </div>
+      )}
 
       <div className={styles.summary}>
         <CallSummaryPanel calledNumbers={calledNumbers} />
       </div>
 
       <div className={styles.pattern}>
-        <PatternPanel
-          library={snapshot.patternLibrary}
-          active={snapshot.activePattern}
-          onSwitch={actions.switchPattern}
-          onSetCell={actions.setPatternCell}
-          onRename={actions.renameActivePattern}
-          onUpdateSaved={actions.updateSavedPattern}
-          onSaveAsNew={actions.saveActivePatternAsNew}
-        />
+        <PatternCard active={snapshot.activePattern} onOpen={() => setView('patterns')} />
       </div>
 
       <div className={styles.bingo}>

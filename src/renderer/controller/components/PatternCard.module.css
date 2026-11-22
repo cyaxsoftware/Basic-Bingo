@@ -1,0 +1,61 @@
+/* One touch-sized row: thumbnail, title, an "Edited" flag when the working copy differs, and a chevron. */
+.card {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: var(--touch-min);
+  min-width: 0;
+  padding: var(--space-1) var(--space-3);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--panel);
+  color: var(--text);
+  text-align: left;
+}
+
+.card:focus-visible {
+  outline: 3px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.text {
+  display: grid;
+  min-width: 0;
+  flex: 1;
+  line-height: 1.15;
+}
+
+.label {
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.title {
+  overflow: hidden;
+  font-size: 1rem;
+  font-weight: 700;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.badge {
+  flex: none;
+  padding: 1px var(--space-2);
+  border: 1px solid var(--warning-border);
+  border-radius: var(--radius-sm);
+  background: var(--warning-bg);
+  color: var(--text);
+  font-size: 0.8rem;
+  font-weight: 700;
+}
+
+.go {
+  flex: none;
+  font-size: 1.5rem;
+  line-height: 1;
+  color: var(--text-muted);
+}

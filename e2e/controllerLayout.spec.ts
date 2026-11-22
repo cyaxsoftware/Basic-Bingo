@@ -178,41 +178,66 @@ for (const state of STATES) {
   });
 }
 
-// The pattern sheet floats over the window, so it must never push a ball below its touch size and must always
-// fit on screen, with every control in it touchable. (Closed, it is part of every test above.)
-test('Controller layout with the pattern panel open at every size', async () => {
+// The Patterns screen replaces the ball grid, so it gets its own checks: the editor fits without scrolling at
+// every size, and everything on it (and the controls that stay) is touchable. The game screen, with the
+// Pattern card on it, is covered by every test above.
+test('Controller Patterns screen at every size', async () => {
   const { app, controller } = await launchApp(userDataDir);
   await fillHistory(controller);
   await controller.getByRole('button', { name: /^Pattern/ }).click();
-  const sheet = controller.getByRole('region', { name: 'Active pattern' });
-  await expect(sheet).toBeVisible();
+  const view = controller.getByRole('region', { name: 'Patterns' });
+  await expect(view).toBeVisible();
 
   for (const size of LAYOUT_SIZES) {
     await test.step(`${size.width}x${size.height}`, async () => {
-      await resizeController(app, controller, size.width, size.height);
-      await expectLayoutFits(
-        controller,
-        size,
-        'idle',
-        `controller-pattern-open-${size.width}x${size.height}`,
+      const { width, height } = size;
+      await resizeController(app, controller, width, height);
+      await controller.waitForTimeout(200);
+      const picture = await controller.screenshot();
+      const keepIn = process.env['BINGO_SCREENSHOT_DIR'];
+      if (keepIn) await writeFile(path.join(keepIn, `controller-patterns-${width}x${height}.png`), picture);
+
+      const header = await rects(controller.locator('header'));
+      expect(header[0]?.height ?? 0, 'top bar must stay a single row').toBeLessThanOrEqual(56);
+      expect(await horizontalOverflow(controller), 'horizontal overflow').toBe(0);
+      expect(await verticalOverflow(controller), 'vertical overflow').toBe(0);
+
+      // The editor and its controls never scroll; only the library list may.
+      const [box] = await rects(view);
+      expect(box?.right, 'view right edge').toBeLessThanOrEqual(width);
+      expect(box?.bottom, 'view bottom edge').toBeLessThanOrEqual(height);
+      const scrolling = await view.evaluate((el) =>
+        Array.from(el.querySelectorAll<HTMLElement>('input, button[aria-pressed]')).map((control) => {
+          const bounds = control.getBoundingClientRect();
+          const parent = el.getBoundingClientRect();
+          return bounds.bottom <= parent.bottom + 0.5 && bounds.right <= parent.right + 0.5;
+        }),
       );
+      expect(scrolling.every(Boolean), 'the title and all 25 cells are inside the view').toBe(true);
 
-      const [box] = await rects(sheet);
-      expect(box?.top, 'sheet top').toBeGreaterThanOrEqual(0);
-      expect(box?.left, 'sheet left').toBeGreaterThanOrEqual(0);
-      expect(box?.right, 'sheet right').toBeLessThanOrEqual(size.width);
-      expect(box?.bottom, 'sheet bottom').toBeLessThanOrEqual(size.height);
-      const scrolls = await sheet.evaluate((el) => el.scrollHeight - el.clientHeight);
-      expect(scrolls, 'the sheet must not need to scroll').toBeLessThanOrEqual(0);
-
-      const cells = await rects(sheet.getByRole('button', { name: /^Row \d, column \d$/ }));
+      const cells = await rects(view.getByRole('button', { name: /^Row \d, column \d$/ }));
       expect(cells).toHaveLength(25);
       for (const [index, cell] of cells.entries()) {
         expect(cell.width, `cell ${index} width`).toBeGreaterThanOrEqual(44);
         expect(cell.height, `cell ${index} height`).toBeGreaterThanOrEqual(44);
       }
+
+      // Everything else tappable is touch-sized, inside the window, and the BINGO control is still there.
+      await expect(controller.getByRole('button', { name: 'BINGO CALLED' })).toBeVisible();
+      const controls = await rects(controller.locator('button:not([aria-pressed]):visible, select:visible'));
+      for (const [index, control] of controls.entries()) {
+        expect(control.height, `control ${index} height`).toBeGreaterThanOrEqual(44);
+        expect(control.width, `control ${index} width`).toBeGreaterThanOrEqual(44);
+        expect(control.right, `control ${index} right edge`).toBeLessThanOrEqual(width);
+      }
+      // The first and last saved pattern can be reached (the list scrolls on its own if it must).
+      await expect(view.getByRole('button', { name: 'Four Corners' })).toBeVisible();
     });
   }
+
+  // And back: the game is exactly as it was left.
+  await controller.getByRole('button', { name: /Back to game/ }).click();
+  await expect(controller.getByTestId('called-count')).toHaveText('Called: 6 of 75');
   await app.close();
 });
 
