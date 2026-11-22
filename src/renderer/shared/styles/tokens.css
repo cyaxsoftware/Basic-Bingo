@@ -1,0 +1,68 @@
+/*
+ * Design tokens shared by both windows. Change colors here, not in components.
+ * Ball colors follow bingo convention: B blue, I red, N white, G green, O yellow.
+ * All fills are light enough for dark numerals (--ball-ink) to pass WCAG AA.
+ */
+:root {
+  --ball-b: #4f8ff7;
+  --ball-i: #f05252;
+  --ball-n: #ffffff;
+  --ball-g: #31c46c;
+  --ball-o: #fbcf24;
+  --ball-ink: #111827;
+  /* White N balls need a visible edge on light backgrounds. */
+  --ball-n-ring: #374151;
+
+  --font-sans: 'Segoe UI', system-ui, -apple-system, sans-serif;
+
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-6: 24px;
+
+  /* Minimum touch target (design doc §4.1: 48-60px, never below 44px). */
+  --touch-min: 48px;
+}
+
+/* Map a data-letter attribute to the ball color variables. */
+[data-letter='B'] {
+  --ball-color: var(--ball-b);
+  --ball-ring: color-mix(in srgb, var(--ball-b) 70%, black);
+}
+[data-letter='I'] {
+  --ball-color: var(--ball-i);
+  --ball-ring: color-mix(in srgb, var(--ball-i) 70%, black);
+}
+[data-letter='N'] {
+  --ball-color: var(--ball-n);
+  --ball-ring: var(--ball-n-ring);
+}
+[data-letter='G'] {
+  --ball-color: var(--ball-g);
+  --ball-ring: color-mix(in srgb, var(--ball-g) 70%, black);
+}
+[data-letter='O'] {
+  --ball-color: var(--ball-o);
+  --ball-ring: color-mix(in srgb, var(--ball-o) 70%, black);
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+  margin: 0;
+}
+
+body {
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+}
