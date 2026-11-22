@@ -8,6 +8,7 @@ import {
   duplicatePattern,
   findPattern,
   isEdited,
+  assertPatternCells,
   isPatternCells,
   MAX_PATTERN_TITLE_LENGTH,
   PATTERN_CELL_COUNT,
@@ -46,6 +47,31 @@ describe('pattern cells', () => {
     expect(isPatternCells(Array(26).fill(false))).toBe(false);
     expect(isPatternCells([...Array(24).fill(false), 'x'])).toBe(false);
     expect(isPatternCells('X'.repeat(25))).toBe(false);
+  });
+
+  it('reject a sparse array: every one of the 25 cells must be an explicit boolean', () => {
+    const sparse: boolean[] = [];
+    sparse.length = PATTERN_CELL_COUNT; // 25 slots, all holes
+    sparse[0] = true;
+    expect(isPatternCells(sparse)).toBe(false);
+    expect(() => assertPatternCells(sparse)).toThrow(RangeError);
+
+    // A single hole is enough, wherever it is (including the center).
+    const mostlyFilled: boolean[] = Array(PATTERN_CELL_COUNT).fill(false);
+    delete mostlyFilled[CENTER];
+    expect(mostlyFilled).toHaveLength(PATTERN_CELL_COUNT);
+    expect(isPatternCells(mostlyFilled)).toBe(false);
+    expect(isPatternCells(Array.from({ length: PATTERN_CELL_COUNT }, () => undefined))).toBe(false);
+  });
+
+  it('never let a sparse array into a pattern, whichever constructor it goes through', () => {
+    const sparse: boolean[] = [];
+    sparse.length = PATTERN_CELL_COUNT; // 25 slots, all holes
+    sparse[0] = true;
+    expect(() => createActivePattern('Sparse', sparse)).toThrow(RangeError);
+    expect(() =>
+      createPattern(library(), { id: 'sparse-1', title: 'Sparse', cells: sparse, now: NOW }),
+    ).toThrow(RangeError);
   });
 
   it('are built from a readable picture, row by row', () => {

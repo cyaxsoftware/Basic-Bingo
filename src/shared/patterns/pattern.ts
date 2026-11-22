@@ -43,11 +43,13 @@ export interface ActivePattern {
 export type PatternLibrary = readonly Pattern[];
 
 export function isPatternCells(value: unknown): value is PatternCells {
-  return (
-    Array.isArray(value) &&
-    value.length === PATTERN_CELL_COUNT &&
-    value.every((cell) => typeof cell === 'boolean')
-  );
+  if (!Array.isArray(value) || value.length !== PATTERN_CELL_COUNT) return false;
+  // Visit every index. Array#every skips holes, so `new Array(25)` with one cell set would pass it and
+  // then spread into a pattern with `undefined` cells, the center included.
+  for (let index = 0; index < PATTERN_CELL_COUNT; index += 1) {
+    if (typeof value[index] !== 'boolean') return false;
+  }
+  return true;
 }
 
 /** Throws RangeError unless `value` is exactly 25 booleans. */
