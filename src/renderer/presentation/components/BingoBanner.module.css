@@ -8,8 +8,8 @@
   flex: none;
   padding: 2vmin 3vmin;
   border-radius: 1.5vmin;
-  background: #b91c1c;
-  color: #ffffff;
+  background: var(--bingo-banner-bg);
+  color: var(--bingo-banner-text);
   font-size: min(6.5vmin, 5vw);
   font-weight: 800;
   letter-spacing: 0.02em;

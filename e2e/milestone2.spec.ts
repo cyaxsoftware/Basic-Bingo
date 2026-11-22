@@ -174,6 +174,9 @@ test('BINGO CALLED shows the banner on Preview until Dismiss, without changing a
 
   await controller.getByRole('button', { name: 'BINGO CALLED' }).click();
   await expect(banner).toHaveText(BANNER_TEXT);
+  // Colours come from design tokens; a token that failed to resolve would leave no background at all.
+  await expect(banner).toHaveCSS('background-color', 'rgb(185, 28, 28)');
+  await expect(banner).toHaveCSS('color', 'rgb(255, 255, 255)');
   // The board and the current call stay visible underneath it.
   await expect(presentation.getByRole('img', { name: 'I-17' })).toBeVisible();
   await expect(presentation.getByLabel('Bingo board')).toBeVisible();
