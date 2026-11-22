@@ -10,7 +10,7 @@
   },
   "main": ".vite/build/main.cjs",
   "engines": {
-    "node": ">=22"
+    "node": "^22.22.2 || ^24.15.0 || >=26.0.0"
   },
   "scripts": {
     "start": "electron-forge start",
