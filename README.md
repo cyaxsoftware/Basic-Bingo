@@ -163,6 +163,11 @@ The full dual-display checklist is in [docs/manual-acceptance-m1.md](docs/manual
   (48 px from 1280 wide), and every control at least 44 px. Set `BINGO_SCREENSHOT_DIR` to a folder to keep a
   screenshot of each case, for example
   `$env:BINGO_SCREENSHOT_DIR = "$PWD\layout-shots"; npx playwright test e2e/controllerLayout.spec.ts`.
+- **Projector layout checks** (`e2e/projectorLayout.spec.ts`) resize a Preview window to 1920×1080, 1366×768,
+  1280×720 and 1024×768 and assert, empty, mid-game and with the BINGO banner up, that every element is on
+  screen and nothing overlaps. `BINGO_SCREENSHOT_DIR` keeps a screenshot of each case, as for the Controller.
+- **Design-token contrast** (`src/renderer/shared/styles/tokens.test.ts`) reads the real token files and checks
+  that numerals on every ball colour, uncalled numbers and the BINGO banner are at least 4.5:1.
 - Projection onto a physical second display can only be checked by hand (see the manual checklist).
 
 ## Project layout
