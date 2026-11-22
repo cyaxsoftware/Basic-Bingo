@@ -77,7 +77,11 @@ describe('New Game', () => {
 
     const dialog = screen.getByRole('dialog', { name: 'Start a new game?' });
     expect(dialog).toHaveTextContent('all 3 called numbers (of 75) and the BINGO banner');
-    expect(dialog).toHaveTextContent(/Kept: the winning pattern, saved patterns and images/);
+    expect(dialog).toHaveTextContent(
+      /Kept: the winning pattern, saved patterns and images, and the selected presentation mode/,
+    );
+    // New Game empties the board the projector shows, so it must not claim to keep that.
+    expect(dialog).not.toHaveTextContent(/what the projector is showing/);
     expect(api.newGame).not.toHaveBeenCalled();
     expect(api.current().game.calledNumbers).toEqual([3, 17, 9]);
   });

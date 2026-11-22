@@ -59,6 +59,19 @@ button and no confirmation.
 The Controller shows the **current call**, the **previous five** calls (newest first) and the called
 count. The current call has a dark ring around it on the grid.
 
+### BINGO called and starting a new game
+
+- **BINGO CALLED** (under the call summary) raises the BINGO verification banner. While it is up, the same
+  button becomes **Dismiss BINGO Banner**. The banner never hides on its own, and dismissing it does not
+  change any call. Keep calling balls while it is up if you need to.
+- **New Game** (top right, away from the ball grid) asks for confirmation first. The dialog states what
+  will be cleared: **all called numbers and the BINGO banner**. It keeps the winning pattern, saved
+  patterns and images, and the selected presentation mode. Cancel (focused by default) and Escape both
+  leave everything as it was.
+
+The audience-facing BINGO overlay on the projector is still to come (milestone 2); until then the
+Controller shows when the banner is enabled.
+
 ### Putting Windows in Extend mode
 
 The projector must be a separate desktop, not a mirror of the laptop screen:
@@ -151,7 +164,8 @@ docs/            Product design, milestone brief, architecture, acceptance check
 Deliberately **not** in milestone 1 (see [docs/product-design.md §8](docs/product-design.md)):
 
 - Final touch-first Controller and projector visual design; responsive tuning for 125% / 150% scaling (M2)
-- BINGO CALLED banner, New Game with confirmation, presentation-mode tabs (M2)
+- The BINGO CALLED overlay on the projector and the presentation-mode tabs (M2; the Controller's BINGO and
+  New Game buttons are in)
 - Winning patterns and the pattern library (M3)
 - Image import, slideshows, single image, countdown timer (M4)
 - Installer polish (icon, signing), accessibility pass, extended recovery testing (M5)
