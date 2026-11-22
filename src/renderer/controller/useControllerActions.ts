@@ -2,6 +2,8 @@ import { useCallback, useMemo, useState } from 'react';
 import type { CommandResult, ControllerApi } from '../../shared/ipc/contract';
 import type { PresentationMode } from '../../shared/presentation/presentationMode';
 
+export type UnsavedEdits = 'update' | 'saveAsNew' | 'discard';
+
 export interface ControllerActions {
   toggleBall(ball: number): void;
   showBingoBanner(): void;
@@ -10,6 +12,12 @@ export interface ControllerActions {
   newGame(): void;
   /** Choose what the projector shows. Never changes the game. */
   setPresentationMode(mode: PresentationMode): void;
+  /** What to do with unsaved edits to the working pattern before switching to another one. */
+  switchPattern(patternId: string, unsavedEdits: UnsavedEdits): void;
+  setPatternCell(index: number, on: boolean): void;
+  renameActivePattern(title: string): void;
+  updateSavedPattern(): void;
+  saveActivePatternAsNew(): void;
   openPresentation(displayId: number): void;
   openPreview(): void;
   closePresentation(): void;
@@ -43,6 +51,20 @@ export function useControllerActions(api: ControllerApi): ControllerActions {
       dismissBingoBanner: () => run(() => api.dismissBingoBanner()),
       newGame: () => run(() => api.newGame()),
       setPresentationMode: (mode: PresentationMode) => run(() => api.setPresentationMode(mode)),
+      // Save first, then switch; if the save fails the switch does not happen, so no edits are lost.
+      switchPattern: (patternId: string, unsavedEdits: UnsavedEdits) =>
+        run(async () => {
+          if (unsavedEdits !== 'discard') {
+            const saved =
+              unsavedEdits === 'update' ? await api.updateSavedPattern() : await api.saveActivePatternAsNew();
+            if (!saved.ok) return saved;
+          }
+          return api.selectPattern(patternId);
+        }),
+      setPatternCell: (index: number, on: boolean) => run(() => api.setActivePatternCell(index, on)),
+      renameActivePattern: (title: string) => run(() => api.renameActivePattern(title)),
+      updateSavedPattern: () => run(() => api.updateSavedPattern()),
+      saveActivePatternAsNew: () => run(() => api.saveActivePatternAsNew()),
       openPresentation: (displayId: number) => run(() => api.openPresentation(displayId)),
       openPreview: () => run(() => api.openPreview()),
       closePresentation: () => run(() => api.closePresentation()),

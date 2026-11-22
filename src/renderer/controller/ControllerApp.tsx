@@ -8,6 +8,7 @@ import { BingoBannerControl, NewGameControl } from './components/GameControls';
 import { ModePlaceholder } from './components/ModePlaceholder';
 import { modeTabId, ModeTabs } from './components/ModeTabs';
 import { NoticeArea } from './components/NoticeArea';
+import { PatternPanel } from './components/PatternPanel';
 import { PresentationControls } from './components/PresentationControls';
 import styles from './ControllerApp.module.css';
 import { useControllerActions } from './useControllerActions';
@@ -80,9 +81,20 @@ export function ControllerApp({ api, store }: ControllerAppProps) {
         )}
       </div>
 
-      {/* Milestone 3's pattern panel goes in the right-hand column, between summary and BINGO control. */}
       <div className={styles.summary}>
         <CallSummaryPanel calledNumbers={calledNumbers} />
+      </div>
+
+      <div className={styles.pattern}>
+        <PatternPanel
+          library={snapshot.patternLibrary}
+          active={snapshot.activePattern}
+          onSwitch={actions.switchPattern}
+          onSetCell={actions.setPatternCell}
+          onRename={actions.renameActivePattern}
+          onUpdateSaved={actions.updateSavedPattern}
+          onSaveAsNew={actions.saveActivePatternAsNew}
+        />
       </div>
 
       <div className={styles.bingo}>

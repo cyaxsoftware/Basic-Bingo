@@ -38,7 +38,7 @@
     'header header'
     'tabs bingo'
     'notices notices'
-    'summary summary'
+    'summary pattern'
     'panel panel';
 }
 
@@ -92,6 +92,13 @@
   flex: 1;
 }
 
+.pattern {
+  grid-area: pattern;
+  /* Stacked: a slim button beside the summary strip. */
+  width: 220px;
+  display: flex;
+}
+
 .bingo {
   grid-area: bingo;
 }
@@ -116,18 +123,23 @@
     padding: var(--space-3) var(--space-4);
     column-gap: var(--space-4);
     grid-template-columns: minmax(0, 1fr) 260px;
-    grid-template-rows: auto auto auto minmax(0, 1fr) auto;
+    grid-template-rows: auto auto auto minmax(0, 1fr) auto auto;
     grid-template-areas:
       'header header'
       'tabs tabs'
       'notices notices'
       'panel summary'
+      'panel pattern'
       'panel bingo';
     --layout-gap: var(--space-3);
   }
 
   .title {
     font-size: 1.4rem;
+  }
+
+  .pattern {
+    width: auto;
   }
 }
 

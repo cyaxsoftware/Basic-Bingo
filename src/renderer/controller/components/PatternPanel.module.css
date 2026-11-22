@@ -1,0 +1,220 @@
+.root {
+  /* Fills its grid area; the sheet below is fixed to the window, not to this box. */
+  display: flex;
+  flex: 1;
+  min-width: 0;
+}
+
+/* One touch-sized row: thumbnail, title, and an "Edited" flag when the working copy differs. */
+.toggle {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: var(--touch-min);
+  min-width: 0;
+  padding: var(--space-1) var(--space-3);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--panel);
+  color: var(--text);
+  text-align: left;
+}
+
+.toggle[aria-expanded='true'] {
+  border-color: var(--accent);
+  background: var(--info-bg);
+}
+
+.toggleText {
+  display: grid;
+  min-width: 0;
+  flex: 1;
+  line-height: 1.15;
+}
+
+.toggleLabel {
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.toggleTitle {
+  overflow: hidden;
+  font-size: 1rem;
+  font-weight: 700;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.badge {
+  flex: none;
+  padding: 1px var(--space-2);
+  border: 1px solid var(--warning-border);
+  border-radius: var(--radius-sm);
+  background: var(--warning-bg);
+  color: var(--text);
+  font-size: 0.8rem;
+  font-weight: 700;
+}
+
+.thumb {
+  display: grid;
+  flex: none;
+  grid-template-columns: repeat(5, 6px);
+  gap: 2px;
+}
+
+.thumbCell {
+  width: 6px;
+  height: 6px;
+  border-radius: 1px;
+  background: var(--border);
+}
+
+.thumbCell[data-on='true'] {
+  background: var(--accent);
+}
+
+/*
+ * Fixed to the window so it can never push the ball grid or fall off the edge, whatever the layout under
+ * it. Cells on the left, controls on the right: 5 x 44 px cells need about 260 px, so the whole sheet is
+ * about 560 px wide and 330 px tall, which fits the smallest window checked (910 x 480).
+ */
+.sheet {
+  position: fixed;
+  top: 60px;
+  right: var(--space-3);
+  z-index: 50;
+  display: flex;
+  gap: var(--space-4);
+  width: min(580px, calc(100vw - 2 * var(--space-3)));
+  max-height: calc(100vh - 60px - var(--space-3));
+  overflow: auto;
+  padding: var(--space-3);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--panel);
+  box-shadow: 0 12px 40px rgb(0 0 0 / 35%);
+}
+
+.cells {
+  display: grid;
+  flex: none;
+  grid-template-columns: repeat(5, 48px);
+  grid-auto-rows: 48px;
+  gap: 6px;
+  align-content: start;
+}
+
+.cell {
+  border: 2px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--panel);
+}
+
+.cell[aria-pressed='true'] {
+  border-color: var(--accent);
+  background: var(--accent);
+}
+
+/* A mark that is not only color: an "on" cell also shows a check. */
+.cell[aria-pressed='true']::after {
+  content: '✓';
+  color: var(--accent-text);
+  font-size: 1.3rem;
+  font-weight: 800;
+}
+
+.controls {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: var(--space-2);
+  min-width: 0;
+}
+
+.field {
+  display: grid;
+  gap: var(--space-1);
+}
+
+.fieldLabel {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--text-muted);
+}
+
+.select,
+.title {
+  min-height: 44px;
+  min-width: 0;
+  padding: 0 var(--space-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--panel);
+  color: var(--text);
+  font-size: 1rem;
+}
+
+.saveActions,
+.promptActions {
+  display: grid;
+  gap: var(--space-2);
+}
+
+.action,
+.danger,
+.close {
+  min-height: 44px;
+  padding: 0 var(--space-3);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--panel);
+  color: var(--text);
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+.action:disabled {
+  color: var(--text-muted);
+  opacity: 0.6;
+}
+
+.danger {
+  border-color: var(--danger);
+  color: var(--danger);
+}
+
+.close {
+  margin-top: auto;
+  background: var(--info-bg);
+}
+
+.prompt {
+  display: grid;
+  gap: var(--space-2);
+  padding: var(--space-2);
+  border: 1px solid var(--warning-border);
+  border-radius: var(--radius-sm);
+  background: var(--warning-bg);
+}
+
+.promptText {
+  margin: 0;
+  font-size: 0.95rem;
+  line-height: 1.3;
+}
+
+.toggle:focus-visible,
+.cell:focus-visible,
+.select:focus-visible,
+.title:focus-visible,
+.action:focus-visible,
+.danger:focus-visible,
+.close:focus-visible {
+  outline: 3px solid var(--accent);
+  outline-offset: 2px;
+}
