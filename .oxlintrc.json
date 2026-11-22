@@ -1,0 +1,87 @@
+{
+  "$schema": "./node_modules/oxlint/configuration_schema.json",
+  "plugins": ["typescript", "react", "import", "unicorn", "vitest"],
+  "categories": {
+    "correctness": "error",
+    "suspicious": "warn"
+  },
+  "rules": {
+    "react/react-in-jsx-scope": "off",
+    "react/rules-of-hooks": "error",
+    "react/exhaustive-deps": "error",
+    "typescript/no-explicit-any": "error",
+    "typescript/consistent-type-imports": "error",
+    "eqeqeq": "error",
+    "no-console": ["warn", { "allow": ["warn", "error", "info"] }],
+    "import/no-cycle": "error",
+    "import/no-unassigned-import": ["warn", { "allow": ["**/*.css", "@testing-library/jest-dom/vitest"] }],
+    "vitest/require-mock-type-parameters": "off"
+  },
+  "overrides": [
+    {
+      "files": ["**/*.test.ts", "**/*.test.tsx", "src/renderer/test/**"],
+      "rules": {
+        "vitest/require-to-throw-message": "off",
+        "unicorn/consistent-function-scoping": "off"
+      }
+    },
+    {
+      "files": ["src/shared/**"],
+      "rules": {
+        "no-restricted-imports": [
+          "error",
+          {
+            "patterns": [
+              {
+                "group": ["electron", "electron/*", "node:*", "react", "react-dom"],
+                "message": "src/shared must stay pure: no Electron, Node or React imports."
+              },
+              {
+                "group": ["**/main/**", "**/renderer/**", "**/preload/**"],
+                "message": "src/shared must not depend on process-specific code."
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "files": ["src/renderer/**"],
+      "rules": {
+        "no-restricted-imports": [
+          "error",
+          {
+            "patterns": [
+              {
+                "group": ["electron", "electron/*", "node:*"],
+                "message": "Renderers are sandboxed. Use the preload bridge (src/renderer/shared/bingoApi.ts)."
+              },
+              {
+                "group": ["**/main/**", "**/preload/**"],
+                "message": "Renderers must not import main-process or preload code."
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "files": ["src/preload/**"],
+      "rules": {
+        "no-restricted-imports": [
+          "error",
+          {
+            "patterns": [
+              { "group": ["node:*"], "message": "Preloads run sandboxed; Node built-ins are unavailable." },
+              {
+                "group": ["**/main/**", "**/renderer/**"],
+                "message": "Preloads may only import from src/shared and electron."
+              }
+            ]
+          }
+        ]
+      }
+    }
+  ],
+  "ignorePatterns": [".vite/**", "out/**", "coverage/**", ".backlog-tmp/**"]
+}
