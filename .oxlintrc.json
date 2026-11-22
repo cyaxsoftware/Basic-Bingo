@@ -19,6 +19,10 @@
   },
   "overrides": [
     {
+      "files": ["scripts/**"],
+      "rules": { "no-console": "off" }
+    },
+    {
       "files": ["**/*.test.ts", "**/*.test.tsx", "src/renderer/test/**"],
       "rules": {
         "vitest/require-to-throw-message": "off",
