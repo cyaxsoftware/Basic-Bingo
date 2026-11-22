@@ -121,8 +121,13 @@ A failed save sets `snapshot.persistence` to `error`; the Controller shows it un
 - **Single instance:** a second launch focuses the existing Controller and exits.
 - **Startup never auto-projects.** The remembered display is only pre-selected in the drop-down.
 - **Closing the Presentation** only updates status.
-- **Closing the Controller** quits the app. `before-quit` closes the Presentation and waits up to 3 s
-  for pending saves to finish.
+- **Closing the Controller** quits the app, guarded by `src/main/app/closeGuard.ts`: the `close` event
+  is intercepted while the window still exists, and `AppStore.settleSaves()` waits up to 2 s for the
+  latest save. If it is saved, the app quits. If it failed or timed out, a native dialog offers **Retry
+  save**, **Keep app open** or **Quit anyway**. The store numbers save requests, so a failure or timeout
+  is never mistaken for success.
+- `before-quit` (any quit path) closes the Presentation and waits up to 3 s more for a last save,
+  logging the outcome if it is not saved.
 
 ## Renderer structure
 

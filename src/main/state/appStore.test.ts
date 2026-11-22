@@ -129,3 +129,95 @@ describe('AppStore', () => {
     errorSpy.mockRestore();
   });
 });
+
+/** Persister whose saves stay pending until the test resolves or rejects them, in order. */
+class ManualPersister implements StatePersister {
+  private queue: Array<{ resolve: () => void; reject: (e: Error) => void }> = [];
+  saveCount = 0;
+  save(): Promise<void> {
+    this.saveCount++;
+    return new Promise((resolve, reject) => this.queue.push({ resolve, reject }));
+  }
+  async flush(): Promise<void> {}
+  succeedNext() {
+    this.queue.shift()?.resolve();
+  }
+  failNext() {
+    this.queue.shift()?.reject(new Error('disk full'));
+  }
+}
+
+describe('AppStore save outcomes (audit finding 2, #19)', () => {
+  function setup() {
+    const persister = new ManualPersister();
+    const store = new AppStore({ initialState: createDefaultPersistedState(), persister });
+    return { store, persister };
+  }
+
+  it('is saved when nothing has changed', async () => {
+    const { store } = setup();
+    expect(store.saveStatus()).toBe('saved');
+    expect(await store.settleSaves(1000)).toBe('saved');
+  });
+
+  it('waits for a pending save to complete', async () => {
+    const { store, persister } = setup();
+    store.dispatch({ type: 'toggleBall', ball: 1 });
+    expect(store.saveStatus()).toBe('pending');
+    const outcome = store.settleSaves(1000);
+    persister.succeedNext();
+    expect(await outcome).toBe('saved');
+  });
+
+  it('reports a failed final save as failed, not saved', async () => {
+    const { store, persister } = setup();
+    store.dispatch({ type: 'toggleBall', ball: 1 });
+    const outcome = store.settleSaves(1000);
+    persister.failNext();
+    expect(await outcome).toBe('failed');
+    expect(store.saveStatus()).toBe('failed');
+  });
+
+  it('reports a write that exceeds the deadline as a timeout', async () => {
+    vi.useFakeTimers();
+    try {
+      const { store } = setup();
+      store.dispatch({ type: 'toggleBall', ball: 1 });
+      const outcome = store.settleSaves(2000);
+      await vi.advanceTimersByTimeAsync(2000);
+      expect(await outcome).toBe('timeout');
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('is pending, not saved, when an older save succeeds but a newer one is still writing', async () => {
+    const { store, persister } = setup();
+    store.dispatch({ type: 'toggleBall', ball: 1 });
+    store.dispatch({ type: 'toggleBall', ball: 2 });
+    persister.succeedNext();
+    await flushPromises();
+    expect(store.saveStatus()).toBe('pending');
+  });
+
+  it('retrySave saves the current state again after a failure', async () => {
+    const { store, persister } = setup();
+    store.dispatch({ type: 'toggleBall', ball: 1 });
+    persister.failNext();
+    await flushPromises();
+    expect(store.saveStatus()).toBe('failed');
+
+    store.retrySave();
+    expect(persister.saveCount).toBe(2);
+    const outcome = store.settleSaves(1000);
+    persister.succeedNext();
+    expect(await outcome).toBe('saved');
+    expect(store.getSnapshot().persistence).toEqual({ kind: 'ok' });
+  });
+
+  it('retrySave does nothing when already saved', () => {
+    const { store, persister } = setup();
+    store.retrySave();
+    expect(persister.saveCount).toBe(0);
+  });
+});

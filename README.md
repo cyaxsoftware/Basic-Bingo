@@ -89,10 +89,18 @@ Every change is saved immediately to:
 %APPDATA%\Offline Bingo Display\bingo-data\state.json
 ```
 
-alongside `state.json.bak` (the previous good save). Quitting and reopening the app, or a crash or
-power loss, restores the exact called sequence. If the save file is damaged, the app loads the backup
-and tells the operator; damaged files are renamed `state.json.unreadable-<time>` rather than deleted. If
-a save fails (for example, the disk is full) the Controller shows a red warning until a save succeeds.
+alongside `state.json.bak` (the previous good save).
+
+- **Quitting normally** restores the exact called sequence. If the latest calls are not saved yet
+  (the last save failed or the disk is very slow), closing the Controller asks whether to **Retry save**,
+  **Keep app open** or **Quit anyway**, so calls are never dropped silently.
+- **After a crash or sudden power loss**, the app restores the **last completed save**. Saves take
+  milliseconds, so this is normally every call; only a tap made in the instant before the failure can be
+  missing.
+- If the save file is damaged, the app loads the backup and tells the operator; damaged files are renamed
+  `state.json.unreadable-<time>` rather than deleted.
+- If a save fails (for example, the disk is full) the Controller shows a red warning until a save
+  succeeds.
 
 ## Testing fully offline
 

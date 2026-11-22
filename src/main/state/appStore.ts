@@ -26,6 +26,12 @@ import type { StatePersister } from '../persistence/stateRepository';
 
 export type SnapshotListener = (snapshot: AppSnapshot) => void;
 
+/** Whether the latest durable state has reached disk. */
+export type SaveStatus = 'saved' | 'failed' | 'pending';
+
+/** How waiting for the latest save ended. */
+export type SaveOutcome = 'saved' | 'failed' | 'timeout';
+
 export interface AppStoreOptions {
   readonly initialState: PersistedState;
   readonly persister: StatePersister;
@@ -41,6 +47,10 @@ export class AppStore {
   private readonly persister: StatePersister;
   private readonly now: () => Date;
   private readonly baseState: PersistedState;
+  private requestedSaveId = 0;
+  private completedSaveId = 0;
+  private failedSaveId = 0;
+  private readonly saveWaiters = new Set<() => void>();
 
   constructor(options: AppStoreOptions) {
     this.persister = options.persister;
@@ -109,9 +119,43 @@ export class AppStore {
     this.update({ notices: this.snapshot.notices.filter((n) => n.id !== noticeId) });
   }
 
-  /** Wait for all pending writes. Call before quitting. */
-  flush(): Promise<void> {
-    return this.persister.flush();
+  /**
+   * Whether the latest durable state is on disk.
+   *  - saved:   every requested save has completed
+   *  - failed:  the most recent save attempt failed (newer calls exist only in memory)
+   *  - pending: a save is still being written
+   */
+  saveStatus(): SaveStatus {
+    if (this.completedSaveId >= this.requestedSaveId) return 'saved';
+    if (this.failedSaveId >= this.requestedSaveId) return 'failed';
+    return 'pending';
+  }
+
+  /**
+   * Wait until the latest durable state is saved or its save fails, up to
+   * `timeoutMs`. Unlike a plain flush, the result says which happened, so the
+   * caller never mistakes a failure or a slow disk for a completed save.
+   */
+  settleSaves(timeoutMs: number): Promise<SaveOutcome> {
+    return new Promise<SaveOutcome>((resolve) => {
+      const finish = (outcome: SaveOutcome) => {
+        clearTimeout(timer);
+        this.saveWaiters.delete(check);
+        resolve(outcome);
+      };
+      const check = () => {
+        const status = this.saveStatus();
+        if (status !== 'pending') finish(status);
+      };
+      const timer = setTimeout(() => finish('timeout'), timeoutMs);
+      this.saveWaiters.add(check);
+      check();
+    });
+  }
+
+  /** Save the current state again if the last save did not complete. */
+  retrySave(): void {
+    if (this.saveStatus() !== 'saved') this.persist();
   }
 
   /** The durable subset of state, in its on-disk shape. */
@@ -125,15 +169,30 @@ export class AppStore {
   }
 
   private persist(): void {
+    // Save requests are numbered; the repository settles them in order, so
+    // "completed >= requested" means the newest state is on disk.
+    const saveId = ++this.requestedSaveId;
     this.persister.save(this.toPersistedState()).then(
-      () => this.setPersistence({ kind: 'ok' }),
-      (error: unknown) =>
+      () => {
+        this.completedSaveId = Math.max(this.completedSaveId, saveId);
+        this.setPersistence({ kind: 'ok' });
+        this.notifySaveWaiters();
+      },
+      (error: unknown) => {
+        this.failedSaveId = Math.max(this.failedSaveId, saveId);
         this.setPersistence({
           kind: 'error',
           message: `Could not save game state: ${error instanceof Error ? error.message : String(error)}`,
           failedAt: this.now().toISOString(),
-        }),
+        });
+        this.notifySaveWaiters();
+      },
     );
+  }
+
+  private notifySaveWaiters(): void {
+    // Waiters remove themselves when they finish; deleting during Set iteration is safe.
+    for (const waiter of this.saveWaiters) waiter();
   }
 
   private setPersistence(persistence: PersistenceStatus): void {

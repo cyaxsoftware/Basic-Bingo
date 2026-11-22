@@ -4,14 +4,16 @@
  * Startup:  single-instance lock -> load state -> create store -> Controller
  *           window -> IPC -> display watching. The Presentation window is
  *           never opened automatically (operator action only).
- * Shutdown: closing the Controller quits the app; pending saves are flushed
- *           before the process exits.
+ * Shutdown: closing the Controller quits the app, but only after the close
+ *           guard confirms the game is saved or the operator chooses to quit
+ *           anyway. before-quit then waits (bounded) for any last save.
  *
  * See docs/architecture.md for the full picture.
  */
-import { app, BrowserWindow, ipcMain, Menu, screen, session } from 'electron';
+import { app, BrowserWindow, dialog, ipcMain, Menu, screen, session } from 'electron';
 import started from 'electron-squirrel-startup';
 import type { Notice } from '../shared/ipc/contract';
+import { confirmClose, describeUnsavedGame, type CloseChoice } from './app/closeGuard';
 import { registerIpcHandlers } from './ipc/registerIpcHandlers';
 import { resolveDataDirectory } from './persistence/dataDirectory';
 import { JsonStateRepository, type LoadResult } from './persistence/stateRepository';
@@ -24,8 +26,12 @@ import { devServerOrigins } from './windows/rendererEntry';
 import { WindowRegistry } from './windows/windowRegistry';
 
 const APP_USER_MODEL_ID = 'com.cyaxsoftware.offlinebingodisplay';
-/** Upper bound on how long quitting may wait for the last save. */
-const SHUTDOWN_FLUSH_TIMEOUT_MS = 3000;
+/** How long closing the Controller waits for a pending save before asking the operator. */
+const CLOSE_SAVE_DEADLINE_MS = 2000;
+/** Upper bound on how long any quit path may wait for the last save. */
+const SHUTDOWN_SAVE_DEADLINE_MS = 3000;
+/** Order matches the dialog buttons in installCloseGuard. */
+const CLOSE_CHOICES: readonly CloseChoice[] = ['retry', 'keepOpen', 'quit'];
 
 function main(): void {
   // Squirrel installer events (install/uninstall shortcuts) launch the app briefly.
@@ -95,6 +101,7 @@ async function startApplication(registry: WindowRegistry): Promise<void> {
   // The Controller may be dragged to another monitor; keep "hostsController" accurate.
   controller.on('moved', () => displays.scheduleRefresh());
 
+  installCloseGuard(controller, store);
   controller.on('closed', () => {
     registry.setController(null);
     app.quit();
@@ -103,7 +110,54 @@ async function startApplication(registry: WindowRegistry): Promise<void> {
   installShutdown(store, presentation, displays);
 }
 
-/** Flush persistence before the process exits, with a bounded wait. */
+/**
+ * Closing the Controller quits the app, so check the game is saved first,
+ * while the window still exists to anchor a dialog. If the latest save failed
+ * or is slow, the operator chooses: retry, keep the app open, or quit anyway.
+ */
+function installCloseGuard(controller: BrowserWindow, store: AppStore): void {
+  let closeApproved = false;
+  let checking = false;
+
+  controller.on('close', (event) => {
+    if (closeApproved) return;
+    event.preventDefault();
+    if (checking) return;
+    checking = true;
+
+    confirmClose({
+      deadlineMs: CLOSE_SAVE_DEADLINE_MS,
+      settleSaves: (ms) => store.settleSaves(ms),
+      retrySave: () => store.retrySave(),
+      ask: async (outcome) => {
+        const { message, detail } = describeUnsavedGame(outcome);
+        const { response } = await dialog.showMessageBox(controller, {
+          type: 'warning',
+          title: 'Game not saved',
+          message,
+          detail,
+          buttons: ['Retry save', 'Keep app open', 'Quit anyway'],
+          defaultId: 0,
+          cancelId: 1,
+          noLink: true,
+        });
+        return CLOSE_CHOICES[response] ?? 'keepOpen';
+      },
+    })
+      .then((mayClose) => {
+        if (!mayClose || controller.isDestroyed()) return;
+        closeApproved = true;
+        controller.close();
+      })
+      // If the guard itself breaks, stay open: the operator can try again, and no calls are lost.
+      .catch((error: unknown) => console.error('[close-guard] failed', error))
+      .finally(() => {
+        checking = false;
+      });
+  });
+}
+
+/** Last-chance wait for saves on any quit path, bounded so the app always exits. */
 function installShutdown(store: AppStore, presentation: PresentationWindowManager, displays: DisplayManager) {
   let readyToQuit = false;
   let shuttingDown = false;
@@ -116,9 +170,12 @@ function installShutdown(store: AppStore, presentation: PresentationWindowManage
 
     displays.stop();
     presentation.close();
-    const timeout = new Promise<void>((resolve) => setTimeout(resolve, SHUTDOWN_FLUSH_TIMEOUT_MS));
-    Promise.race([store.flush(), timeout])
-      .catch((error: unknown) => console.error('[shutdown] flush failed', error))
+    store
+      .settleSaves(SHUTDOWN_SAVE_DEADLINE_MS)
+      .then((outcome) => {
+        if (outcome !== 'saved') console.error(`[shutdown] quitting with latest save ${outcome}`);
+      })
+      .catch((error: unknown) => console.error('[shutdown] save check failed', error))
       .finally(() => {
         readyToQuit = true;
         app.quit();

@@ -39,9 +39,11 @@ export interface LoadResult {
 
 /** Persistence port used by the app store; lets tests substitute a fake. */
 export interface StatePersister {
+  /**
+   * Resolves once this state (or a newer one) is on disk; rejects if the write
+   * failed. Calls settle in the order they were made.
+   */
   save(state: PersistedState): Promise<void>;
-  /** Resolves when every pending save has finished (successfully or not). */
-  flush(): Promise<void>;
 }
 
 /** The file operations the repository uses. Injectable so tests can simulate failures. */
@@ -136,6 +138,11 @@ export class JsonStateRepository implements StatePersister {
     });
   }
 
+  /**
+   * Wait until no write is queued or in flight. Settles whether or not the
+   * writes succeeded; to learn the outcome use the save() promises (the app
+   * uses AppStore.settleSaves for this).
+   */
   async flush(): Promise<void> {
     while (this.inFlight || this.pending) {
       await this.inFlight?.catch(() => undefined);

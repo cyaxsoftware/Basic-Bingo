@@ -35,7 +35,7 @@ function setup() {
   const ipc = new FakeIpcMain();
   const store = new AppStore({
     initialState: createDefaultPersistedState(),
-    persister: { save: async () => undefined, flush: async () => undefined },
+    persister: { save: async () => undefined },
   });
   const deps: IpcDependencies = {
     store,

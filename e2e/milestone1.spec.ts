@@ -112,3 +112,29 @@ test('a second launch does not start a second instance', async () => {
   expect(first.app.windows()).toHaveLength(1);
   await first.app.close();
 });
+
+test('closing the Controller window with a healthy disk quits promptly and keeps the calls', async () => {
+  const { app, controller } = await launchApp(userDataDir);
+  await controller.getByRole('button', { name: 'Preview' }).click();
+  await waitForPresentationWindow(app);
+  await tapBall(controller, 'G-50');
+  await tapBall(controller, 'O-71');
+
+  // Close the Controller the way the operator would (title-bar X / Alt+F4), not via app.quit().
+  const exited = new Promise<void>((resolve) => app.process().once('exit', () => resolve()));
+  const started = Date.now();
+  await app.evaluate(({ BrowserWindow }) => {
+    const controllerWindow = BrowserWindow.getAllWindows().find((w) =>
+      w.webContents.getURL().includes('controller'),
+    );
+    controllerWindow?.close();
+  });
+  await exited;
+  // No dialog was needed: the close guard found everything saved.
+  expect(Date.now() - started).toBeLessThan(5000);
+
+  const reopened = await launchApp(userDataDir);
+  expect(await ballLabels(reopened.controller.getByTestId('current-call'))).toEqual(['O-71']);
+  expect(await ballLabels(reopened.controller.getByTestId('previous-calls'))).toEqual(['G-50']);
+  await reopened.app.close();
+});
