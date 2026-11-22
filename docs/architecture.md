@@ -89,9 +89,11 @@ if someone modified its page.
 - `persistedState.ts`: the on-disk shape (`schemaVersion: 1`), zod validation, and the migration table.
 - `stateRepository.ts`: storage under `%APPDATA%\Offline Bingo Display\bingo-data\`.
 
-Save sequence: write `state.json.tmp` → `fsync` → copy the current `state.json` to `state.json.bak` →
-rename the temp file over `state.json` (retrying briefly on Windows file locks). A crash at any point
-leaves a complete file. Saves are serialized and coalesced: rapid taps write only the latest state, and
+Save sequence: write `state.json.tmp` → `fsync` → **re-validate** the current `state.json` and copy it to
+`state.json.bak` only if it is valid (an invalid primary is moved aside instead, and the backup is left
+alone) → rename the temp file over `state.json` (retrying briefly on Windows file locks). A crash at any
+point leaves a complete file, and the backup only ever holds data that was validated at the moment it
+was copied, so a damaged primary can never overwrite the last good copy. Saves are serialized and coalesced: rapid taps write only the latest state, and
 every caller's promise settles when its state or a newer one is on disk.
 
 Load sequence: `state.json` → `state.json.bak` → defaults. Unreadable files, including files from a

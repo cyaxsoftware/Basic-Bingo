@@ -1,9 +1,10 @@
+import { promises as realFs } from 'node:fs';
 import { mkdtemp, readdir, readFile, rm, writeFile } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createDefaultPersistedState, type PersistedState } from './persistedState';
-import { JsonStateRepository } from './stateRepository';
+import { JsonStateRepository, type RepositoryFileSystem } from './stateRepository';
 
 function stateWith(calledNumbers: number[], preferredDisplayId: number | null = null): PersistedState {
   return { ...createDefaultPersistedState(), game: { calledNumbers }, settings: { preferredDisplayId } };
@@ -130,4 +131,89 @@ describe('JsonStateRepository', () => {
     await expect(badRepo.save(stateWith([1]))).rejects.toThrow();
     await expect(badRepo.flush()).resolves.toBeUndefined();
   });
+
+  describe('backup protection (audit finding 1, #18)', () => {
+    const readCalls = async (file: string) =>
+      (JSON.parse(await readFile(file, 'utf8')) as PersistedState).game.calledNumbers;
+
+    /** Primary = [1, 2] but corrupted on disk; backup = [1] (valid). */
+    async function corruptPrimaryWithGoodBackup() {
+      await repo.save(stateWith([1]));
+      await repo.save(stateWith([1, 2]));
+      await writeFile(repo.filePath, '{"schemaVersion":1,"game":{"calledNu', 'utf8');
+    }
+
+    it('keeps the good backup when quarantine and the final replace both fail', async () => {
+      await corruptPrimaryWithGoodBackup();
+      const faulty = new JsonStateRepository(repo.directory, {
+        fileSystem: withFailingRename((_from, to) => to.includes('.unreadable-') || to === repo.filePath),
+      });
+
+      const loaded = await faulty.load();
+      expect(loaded.source).toBe('backup');
+      expect(loaded.state.game.calledNumbers).toEqual([1]);
+      expect(loaded.issues.join(' ')).toMatch(/Could not move unreadable file/);
+
+      await expect(faulty.save(stateWith([1, 9]))).rejects.toThrow(/EPERM/);
+
+      // After a restart with a healthy disk, the original backup still loads.
+      const restarted = await new JsonStateRepository(repo.directory).load();
+      expect(restarted.source).toBe('backup');
+      expect(restarted.state.game.calledNumbers).toEqual([1]);
+    });
+
+    it('never copies an unreadable primary into the backup after a fallback load', async () => {
+      await corruptPrimaryWithGoodBackup();
+      const faulty = new JsonStateRepository(repo.directory, {
+        fileSystem: withFailingRename((_from, to) => to.includes('.unreadable-')),
+      });
+
+      expect((await faulty.load()).source).toBe('backup');
+      await faulty.save(stateWith([1, 9]));
+
+      expect(await readCalls(repo.backupPath)).toEqual([1]);
+      expect(await readCalls(repo.filePath)).toEqual([1, 9]);
+    });
+
+    it('protects the backup when the primary is corrupted between saves', async () => {
+      await corruptPrimaryWithGoodBackup();
+      await repo.save(stateWith([1, 2, 3]));
+
+      expect(await readCalls(repo.backupPath)).toEqual([1]);
+      expect(await readCalls(repo.filePath)).toEqual([1, 2, 3]);
+      const files = await readdir(repo.directory);
+      expect(files.some((f) => f.startsWith('state.json.unreadable-'))).toBe(true);
+    });
+
+    it('still saves the newest state when refreshing the backup fails', async () => {
+      await repo.save(stateWith([4]));
+      const faulty = new JsonStateRepository(repo.directory, {
+        fileSystem: {
+          ...realFs,
+          copyFile: async () => {
+            throw errno('EBUSY');
+          },
+        },
+      });
+      const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+      await faulty.save(stateWith([4, 5]));
+      warn.mockRestore();
+      expect(await readCalls(repo.filePath)).toEqual([4, 5]);
+    });
+  });
 });
+
+function errno(code: string): NodeJS.ErrnoException {
+  return Object.assign(new Error(`${code}: simulated failure`), { code });
+}
+
+/** Real file system, except rename() fails with EPERM when `shouldFail` matches. */
+function withFailingRename(shouldFail: (from: string, to: string) => boolean): RepositoryFileSystem {
+  return {
+    ...realFs,
+    rename: async (from, to) => {
+      if (shouldFail(String(from), String(to))) throw errno('EPERM');
+      return realFs.rename(from, to);
+    },
+  };
+}

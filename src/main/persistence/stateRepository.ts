@@ -3,20 +3,25 @@
  *
  * Files (all inside the app-owned data directory, see dataDirectory.ts):
  *   state.json            current state
- *   state.json.bak        previous good state (last-known-good)
+ *   state.json.bak        last-known-good state; only ever a copy of a VALIDATED state.json
  *   state.json.tmp        in-progress write; never read
  *   state.json.unreadable-<timestamp>  quarantined file that failed to load
  *
- * Save is atomic: write tmp -> fsync -> copy current to .bak -> rename tmp over
- * state.json. A crash at any point leaves either the old or the new complete
- * file at state.json, plus a backup.
+ * Save sequence:
+ *   1. write state.json.tmp and fsync it
+ *   2. re-read state.json; if it is valid, copy it to state.json.bak.
+ *      If it is invalid, move it aside (or, if that fails, leave .bak alone).
+ *   3. rename the temp file over state.json
+ * A crash at any point leaves a complete file at state.json or a valid backup.
+ * The backup is never overwritten with content that has not just been validated,
+ * so a damaged primary can never destroy the only good copy of the game.
  *
  * Saves are serialized and coalesced: while one write is in flight, further
  * saves replace each other and only the newest is written next. Every save()
  * promise settles once its state (or a newer one) is on disk, or rejects with
  * the write error. Failures are never swallowed.
  */
-import { promises as fs } from 'node:fs';
+import { promises as nodeFs } from 'node:fs';
 import path from 'node:path';
 import { createDefaultPersistedState, parsePersistedState, type PersistedState } from './persistedState';
 
@@ -39,6 +44,23 @@ export interface StatePersister {
   flush(): Promise<void>;
 }
 
+/** The file operations the repository uses. Injectable so tests can simulate failures. */
+export type RepositoryFileSystem = Pick<typeof nodeFs, 'readFile' | 'mkdir' | 'open' | 'copyFile' | 'rename'>;
+
+export interface JsonStateRepositoryOptions {
+  readonly now?: () => Date;
+  readonly fileSystem?: RepositoryFileSystem;
+}
+
+/** Result of reading and validating one state file. */
+type FileCheck =
+  | { readonly kind: 'missing' }
+  | { readonly kind: 'valid'; readonly state: PersistedState; readonly warnings: readonly string[] }
+  /** Read succeeded but the content is not a usable state. Safe to move aside. */
+  | { readonly kind: 'invalid'; readonly reason: string }
+  /** Could not be read at all (locked, permissions). Leave it alone. */
+  | { readonly kind: 'unreadable'; readonly reason: string };
+
 interface Waiter {
   resolve(): void;
   reject(error: unknown): void;
@@ -53,22 +75,26 @@ export class JsonStateRepository implements StatePersister {
   readonly backupPath: string;
   readonly tempPath: string;
 
+  private readonly now: () => Date;
+  private readonly fs: RepositoryFileSystem;
   private pending: { state: PersistedState; waiters: Waiter[] } | null = null;
   private inFlight: Promise<void> | null = null;
 
   constructor(
     readonly directory: string,
-    private readonly now: () => Date = () => new Date(),
+    options: JsonStateRepositoryOptions = {},
   ) {
+    this.now = options.now ?? (() => new Date());
+    this.fs = options.fileSystem ?? nodeFs;
     this.filePath = path.join(directory, STATE_FILE_NAME);
     this.backupPath = `${this.filePath}.bak`;
     this.tempPath = `${this.filePath}.tmp`;
   }
 
   /**
-   * Load state: primary file, then backup, then defaults. Unreadable files are
+   * Load state: primary file, then backup, then defaults. Invalid files are
    * renamed aside (never deleted) so they can be inspected and are not
-   * overwritten by the next save.
+   * mistaken for good data later.
    */
   async load(): Promise<LoadResult> {
     const issues: string[] = [];
@@ -78,33 +104,21 @@ export class JsonStateRepository implements StatePersister {
     ];
 
     for (const [source, filePath] of candidates) {
-      let text: string;
-      try {
-        text = await fs.readFile(filePath, 'utf8');
-      } catch (error) {
-        if (isErrnoCode(error, 'ENOENT')) continue;
-        issues.push(`Could not read ${path.basename(filePath)}: ${errorMessage(error)}`);
-        continue;
+      const check = await this.checkFile(filePath);
+      switch (check.kind) {
+        case 'missing':
+          continue;
+        case 'unreadable':
+          issues.push(check.reason);
+          continue;
+        case 'invalid':
+          issues.push(check.reason);
+          issues.push(await this.quarantine(filePath));
+          continue;
+        case 'valid':
+          issues.push(...check.warnings);
+          return { state: check.state, source, issues };
       }
-
-      let json: unknown;
-      try {
-        json = JSON.parse(text);
-      } catch (error) {
-        issues.push(`${path.basename(filePath)} is not valid JSON (${errorMessage(error)}).`);
-        issues.push(await this.quarantine(filePath));
-        continue;
-      }
-
-      const parsed = parsePersistedState(json);
-      if (!parsed.ok) {
-        issues.push(`${path.basename(filePath)}: ${parsed.error}`);
-        issues.push(await this.quarantine(filePath));
-        continue;
-      }
-
-      issues.push(...parsed.warnings);
-      return { state: parsed.state, source, issues };
     }
 
     return { state: createDefaultPersistedState(this.now()), source: 'defaults', issues };
@@ -145,10 +159,10 @@ export class JsonStateRepository implements StatePersister {
   }
 
   private async writeAtomically(state: PersistedState): Promise<void> {
-    await fs.mkdir(this.directory, { recursive: true });
+    await this.fs.mkdir(this.directory, { recursive: true });
     const json = `${JSON.stringify({ ...state, savedAt: this.now().toISOString() }, null, 2)}\n`;
 
-    const handle = await fs.open(this.tempPath, 'w');
+    const handle = await this.fs.open(this.tempPath, 'w');
     try {
       await handle.writeFile(json, 'utf8');
       await handle.sync();
@@ -156,20 +170,65 @@ export class JsonStateRepository implements StatePersister {
       await handle.close();
     }
 
+    await this.rotatePrimaryToBackup();
+    await renameWithRetry(this.fs, this.tempPath, this.filePath);
+  }
+
+  /**
+   * Make the current primary the new backup, but only if it is valid right now.
+   * Anything else leaves the existing backup untouched.
+   */
+  private async rotatePrimaryToBackup(): Promise<void> {
+    const primary = await this.checkFile(this.filePath);
+    switch (primary.kind) {
+      case 'valid':
+        try {
+          await this.fs.copyFile(this.filePath, this.backupPath);
+        } catch (error) {
+          // The old backup is still valid, just older. Saving the newest state matters more.
+          console.warn(`[persistence] Could not refresh backup: ${errorMessage(error)}`);
+        }
+        return;
+      case 'invalid':
+        // Keep it for inspection if we can. If the move fails, the rename that
+        // follows replaces it; either way the backup is never touched.
+        console.warn(`[persistence] ${primary.reason} ${await this.quarantine(this.filePath)}`);
+        return;
+      case 'unreadable':
+        console.warn(`[persistence] ${primary.reason} Backup left unchanged.`);
+        return;
+      case 'missing':
+        return;
+    }
+  }
+
+  private async checkFile(filePath: string): Promise<FileCheck> {
+    const name = path.basename(filePath);
+    let text: string;
     try {
-      await fs.copyFile(this.filePath, this.backupPath);
+      text = await this.fs.readFile(filePath, 'utf8');
     } catch (error) {
-      if (!isErrnoCode(error, 'ENOENT')) throw error;
+      if (isErrnoCode(error, 'ENOENT')) return { kind: 'missing' };
+      return { kind: 'unreadable', reason: `Could not read ${name}: ${errorMessage(error)}` };
     }
 
-    await renameWithRetry(this.tempPath, this.filePath);
+    let json: unknown;
+    try {
+      json = JSON.parse(text);
+    } catch (error) {
+      return { kind: 'invalid', reason: `${name} is not valid JSON (${errorMessage(error)}).` };
+    }
+
+    const parsed = parsePersistedState(json);
+    if (!parsed.ok) return { kind: 'invalid', reason: `${name}: ${parsed.error}` };
+    return { kind: 'valid', state: parsed.state, warnings: parsed.warnings };
   }
 
   private async quarantine(filePath: string): Promise<string> {
     const stamp = this.now().toISOString().replace(/[:.]/g, '-');
     const target = `${filePath}.unreadable-${stamp}`;
     try {
-      await fs.rename(filePath, target);
+      await this.fs.rename(filePath, target);
       return `Moved unreadable file to ${path.basename(target)}.`;
     } catch (error) {
       return `Could not move unreadable file ${path.basename(filePath)} aside: ${errorMessage(error)}`;
@@ -177,7 +236,7 @@ export class JsonStateRepository implements StatePersister {
   }
 }
 
-async function renameWithRetry(from: string, to: string): Promise<void> {
+async function renameWithRetry(fs: RepositoryFileSystem, from: string, to: string): Promise<void> {
   for (let attempt = 1; ; attempt++) {
     try {
       await fs.rename(from, to);
