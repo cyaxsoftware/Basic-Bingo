@@ -1,0 +1,62 @@
+/*
+ * The board scales to whatever space it gets (any resolution or aspect ratio)
+ * by sizing cells from the container: 16 columns (letter + 15) and 5 rows,
+ * plus gaps. --cell is the largest square that fits both dimensions.
+ */
+.frame {
+  container-type: size;
+  min-height: 0;
+  display: grid;
+  place-items: center;
+}
+
+.board {
+  --cell: min(calc(100cqw / 17.6), calc(100cqh / 5.6));
+  --gap: calc(var(--cell) * 0.1);
+  display: flex;
+  flex-direction: column;
+  gap: var(--gap);
+}
+
+.row {
+  display: grid;
+  grid-template-columns: repeat(16, var(--cell));
+  grid-auto-rows: var(--cell);
+  gap: var(--gap);
+}
+
+.letter,
+.cell {
+  display: grid;
+  place-items: center;
+  font-size: calc(var(--cell) * 0.46);
+  font-weight: 800;
+  line-height: 1;
+}
+
+.letter {
+  border-radius: calc(var(--cell) * 0.15);
+  background: var(--ball-color);
+  color: var(--ball-ink);
+  font-size: calc(var(--cell) * 0.6);
+}
+
+.cell {
+  border-radius: 50%;
+  background: var(--uncalled-fill);
+  color: var(--uncalled-text);
+}
+
+.cell[data-status='called'],
+.cell[data-status='current'] {
+  background: var(--ball-color);
+  color: var(--ball-ink);
+}
+
+/* Current call: bright ring plus slight scale, so it is not signalled by color alone. */
+.cell[data-status='current'] {
+  box-shadow:
+    0 0 0 calc(var(--cell) * 0.06) var(--stage),
+    0 0 0 calc(var(--cell) * 0.13) var(--current-ring);
+  transform: scale(1.06);
+}

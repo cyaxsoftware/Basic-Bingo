@@ -1,0 +1,98 @@
+/*
+ * The panel is a size container. Everything is sized from it, so the same
+ * markup works as a tall side column (16:9) or a wide top band (4:3).
+ * Balls are sized with font-size only (diameter = 2.6em, see BallChip).
+ */
+.panel {
+  container-type: size;
+  min-height: 0;
+  padding: 2vmin;
+  background: var(--stage-panel);
+  border-radius: 1.5vmin;
+}
+
+/* Tall panel: current ball on top, previous five below. */
+.layout {
+  display: flex;
+  flex-direction: column;
+  gap: 4cqh;
+  height: 100%;
+}
+
+.currentArea {
+  flex: 1;
+  min-height: 0;
+  display: grid;
+  place-items: center;
+}
+
+.currentBall {
+  font-size: min(28cqw, 22cqh);
+  border-width: 0.06em;
+  box-shadow: 0 0 0 0.6vmin var(--current-ring);
+}
+
+.ready {
+  margin: 0;
+  font-size: min(9cqw, 10cqh);
+  font-weight: 700;
+  color: var(--stage-muted);
+  text-align: center;
+}
+
+.previousArea {
+  flex: none;
+}
+
+.heading {
+  margin: 0 0 1.5cqh;
+  font-size: min(5cqw, 4cqh);
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--stage-muted);
+}
+
+.previous {
+  display: flex;
+  justify-content: space-between;
+  gap: 2cqw;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+/* Five across the panel width: 5 × 2.6em + gaps ≈ 100cqw. */
+.previousBall {
+  font-size: min(6.6cqw, 6cqh);
+}
+
+/* Wide panel (top band on 4:3 screens): everything in one row. */
+@container (min-aspect-ratio: 2/1) {
+  .layout {
+    flex-direction: row;
+    align-items: center;
+    gap: 4cqw;
+  }
+  .currentArea {
+    flex: none;
+  }
+  .currentBall {
+    font-size: 30cqh;
+  }
+  .ready {
+    font-size: 16cqh;
+  }
+  .previousArea {
+    flex: 1;
+  }
+  .heading {
+    font-size: 8cqh;
+  }
+  .previous {
+    justify-content: flex-start;
+  }
+  .previousBall {
+    font-size: min(22cqh, 5cqw);
+  }
+}

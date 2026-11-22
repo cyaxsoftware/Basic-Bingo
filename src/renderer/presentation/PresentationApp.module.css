@@ -1,0 +1,21 @@
+/* Wide screens (16:9): call display on the left, board on the right. */
+.root {
+  display: grid;
+  grid-template-columns: minmax(0, 30%) minmax(0, 1fr);
+  gap: 2vmin;
+  height: 100vh;
+  padding: 2.5vmin;
+}
+
+/* Projectors are output-only: hide the pointer when fullscreen. */
+.root[data-mode='projecting'] {
+  cursor: none;
+}
+
+/* Squarer screens (4:3, 5:4): call display becomes a band above the board. */
+@media (max-aspect-ratio: 3/2) {
+  .root {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: minmax(0, 30%) minmax(0, 1fr);
+  }
+}
