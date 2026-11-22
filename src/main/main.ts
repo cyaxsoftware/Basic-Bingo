@@ -16,6 +16,7 @@ import type { Notice } from '../shared/ipc/contract';
 import { confirmClose, describeUnsavedGame, type CloseChoice } from './app/closeGuard';
 import { registerIpcHandlers } from './ipc/registerIpcHandlers';
 import { resolveDataDirectory } from './persistence/dataDirectory';
+import { fromPersistedState } from './persistence/persistedState';
 import { JsonStateRepository, type LoadResult } from './persistence/stateRepository';
 import { installOfflinePolicy } from './security/offlinePolicy';
 import { AppStore } from './state/appStore';
@@ -76,7 +77,7 @@ async function startApplication(registry: WindowRegistry): Promise<void> {
   const repository = new JsonStateRepository(resolveDataDirectory(app.getPath('userData')));
   const loaded = await repository.load();
   const store = new AppStore({
-    initialState: loaded.state,
+    initialData: fromPersistedState(loaded.state),
     persister: repository,
     initialNotices: recoveryNotices(loaded),
   });

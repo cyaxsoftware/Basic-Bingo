@@ -30,6 +30,22 @@
       }
     },
     {
+      "files": ["src/main/**"],
+      "rules": {
+        "no-restricted-imports": [
+          "error",
+          {
+            "patterns": [
+              {
+                "group": ["**/renderer/**", "**/preload/**"],
+                "message": "Main-process code must not import renderer or preload code. Share types and logic through src/shared."
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
       "files": ["src/shared/**"],
       "rules": {
         "no-restricted-imports": [

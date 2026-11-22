@@ -86,7 +86,11 @@ if someone modified its page.
 
 `src/main/persistence/`:
 
-- `persistedState.ts`: the on-disk shape (`schemaVersion: 1`), zod validation, and the migration table.
+- `persistedState.ts`: the on-disk documents (`PersistedStateV1`, frozen once released), zod
+  validation, the migration table, and explicit conversion between the current document and
+  `AppData` (the durable state the app uses). Documents never reference live domain types such as
+  `GameState`, so growing the game model cannot change what an existing file means.
+- `fixtures/state-v1.json`: a representative released V1 file; tests load it on every run.
 - `stateRepository.ts`: storage under `%APPDATA%\Offline Bingo Display\bingo-data\`.
 
 Save sequence: write `state.json.tmp` → `fsync` → **re-validate** the current `state.json` and copy it to
@@ -165,9 +169,11 @@ Example: `NEW_GAME` (milestone 2). Touch these files in order:
 8. **E2E test** (if the operator would notice a regression) — `e2e/`.
 9. Run `npm run check` and `npm run test:e2e`.
 
-If the command changes **persisted** data, also update `persistedState.ts`: bump
-`CURRENT_SCHEMA_VERSION`, add a migration from the previous version, and add a test that loads an
-old-version file.
+If the command changes **persisted** data, follow the steps at the top of `persistedState.ts`: add a new
+document version with its own game shape, a migration from the previous version, updated
+`toPersistedState` / `fromPersistedState`, and a fixture for the new version, while the existing
+`state-v1.json` test keeps passing. The compiler points at `fromPersistedState` as soon as `GameState`
+gains a required field.
 
 ## Why these choices
 

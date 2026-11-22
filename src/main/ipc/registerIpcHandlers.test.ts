@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { IpcChannel, ok, type CommandResult } from '../../shared/ipc/contract';
-import { createDefaultPersistedState } from '../persistence/persistedState';
+import { createDefaultAppData } from '../persistence/persistedState';
 import { AppStore } from '../state/appStore';
 import {
   registerIpcHandlers,
@@ -34,7 +34,7 @@ class FakeIpcMain implements IpcMainLike {
 function setup() {
   const ipc = new FakeIpcMain();
   const store = new AppStore({
-    initialState: createDefaultPersistedState(),
+    initialData: createDefaultAppData(),
     persister: { save: async () => undefined },
   });
   const deps: IpcDependencies = {

@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import type { AppSnapshot } from '../../shared/ipc/contract';
-import { createDefaultPersistedState, type PersistedState } from '../persistence/persistedState';
+import { createDefaultAppData, type PersistedState } from '../persistence/persistedState';
 import type { StatePersister } from '../persistence/stateRepository';
 import { AppStore } from './appStore';
 
@@ -19,8 +19,8 @@ class FakePersister implements StatePersister {
 
 function createStore(calledNumbers: number[] = []) {
   const persister = new FakePersister();
-  const initialState = { ...createDefaultPersistedState(), game: { calledNumbers } };
-  const store = new AppStore({ initialState, persister });
+  const initialData = { ...createDefaultAppData(), game: { calledNumbers } };
+  const store = new AppStore({ initialData, persister });
   const snapshots: AppSnapshot[] = [];
   store.subscribe((s) => snapshots.push(s));
   return { store, persister, snapshots };
@@ -150,7 +150,7 @@ class ManualPersister implements StatePersister {
 describe('AppStore save outcomes (audit finding 2, #19)', () => {
   function setup() {
     const persister = new ManualPersister();
-    const store = new AppStore({ initialState: createDefaultPersistedState(), persister });
+    const store = new AppStore({ initialData: createDefaultAppData(), persister });
     return { store, persister };
   }
 

@@ -1,0 +1,10 @@
+{
+  "schemaVersion": 1,
+  "savedAt": "2026-11-22T18:30:00.000Z",
+  "game": {
+    "calledNumbers": [3, 17, 9, 31, 52, 75]
+  },
+  "settings": {
+    "preferredDisplayId": 2779098405
+  }
+}

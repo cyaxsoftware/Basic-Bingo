@@ -17,7 +17,9 @@ A fully offline Windows 11 desktop app for running 75-ball bingo. A touchscreen 
 ## Requirements
 
 - Windows 11 (development also works on macOS/Linux, but the target is Windows)
-- Node.js 22 or newer (developed with Node 24) and npm
+- Node.js **22.22.2+ (22.x)**, **24.15.0+ (24.x)**, or **26+**, with npm. Odd-numbered releases are not
+  supported by the test tooling. Tested on 22.22.2 and 24.16.0. The range matches `engines` in
+  `package.json`, which follows the strictest locked dependency (jsdom).
 - Git
 
 ## Setup
