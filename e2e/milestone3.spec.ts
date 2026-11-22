@@ -1,11 +1,20 @@
 /**
  * Milestone 3 end-to-end checks, added card by card as M3 features land.
  *
- * The pattern UI arrives in the next cards, so for now these drive the real preload bridge from inside the
- * Controller page, exactly as the Controller UI will.
+ * The first test drives the real preload bridge from inside the Controller page; the second uses the pattern
+ * widget and the real Preview window, as an operator would.
  */
+import { writeFile } from 'node:fs/promises';
+import path from 'node:path';
 import { expect, test, type Page } from '@playwright/test';
-import { createUserDataDir, launchApp, removeUserDataDir, tapBall } from './appHarness';
+import {
+  createUserDataDir,
+  launchApp,
+  removeUserDataDir,
+  resizeController,
+  tapBall,
+  waitForPresentationWindow,
+} from './appHarness';
 
 let userDataDir: string;
 
@@ -83,5 +92,74 @@ test('an edited active pattern and a new library pattern survive a restart, and 
   // The saved Big L was never changed by editing its copy.
   expect(restored.patternLibrary.find((pattern) => pattern.id === 'seed-big-l')?.cells[CENTER]).toBe(false);
   expect(restored.patternLibrary).toHaveLength(6);
+  await second.app.close();
+});
+
+test('pushing the pattern shows it on the projector; later edits wait for the next push; it survives a restart', async () => {
+  const first = await launchApp(userDataDir);
+  // The rail layout (with the tappable cells) needs a window of at least 1440 x 780.
+  await resizeController(first.app, first.controller, 1536, 864);
+  const widget = first.controller.getByRole('region', { name: 'Pattern' });
+  await widget.getByRole('combobox').selectOption('seed-big-l');
+
+  await first.controller.getByRole('button', { name: 'Preview' }).click();
+  const projector = await waitForPresentationWindow(first.app);
+  const shown = projector.getByRole('region', { name: 'Winning pattern' });
+  // Nothing is on the projector until the operator pushes it, however the pattern is chosen or edited.
+  await expect(shown).toHaveCount(0);
+
+  await widget.getByRole('button', { name: 'Show on projector' }).click();
+  await expect(shown.getByRole('heading', { name: 'Big L' })).toBeVisible();
+  await expect(projector.getByTestId('pattern-cell-0')).toHaveAttribute('data-on', 'true');
+  await expect(projector.getByTestId('pattern-cell-12')).toHaveAttribute('data-on', 'false');
+
+  // Edit the working copy (center on, new name). The projector keeps showing what was pushed.
+  await widget.getByRole('button', { name: 'Row 3, column 3' }).click();
+  await widget.getByRole('textbox', { name: /Pattern name/ }).fill('Big L plus');
+  await widget.getByRole('textbox', { name: /Pattern name/ }).press('Enter');
+  const update = widget.getByRole('button', { name: 'Update projector' });
+  await expect(update).toBeEnabled();
+  await expect(shown.getByRole('heading', { name: 'Big L', exact: true })).toBeVisible();
+  await expect(projector.getByTestId('pattern-cell-12')).toHaveAttribute('data-on', 'false');
+
+  await update.click();
+  await expect(shown.getByRole('heading', { name: 'Big L plus' })).toBeVisible();
+  await expect(projector.getByTestId('pattern-cell-12')).toHaveAttribute('data-on', 'true');
+
+  // Set BINGO_SCREENSHOT_DIR to keep a picture of both screens for review.
+  const keepIn = process.env['BINGO_SCREENSHOT_DIR'];
+  if (keepIn) {
+    await tapBall(first.controller, 'B-3');
+    await tapBall(first.controller, 'N-33');
+    await first.controller.waitForTimeout(300);
+    await writeFile(path.join(keepIn, 'push-controller.png'), await first.controller.screenshot());
+    await writeFile(path.join(keepIn, 'push-projector.png'), await projector.screenshot());
+    await tapBall(first.controller, 'B-3');
+    await tapBall(first.controller, 'N-33');
+  }
+
+  // Calls and New Game never disturb it.
+  await tapBall(first.controller, 'B-3');
+  await first.controller.getByRole('button', { name: 'New Game' }).click();
+  await first.controller.getByRole('button', { name: 'Start New Game' }).click();
+  await expect(first.controller.getByTestId('called-count')).toHaveText('Called: 0 of 75');
+  await expect(shown.getByRole('heading', { name: 'Big L plus' })).toBeVisible();
+  await first.app.close();
+
+  // Restart: the projector still shows what was pushed, even though the editor is its own thing.
+  const second = await launchApp(userDataDir);
+  // Resize before the Preview window exists: the harness resizes the first window it finds.
+  await resizeController(second.app, second.controller, 1536, 864);
+  await second.controller.getByRole('button', { name: 'Preview' }).click();
+  const restored = await waitForPresentationWindow(second.app);
+  await expect(restored.getByRole('heading', { name: 'Big L plus' })).toBeVisible();
+  await expect(restored.getByTestId('pattern-cell-12')).toHaveAttribute('data-on', 'true');
+
+  // Hide takes it off.
+  await second.controller
+    .getByRole('region', { name: 'Pattern' })
+    .getByRole('button', { name: 'Hide' })
+    .click();
+  await expect(restored.getByRole('region', { name: 'Winning pattern' })).toHaveCount(0);
   await second.app.close();
 });

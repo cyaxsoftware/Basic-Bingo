@@ -48,6 +48,7 @@ export function makeSnapshot(overrides: Partial<AppSnapshot> = {}): AppSnapshot 
     presentationMode: 'gameBoard',
     patternLibrary: createDefaultLibrary(),
     activePattern: blankActivePattern(),
+    shownPattern: null,
     presentation: { kind: 'closed' },
     displays: [LAPTOP, PROJECTOR],
     preferredDisplayId: null,
@@ -86,12 +87,18 @@ export function createFakeBingoApi(initial: AppSnapshot = makeSnapshot()): FakeB
   let patternIds = 0;
   const dispatchPattern = (command: PatternCommand): CommandResult => {
     try {
-      const current = { library: snapshot.patternLibrary, active: snapshot.activePattern };
+      const current = {
+        library: snapshot.patternLibrary,
+        active: snapshot.activePattern,
+        shown: snapshot.shownPattern,
+      };
       const next = reducePatterns(current, command, {
         now: '2026-01-02T00:00:00.000Z',
         newId: () => `fake-pattern-${(patternIds += 1)}`,
       });
-      if (next !== current) publish({ patternLibrary: next.library, activePattern: next.active });
+      if (next !== current) {
+        publish({ patternLibrary: next.library, activePattern: next.active, shownPattern: next.shown });
+      }
       return ok;
     } catch (error) {
       return fail((error as Error).message);
@@ -141,6 +148,8 @@ export function createFakeBingoApi(initial: AppSnapshot = makeSnapshot()): FakeB
       dispatchPattern({ type: 'duplicatePattern', patternId }),
     ),
     deletePattern: vi.fn(async (patternId: string) => dispatchPattern({ type: 'deletePattern', patternId })),
+    showPatternOnProjector: vi.fn(async () => dispatchPattern({ type: 'showPatternOnProjector' })),
+    hidePatternOnProjector: vi.fn(async () => dispatchPattern({ type: 'hidePatternOnProjector' })),
     listDisplays: vi.fn(async () => snapshot.displays),
     openPresentation: vi.fn(async (displayId: number) => {
       const display = snapshot.displays.find((d) => d.id === displayId);

@@ -1,0 +1,210 @@
+/*
+ * Rail (the left column, from 1440 px): a card, top to bottom: the cells, the name, the saved-pattern choice,
+ * then the buttons. The rail is 272 px, so the card's content is 244 px: exactly five 44 px cells and four 6 px
+ * gaps.
+ *
+ * Strip (1141 to 1439 px, above the ball board): a short band. The cells become a small picture on the left,
+ * the name and the saved-pattern choice share a column, and the buttons sit on the right.
+ */
+.root {
+  position: relative;
+  display: grid;
+  grid-template-areas:
+    'name'
+    'cells'
+    'saved'
+    'actions'
+    'prompt';
+  gap: var(--space-3);
+  padding: var(--space-3);
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+}
+
+.cells {
+  grid-area: cells;
+  display: grid;
+  justify-content: center;
+}
+
+.name {
+  grid-area: name;
+}
+
+.saved {
+  grid-area: saved;
+}
+
+.actions {
+  grid-area: actions;
+}
+
+.prompt {
+  grid-area: prompt;
+}
+
+/* Rail: the editable cells. */
+.root[data-variant='rail'] .cells {
+  grid-template-columns: repeat(5, 44px);
+  grid-auto-rows: 44px;
+  gap: 6px;
+}
+
+.cell {
+  border: 2px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--panel);
+}
+
+.cell[aria-pressed='true'] {
+  border-color: var(--accent);
+  background: var(--accent);
+}
+
+/* A mark that is not only color: an "on" cell also shows a check. */
+.cell[aria-pressed='true']::after {
+  content: '✓';
+  color: var(--accent-text);
+  font-size: 1.3rem;
+  font-weight: 800;
+}
+
+/* Strip: the picture. */
+.picture {
+  display: grid;
+  grid-template-columns: repeat(5, 20px);
+  grid-auto-rows: 20px;
+  gap: 3px;
+}
+
+.dot {
+  border: 1.5px solid var(--border);
+  border-radius: 4px;
+}
+
+.dot[data-on='true'] {
+  border-color: var(--accent);
+  background: var(--accent);
+}
+
+.name,
+.saved {
+  display: grid;
+  gap: var(--space-1);
+  min-width: 0;
+}
+
+.label {
+  font-size: 0.8rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  color: var(--text-muted);
+}
+
+.badge {
+  margin-left: var(--space-1);
+  padding: 1px var(--space-2);
+  border: 1px solid var(--warning-border);
+  border-radius: var(--radius-sm);
+  background: var(--warning-bg);
+  color: var(--text);
+  font-size: 0.8rem;
+  font-weight: 700;
+  letter-spacing: 0;
+}
+
+.input,
+.select {
+  min-height: 44px;
+  min-width: 0;
+  padding: 0 var(--space-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--panel);
+  color: var(--text);
+  font-size: 1rem;
+}
+
+.input {
+  font-weight: 700;
+}
+
+.actions {
+  display: grid;
+  gap: var(--space-2);
+}
+
+.projector {
+  display: flex;
+  gap: var(--space-2);
+}
+
+.button,
+.primary,
+.hide {
+  min-height: 46px;
+  padding: 0 var(--space-3);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--panel);
+  color: var(--text);
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+.primary {
+  flex: 1;
+  border-color: var(--accent);
+  background: var(--accent);
+  color: var(--accent-text);
+  font-weight: 700;
+}
+
+.primary:disabled {
+  border-color: var(--border);
+  background: var(--info-bg);
+  color: var(--accent);
+}
+
+.hide {
+  flex: none;
+  min-width: 56px;
+}
+
+.cell:focus-visible,
+.input:focus-visible,
+.select:focus-visible,
+.button:focus-visible,
+.primary:focus-visible,
+.hide:focus-visible {
+  outline: 3px solid var(--accent);
+  outline-offset: 2px;
+}
+
+/* Strip layout. */
+.root[data-variant='strip'] {
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  grid-template-areas:
+    'cells name actions'
+    'cells saved actions';
+  align-items: center;
+  column-gap: var(--space-4);
+  row-gap: var(--space-1);
+  padding: var(--space-2) var(--space-3);
+}
+
+.root[data-variant='strip'] .actions {
+  grid-template-columns: auto auto;
+  align-items: end;
+}
+
+/* The question is a pop-over under the strip: it would not fit inside it. */
+.root[data-variant='strip'] .prompt {
+  position: absolute;
+  top: calc(100% + var(--space-2));
+  left: 0;
+  z-index: 20;
+  width: 300px;
+  box-shadow: 0 12px 40px rgb(0 0 0 / 35%);
+}

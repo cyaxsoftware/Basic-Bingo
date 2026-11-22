@@ -19,7 +19,11 @@ function context(): PatternContext {
   return { now: NOW, newId: () => `id-${(n += 1)}` };
 }
 
-const start = (): PatternsState => ({ library: createDefaultLibrary(), active: blankActivePattern() });
+const start = (): PatternsState => ({
+  library: createDefaultLibrary(),
+  active: blankActivePattern(),
+  shown: null,
+});
 const run = (state: PatternsState, command: PatternCommand, ctx = context()) =>
   reducePatterns(state, command, ctx);
 
@@ -157,5 +161,63 @@ describe('reducePatterns', () => {
     expect(() => run(start(), { type: 'explode' } as unknown as PatternCommand)).toThrow(
       /Unhandled pattern command/,
     );
+  });
+});
+
+describe('the pattern shown on the projector', () => {
+  const withBigL = () => run(start(), { type: 'selectPattern', patternId: 'seed-big-l' });
+
+  it('starts with nothing shown', () => {
+    expect(start().shown).toBeNull();
+  });
+
+  it('pushes a snapshot of the working pattern: its title and cells', () => {
+    const shown = run(withBigL(), { type: 'showPatternOnProjector' }).shown;
+    expect(shown?.title).toBe('Big L');
+    expect(shown?.cells).toEqual(withBigL().active.cells);
+  });
+
+  it('keeps showing the pushed pattern while the working copy is edited, until pushed again', () => {
+    let state = run(withBigL(), { type: 'showPatternOnProjector' });
+    const pushed = state.shown;
+    state = run(state, { type: 'setActivePatternCell', index: 12, on: true });
+    state = run(state, { type: 'renameActivePattern', title: 'Big L plus' });
+    expect(state.active.cells[12]).toBe(true);
+    expect(state.shown).toBe(pushed);
+
+    state = run(state, { type: 'showPatternOnProjector' });
+    expect(state.shown?.title).toBe('Big L plus');
+    expect(state.shown?.cells[12]).toBe(true);
+  });
+
+  it('is not changed by switching, saving or library changes', () => {
+    const ctx = context(); // one id counter across the steps, so new ids do not collide
+    let state = run(withBigL(), { type: 'showPatternOnProjector' }, ctx);
+    const pushed = state.shown;
+    state = run(state, { type: 'selectPattern', patternId: 'seed-blackout' }, ctx);
+    state = run(state, { type: 'setActivePatternCell', index: 0, on: false }, ctx);
+    state = run(state, { type: 'saveActivePatternAsNew' }, ctx);
+    state = run(state, { type: 'duplicatePattern', patternId: 'seed-big-l' }, ctx);
+    state = run(state, { type: 'deletePattern', patternId: 'seed-big-l' }, ctx);
+    expect(state.shown).toBe(pushed);
+  });
+
+  it('copies the cells, so later edits cannot reach the pushed pattern', () => {
+    const pushedState = run(withBigL(), { type: 'showPatternOnProjector' });
+    const before = [...(pushedState.shown?.cells ?? [])];
+    run(pushedState, { type: 'setActivePatternCell', index: 12, on: true });
+    expect(pushedState.shown?.cells).toEqual(before);
+  });
+
+  it('pushing what is already shown changes nothing', () => {
+    const state = run(withBigL(), { type: 'showPatternOnProjector' });
+    expect(run(state, { type: 'showPatternOnProjector' })).toBe(state);
+  });
+
+  it('hides the pattern, and hiding when nothing is shown changes nothing', () => {
+    const shown = run(withBigL(), { type: 'showPatternOnProjector' });
+    expect(run(shown, { type: 'hidePatternOnProjector' }).shown).toBeNull();
+    const none = start();
+    expect(run(none, { type: 'hidePatternOnProjector' })).toBe(none);
   });
 });

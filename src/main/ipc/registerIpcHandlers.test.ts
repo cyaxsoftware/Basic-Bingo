@@ -209,6 +209,8 @@ describe('pattern commands over IPC', () => {
     [IpcChannel.renamePattern, [SOME_ID, 'Hook']],
     [IpcChannel.duplicatePattern, [SOME_ID]],
     [IpcChannel.deletePattern, [SOME_ID]],
+    [IpcChannel.showPatternOnProjector, []],
+    [IpcChannel.hidePatternOnProjector, []],
   ];
 
   it.each(validCalls)(

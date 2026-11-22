@@ -170,6 +170,10 @@ export function registerIpcHandlers(ipc: IpcMainLike, deps: IpcDependencies): vo
       : fail('Invalid pattern id.'),
   );
 
+  // No arguments: it pushes whatever the working pattern is right now.
+  command(IpcChannel.showPatternOnProjector, () => store.dispatchPattern({ type: 'showPatternOnProjector' }));
+  command(IpcChannel.hidePatternOnProjector, () => store.dispatchPattern({ type: 'hidePatternOnProjector' }));
+
   command(IpcChannel.openPresentation, (displayId) => {
     if (typeof displayId !== 'number' || !Number.isSafeInteger(displayId)) {
       return fail('Choose a display to project to.');

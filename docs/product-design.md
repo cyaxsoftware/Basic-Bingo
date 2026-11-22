@@ -25,7 +25,7 @@ No internet connection, cloud database, user account, local HTTP server, or sepa
 1. **Ball selection is a toggle.** Tapping an uncalled ball adds it as the newest call. Tapping a called ball removes it from the active called sequence. All other calls retain their relative chronological order. If a removed ball is tapped again, it becomes the newest call.
 2. **New Game** clears all called balls but retains the currently selected winning pattern; it requires confirmation.
 3. **BINGO CALLED** displays a conspicuous red notice on the game projector, and the notice persists until the operator explicitly dismisses it (false BINGO) or resets the game. It is never automatically dismissed.
-4. **Winning patterns** live in a saved, editable library. The active pattern's name and all 25 cells can be edited in place during the game and the projector updates accordingly. **Never assume that the center cell is highlighted.** Patterns only highlight cells explicitly selected by the operator.
+4. **Winning patterns** live in a saved, editable library. The active pattern's name and all 25 cells can be edited in place during the game. The projector shows the pattern the operator last **pushed** with the Show on projector button (a snapshot of the title and cells); edits wait for the next push, so a stray tap never changes what the audience sees. **Never assume that the center cell is highlighted.** Patterns only highlight cells explicitly selected by the operator.
 5. **Slideshow** supports multiple named collections. Different organizations can maintain their own collections on the same installed laptop.
 6. When a break countdown reaches zero, show **“Time to Play!”**, but continue the slideshow until the operator manually chooses another presentation mode.
 7. **Still-image mode** uses a reusable local image library; support fit and crop presentation options.
@@ -64,8 +64,8 @@ No internet connection, cloud database, user account, local HTTP server, or sepa
 
 **Controller pattern workflow:**
 1. Operator selects a saved pattern from a library.
-2. Its 5x5 grid and title become the active pattern, shown on both screens.
-3. Operator can edit any cell or rename the active pattern inline, immediately affecting the presentation.
+2. Its 5x5 grid and title become the active pattern on the Controller.
+3. Operator can edit any cell or rename the active pattern inline. The projector is unaffected until the operator pushes it with **Show on projector** (or **Update projector** when it already shows an older version); **Hide** removes it.
 4. **Proposed safe behavior:** Maintain an active working copy of the pattern. In-game changes persist as part of current game state, but do not silently overwrite the original library template. Provide **Update Saved Pattern** and **Save As New Pattern** controls. Show an `Edited` indicator while active copy differs from saved template. If the operator changes to another template with unsaved library changes, give an unobtrusive save/discard choice. A generic selected pattern can also be used without saving.
 5. Pattern library allows create, rename, duplicate, edit, and delete. Confirm deletion. A library item's grid is 25 explicit booleans; there is no hardcoded center rule or automatic free-space highlighting.
 
@@ -76,7 +76,7 @@ No internet connection, cloud database, user account, local HTTP server, or sepa
 **Visual intent:** Large, crisp display, charcoal background, high contrast and saturated BINGO colors. No operator tools, controls, cursors, navigation bars, or visible application chrome.
 
 **Game Board layout:**
-- Pattern graphic and pattern title on the left, or in a dedicated compact area when screen aspect ratio is narrow.
+- The pushed pattern graphic and title under the call display on the left, or beside it in the top band when the screen aspect ratio is narrow. Nothing is shown until the operator pushes a pattern.
 - 75-number board dominates the display; B/I/N/G/O letterheads and row colors clearly group numbers.
 - Uncalled numbers are visible rather than nearly black. Called numbers are filled in their conventional colors: **B blue, I red, N white, G green, O yellow**. Use dark numerals within filled circles for readability, subject to contrast checks.
 - The **current call** is visually emphasized both within the numbered grid and separately in a larger ball display.

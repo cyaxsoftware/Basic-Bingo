@@ -7,7 +7,9 @@ import {
   type Pattern,
 } from '../../../shared/patterns';
 import type { UnsavedEdits } from '../useControllerActions';
+import { usePatternTitleField } from '../usePatternTitleField';
 import { PatternThumbnail } from './PatternThumbnail';
+import { SwitchPrompt } from './SwitchPrompt';
 import styles from './PatternsView.module.css';
 
 export interface PatternsViewProps {
@@ -38,8 +40,7 @@ export function PatternsView({
 }: PatternsViewProps) {
   // The template the operator asked for while the working copy has unsaved edits.
   const [pendingId, setPendingId] = useState<string | null>(null);
-  const [titleDraft, setTitleDraft] = useState<string | null>(null);
-  const promptRef = useRef<HTMLDivElement>(null);
+  const titleField = usePatternTitleField(active.title, onRename);
   const titleRef = useRef<HTMLInputElement>(null);
 
   const pending = pendingId === null ? undefined : library.find((pattern) => pattern.id === pendingId);
@@ -49,17 +50,10 @@ export function PatternsView({
   const asking = pending !== undefined;
   const wasAsking = useRef(false);
   useEffect(() => {
-    if (asking) promptRef.current?.querySelector('button')?.focus();
-    else if (wasAsking.current) titleRef.current?.focus();
+    // The prompt takes focus itself when it appears; when it goes, focus returns to the title.
+    if (!asking && wasAsking.current) titleRef.current?.focus();
     wasAsking.current = asking;
   }, [asking]);
-
-  const commitTitle = () => {
-    const title = titleDraft?.trim();
-    setTitleDraft(null);
-    // An empty title is refused by the game; just show the real one again.
-    if (title && title !== active.title) onRename(title);
-  };
 
   const choose = (patternId: string) => {
     if (patternId === active.sourcePatternId) return;
@@ -134,34 +128,20 @@ export function PatternsView({
             className={styles.title}
             type="text"
             maxLength={MAX_PATTERN_TITLE_LENGTH}
-            value={titleDraft ?? active.title}
-            onChange={(event) => setTitleDraft(event.target.value)}
-            onBlur={commitTitle}
-            onKeyDown={(event) => {
-              if (event.key === 'Enter') event.currentTarget.blur();
-            }}
+            value={titleField.value}
+            onChange={(event) => titleField.onChange(event.target.value)}
+            onBlur={titleField.onBlur}
+            onKeyDown={titleField.onKeyDown}
           />
         </label>
 
         {pending ? (
-          <div ref={promptRef} className={styles.prompt} aria-live="polite">
-            <p className={styles.promptText}>
-              Switching to <strong>{pending.title}</strong>. Your edits to <strong>{active.title}</strong> are
-              not saved.
-            </p>
-            <button type="button" className={styles.action} onClick={() => answer('update')}>
-              Update saved, then switch
-            </button>
-            <button type="button" className={styles.action} onClick={() => answer('saveAsNew')}>
-              Save as new, then switch
-            </button>
-            <button type="button" className={styles.danger} onClick={() => answer('discard')}>
-              Discard edits and switch
-            </button>
-            <button type="button" className={styles.action} onClick={() => setPendingId(null)}>
-              Keep editing
-            </button>
-          </div>
+          <SwitchPrompt
+            targetTitle={pending.title}
+            activeTitle={active.title}
+            onAnswer={answer}
+            onCancel={() => setPendingId(null)}
+          />
         ) : (
           <>
             <button

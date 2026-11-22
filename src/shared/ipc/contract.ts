@@ -15,7 +15,7 @@
  */
 import type { BallNumber } from '../game/balls';
 import type { GameState } from '../game/gameState';
-import type { ActivePattern, Pattern, PatternCells } from '../patterns/pattern';
+import type { ActivePattern, Pattern, PatternCells, ShownPattern } from '../patterns/pattern';
 import type { PresentationMode } from '../presentation/presentationMode';
 
 // ---------------------------------------------------------------------------
@@ -76,6 +76,8 @@ export interface AppSnapshot {
   readonly patternLibrary: readonly Pattern[];
   /** Persisted: the working copy of a pattern the game is showing (edits never touch the library by themselves). */
   readonly activePattern: ActivePattern;
+  /** Persisted: the pattern the operator last pushed to the projector (a snapshot, not the working copy), or null. */
+  readonly shownPattern: ShownPattern | null;
   /** Runtime-only: what the Presentation window is doing. Never persisted. */
   readonly presentation: PresentationStatus;
   /** Runtime-only: currently connected displays. */
@@ -110,6 +112,8 @@ export const IpcChannel = {
   renamePattern: 'bingo:rename-pattern',
   duplicatePattern: 'bingo:duplicate-pattern',
   deletePattern: 'bingo:delete-pattern',
+  showPatternOnProjector: 'bingo:show-pattern-on-projector',
+  hidePatternOnProjector: 'bingo:hide-pattern-on-projector',
   listDisplays: 'bingo:list-displays',
   openPresentation: 'bingo:open-presentation',
   openPreview: 'bingo:open-preview',
@@ -155,6 +159,10 @@ export interface ControllerApi extends PresentationApi {
   duplicatePattern(patternId: string): Promise<CommandResult>;
   /** The caller must have confirmed with the operator first. */
   deletePattern(patternId: string): Promise<CommandResult>;
+  /** Push the working pattern (title and cells) to the projector. Later edits do not change it until pushed again. */
+  showPatternOnProjector(): Promise<CommandResult>;
+  /** Remove the pattern from the projector. */
+  hidePatternOnProjector(): Promise<CommandResult>;
   /** Re-reads displays from Windows and returns them (the snapshot updates too). */
   listDisplays(): Promise<readonly DisplayInfo[]>;
   openPresentation(displayId: number): Promise<CommandResult>;

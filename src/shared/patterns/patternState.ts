@@ -12,8 +12,10 @@ import {
   assertCellIndex,
   normalizeTitle,
   type ActivePattern,
+  sameCells,
   type PatternCells,
   type PatternLibrary,
+  type ShownPattern,
 } from './pattern';
 import {
   createActivePattern,
@@ -29,10 +31,12 @@ import {
   updateSavedPattern,
 } from './patternLibrary';
 
-/** The library and the working copy, which always travel together. */
+/** The library, the working copy and what the projector shows, which always travel together. */
 export interface PatternsState {
   readonly library: PatternLibrary;
   readonly active: ActivePattern;
+  /** The pattern the operator last pushed to the projector, or null when none is shown. */
+  readonly shown: ShownPattern | null;
 }
 
 export const BLANK_ACTIVE_TITLE = 'Untitled pattern';
@@ -51,7 +55,9 @@ export type PatternCommand =
   | { readonly type: 'createPattern'; readonly title: string; readonly cells: PatternCells }
   | { readonly type: 'renamePattern'; readonly patternId: string; readonly title: string }
   | { readonly type: 'duplicatePattern'; readonly patternId: string }
-  | { readonly type: 'deletePattern'; readonly patternId: string };
+  | { readonly type: 'deletePattern'; readonly patternId: string }
+  | { readonly type: 'showPatternOnProjector' }
+  | { readonly type: 'hidePatternOnProjector' };
 
 export type PatternCommandType = PatternCommand['type'];
 
@@ -68,33 +74,36 @@ export function reducePatterns(
   command: PatternCommand,
   context: PatternContext,
 ): PatternsState {
-  const { library, active } = state;
+  const { library, active, shown } = state;
   switch (command.type) {
     case 'selectPattern': {
       const selected = selectPattern(library, command.patternId);
-      return { library, active: selected };
+      return { ...state, active: selected };
     }
     case 'setActivePatternCell': {
       assertCellIndex(command.index);
       if (typeof command.on !== 'boolean') throw new RangeError('A pattern cell is either on or off.');
       // Idempotent: asking for the state a cell is already in changes nothing.
       if (active.cells[command.index] === command.on) return state;
-      return { library, active: toggleCell(active, library, command.index) };
+      return { ...state, active: toggleCell(active, library, command.index) };
     }
     case 'renameActivePattern': {
       // Validates the title too. Naming it what it already is changes nothing.
       if (normalizeTitle(command.title) === active.title) return state;
-      return { library, active: renameActive(active, library, command.title) };
+      return { ...state, active: renameActive(active, library, command.title) };
     }
     case 'updateSavedPattern':
-      return updateSavedPattern(library, active, context.now);
+      return { ...state, ...updateSavedPattern(library, active, context.now) };
     case 'saveActivePatternAsNew': {
       const input = { id: context.newId(), now: context.now };
-      return saveActiveAsNew(
-        library,
-        active,
-        command.title === undefined ? input : { ...input, title: command.title },
-      );
+      return {
+        ...state,
+        ...saveActiveAsNew(
+          library,
+          active,
+          command.title === undefined ? input : { ...input, title: command.title },
+        ),
+      };
     }
     case 'createPattern': {
       const next = createPattern(library, {
@@ -103,21 +112,28 @@ export function reducePatterns(
         cells: command.cells,
         now: context.now,
       });
-      return { library: next, active: reconcileActive(active, next) };
+      return { ...state, library: next, active: reconcileActive(active, next) };
     }
     case 'renamePattern': {
       const next = renamePattern(library, command.patternId, command.title, context.now);
-      return { library: next, active: reconcileActive(active, next) };
+      return { ...state, library: next, active: reconcileActive(active, next) };
     }
     case 'duplicatePattern': {
       const next = duplicatePattern(library, command.patternId, { id: context.newId(), now: context.now });
-      return { library: next, active: reconcileActive(active, next) };
+      return { ...state, library: next, active: reconcileActive(active, next) };
     }
     case 'deletePattern': {
       const next = deletePattern(library, command.patternId);
       // If it was the working copy's template, the copy stays on screen as a one-off.
-      return { library: next, active: reconcileActive(active, next) };
+      return { ...state, library: next, active: reconcileActive(active, next) };
     }
+    case 'showPatternOnProjector': {
+      // Pushing what is already shown changes nothing.
+      if (shown && shown.title === active.title && sameCells(shown.cells, active.cells)) return state;
+      return { ...state, shown: { title: active.title, cells: [...active.cells] } };
+    }
+    case 'hidePatternOnProjector':
+      return shown === null ? state : { ...state, shown: null };
     default: {
       // Compile-time exhaustiveness check; at runtime `command` can still be anything.
       const unknownCommand: never = command;

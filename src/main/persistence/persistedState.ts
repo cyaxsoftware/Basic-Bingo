@@ -124,6 +124,12 @@ export interface PersistedActivePatternV3 {
   readonly editedFromLibrary: boolean;
 }
 
+/** What the projector shows: the working pattern as it was when the operator pushed it. */
+export interface PersistedShownPatternV3 {
+  readonly title: string;
+  readonly cells: readonly boolean[];
+}
+
 export interface PersistedStateV3 {
   readonly schemaVersion: 3;
   /** ISO timestamp of the save. Informational only. */
@@ -133,6 +139,8 @@ export interface PersistedStateV3 {
   readonly patterns: {
     readonly library: readonly PersistedPatternV3[];
     readonly active: PersistedActivePatternV3;
+    /** Null when nothing is pushed to the projector. Added during M3, while V3 was unreleased. */
+    readonly shown: PersistedShownPatternV3 | null;
   };
   readonly settings: {
     readonly preferredDisplayId: number | null;
@@ -185,7 +193,7 @@ export interface AppData {
 
 /** The default library and an empty working pattern, as plain on-disk data. */
 function defaultPersistedPatterns(): PersistedStateV3['patterns'] {
-  return toPersistedPatterns({ library: createDefaultLibrary(), active: blankActivePattern() });
+  return toPersistedPatterns({ library: createDefaultLibrary(), active: blankActivePattern(), shown: null });
 }
 
 function toPersistedPatterns(patterns: PatternsState): PersistedStateV3['patterns'] {
@@ -203,6 +211,7 @@ function toPersistedPatterns(patterns: PatternsState): PersistedStateV3['pattern
       cells: [...patterns.active.cells],
       editedFromLibrary: patterns.active.editedFromLibrary,
     },
+    shown: patterns.shown ? { title: patterns.shown.title, cells: [...patterns.shown.cells] } : null,
   };
 }
 
@@ -248,10 +257,11 @@ export function fromPersistedState(document: PersistedState): AppData {
     cells: [...pattern.cells],
   }));
   const active: ActivePattern = { ...document.patterns.active, cells: [...document.patterns.active.cells] };
+  const { shown } = document.patterns;
   return {
     game,
     presentation: { mode: document.presentation.mode },
-    patterns: { library, active },
+    patterns: { library, active, shown: shown ? { title: shown.title, cells: [...shown.cells] } : null },
     settings: { preferredDisplayId: document.settings.preferredDisplayId },
   };
 }
@@ -326,6 +336,18 @@ function validActive(entry: unknown): ActivePattern | null {
   };
 }
 
+/** The pushed pattern, or null when there is none (or it is damaged: the audience then sees no pattern). */
+function validShown(entry: unknown): PersistedShownPatternV3 | null {
+  if (!isRecord(entry)) return null;
+  const { title, cells } = entry;
+  if (!isPatternCells(cells)) return null;
+  try {
+    return { title: normalizeTitle(title), cells: [...cells] };
+  } catch {
+    return null;
+  }
+}
+
 /**
  * Check the pattern section entry by entry. One damaged pattern is dropped (with a warning), never the whole
  * library or the game. The library and the working copy are recovered independently: an unreadable library
@@ -365,8 +387,16 @@ function normalizePatterns(raw: unknown): { patterns: PersistedStateV3['patterns
     warnings.push('The active pattern was missing or damaged, so it was reset.');
     active = blankActivePattern();
   }
+  // A missing pushed pattern is normal (nothing is shown); one that is present but unreadable is reported.
+  const shown = validShown(raw['shown']);
+  if (shown === null && raw['shown'] !== undefined && raw['shown'] !== null) {
+    warnings.push('The pattern shown on the projector was damaged, so it was cleared.');
+  }
   // Re-derive "Edited", and detach the working copy if its template is gone.
-  return { patterns: toPersistedPatterns({ library, active: reconcileActive(active, library) }), warnings };
+  return {
+    patterns: toPersistedPatterns({ library, active: reconcileActive(active, library), shown }),
+    warnings,
+  };
 }
 
 /** Validate and migrate parsed JSON into the current {@link PersistedState}. */

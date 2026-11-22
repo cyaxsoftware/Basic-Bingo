@@ -1,6 +1,7 @@
 import { useId, useState } from 'react';
 import type { ControllerApi } from '../../shared/ipc/contract';
 import type { SnapshotStore } from '../shared/snapshotStore';
+import { useMediaQuery } from '../shared/useMediaQuery';
 import { useSnapshotState } from '../shared/useSnapshotState';
 import { BallGrid } from './components/BallGrid';
 import { CallSummaryPanel } from './components/CallSummaryPanel';
@@ -9,6 +10,7 @@ import { ModePlaceholder } from './components/ModePlaceholder';
 import { modeTabId, ModeTabs } from './components/ModeTabs';
 import { NoticeArea } from './components/NoticeArea';
 import { PatternCard } from './components/PatternCard';
+import { PatternWidget } from './components/PatternWidget';
 import { PatternsView } from './components/PatternsView';
 import { PresentationControls } from './components/PresentationControls';
 import styles from './ControllerApp.module.css';
@@ -27,6 +29,14 @@ export function ControllerApp({ api, store }: ControllerAppProps) {
   // Which screen the operator is on. Only the layout cares: the game, the patterns and the projector all
   // live in the main process, so switching screens never changes (or loses) any of them.
   const [view, setView] = useState<'game' | 'patterns'>('game');
+  // Which pattern UI there is, and where New Game is, depends on the width: a control cannot be in two places
+  // at once, so these choices are made in code. The widths match the breakpoints in ControllerApp.module.css.
+  //   from 1440 wide and 780 high: a left rail with New Game and the pattern widget (the rail is about 610 px
+  //     tall, so a wide but short window gets the strip instead)
+  //   from 1141 wide otherwise: New Game in the top bar and the pattern widget as a strip above the board
+  //   below 1141 (the compact layout): New Game in the top bar and a small Pattern card
+  const wideLayout = useMediaQuery('(min-width: 1141px)');
+  const railLayout = useMediaQuery('(min-width: 1440px) and (min-height: 780px)');
 
   if (state.status === 'loading') {
     return <div className={styles.message}>Loading game…</div>;
@@ -42,24 +52,46 @@ export function ControllerApp({ api, store }: ControllerAppProps) {
   const { snapshot } = state;
   const { calledNumbers, bingoBannerVisible } = snapshot.game;
   const mode = snapshot.presentationMode;
+  // Anything but the ball board (the Patterns screen, a mode placeholder) takes the full height of its area.
+  const fill = view === 'patterns' || mode !== 'gameBoard';
+  const newGame = (
+    <NewGameControl
+      calledCount={calledNumbers.length}
+      bannerVisible={bingoBannerVisible}
+      onNewGame={actions.newGame}
+    />
+  );
+  const widget = (variant: 'rail' | 'strip') => (
+    <PatternWidget
+      variant={variant}
+      library={snapshot.patternLibrary}
+      active={snapshot.activePattern}
+      shown={snapshot.shownPattern}
+      onSwitch={actions.switchPattern}
+      onSetCell={actions.setPatternCell}
+      onRename={actions.renameActivePattern}
+      onShow={actions.showPatternOnProjector}
+      onHide={actions.hidePatternOnProjector}
+      onEditPatterns={() => setView('patterns')}
+    />
+  );
+  const onGame = view === 'game';
   return (
-    <main className={styles.layout} data-view={view}>
+    <main className={styles.layout} data-view={view} data-fill={fill}>
       <header className={styles.header}>
         <h1 className={styles.title}>Offline Bingo</h1>
-        <PresentationControls
-          displays={snapshot.displays}
-          presentation={snapshot.presentation}
-          preferredDisplayId={snapshot.preferredDisplayId}
-          onProject={actions.openPresentation}
-          onPreview={actions.openPreview}
-          onStop={actions.closePresentation}
-          onRefreshDisplays={actions.refreshDisplays}
-        />
-        <NewGameControl
-          calledCount={calledNumbers.length}
-          bannerVisible={bingoBannerVisible}
-          onNewGame={actions.newGame}
-        />
+        <div className={styles.projector}>
+          <PresentationControls
+            displays={snapshot.displays}
+            presentation={snapshot.presentation}
+            preferredDisplayId={snapshot.preferredDisplayId}
+            onProject={actions.openPresentation}
+            onPreview={actions.openPreview}
+            onStop={actions.closePresentation}
+            onRefreshDisplays={actions.refreshDisplays}
+          />
+        </div>
+        {railLayout ? null : newGame}
       </header>
 
       <div className={styles.tabs}>
@@ -105,20 +137,32 @@ export function ControllerApp({ api, store }: ControllerAppProps) {
         </div>
       )}
 
-      <div className={styles.summary}>
-        <CallSummaryPanel calledNumbers={calledNumbers} />
-      </div>
+      {railLayout ? (
+        <div className={styles.rail}>
+          {newGame}
+          {onGame ? widget('rail') : null}
+        </div>
+      ) : null}
 
-      <div className={styles.pattern}>
-        <PatternCard active={snapshot.activePattern} onOpen={() => setView('patterns')} />
-      </div>
+      {wideLayout && !railLayout && onGame ? <div className={styles.strip}>{widget('strip')}</div> : null}
 
-      <div className={styles.bingo}>
-        <BingoBannerControl
-          bannerVisible={bingoBannerVisible}
-          onShow={actions.showBingoBanner}
-          onDismiss={actions.dismissBingoBanner}
-        />
+      {/* Beside the board on wide windows; in the stacked layout its children go to their own grid areas. */}
+      <div className={styles.side}>
+        <div className={styles.bingo}>
+          <BingoBannerControl
+            bannerVisible={bingoBannerVisible}
+            onShow={actions.showBingoBanner}
+            onDismiss={actions.dismissBingoBanner}
+          />
+        </div>
+        <div className={styles.summary}>
+          <CallSummaryPanel calledNumbers={calledNumbers} />
+        </div>
+        {wideLayout || !onGame ? null : (
+          <div className={styles.pattern}>
+            <PatternCard active={snapshot.activePattern} onOpen={() => setView('patterns')} />
+          </div>
+        )}
       </div>
     </main>
   );

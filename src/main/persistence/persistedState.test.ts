@@ -37,7 +37,7 @@ const CONTEXT = {
 };
 
 // Older files predate patterns, so they come back with the default library and an empty working pattern.
-const DEFAULT_PATTERNS = { library: createDefaultLibrary(), active: blankActivePattern() };
+const DEFAULT_PATTERNS = { library: createDefaultLibrary(), active: blankActivePattern(), shown: null };
 
 // A V1 file predates the banner, so it must come back with the banner hidden.
 const V1_FIXTURE_APP_DATA: AppData = {
@@ -219,6 +219,9 @@ describe('V3 save format (milestone 3, unreleased)', () => {
       editedFromLibrary: true,
     });
     expect(patterns.active.cells[CENTER]).toBe(true);
+    // The projector still shows Big L as it was pushed, not the edited working copy.
+    expect(patterns.shown?.title).toBe('Big L');
+    expect(patterns.shown?.cells[CENTER]).toBe(false);
     expect(game.bingoBannerVisible).toBe(true);
     expect(presentation.mode).toBe('slideshow');
   });
@@ -418,6 +421,33 @@ describe('V3 save format (milestone 3, unreleased)', () => {
       expect(result.state.patterns.library.map((p) => p.id)).toEqual(['keep']);
       expect(result.warnings.join(' ')).toMatch(/Removed 1 damaged or duplicate saved pattern/);
       expect(result.state.patterns.active.sourcePatternId).toBeNull();
+    });
+
+    it('loads without a pushed pattern when the field is missing, with no warning', () => {
+      const result = parse({ library: [good('a')], active: blank });
+      expect(result.state.patterns.shown).toBeNull();
+      expect(result.warnings).toEqual([]);
+    });
+
+    it('keeps a valid pushed pattern, separate from the working copy', () => {
+      const shown = { title: 'On the wall', cells: [true, ...Array(24).fill(false)] };
+      const result = parse({ library: [good('a')], active: blank, shown });
+      expect(result.state.patterns.shown).toEqual(shown);
+      expect(result.state.patterns.active.title).toBe('Draft');
+    });
+
+    it.each([
+      'oops',
+      7,
+      { title: 'No cells' },
+      { title: '', cells: Array(25).fill(false) },
+      { title: 'Short', cells: [true] },
+    ])('clears a damaged pushed pattern with a warning, keeping the rest (%j)', (shown) => {
+      const result = parse({ library: [good('a')], active: blank, shown });
+      expect(result.state.patterns.shown).toBeNull();
+      expect(result.warnings.join(' ')).toMatch(/shown on the projector was damaged/);
+      expect(result.state.patterns.library.map((p) => p.id)).toEqual(['a']);
+      expect(result.state.game.calledNumbers).toEqual([3, 9]);
     });
 
     it('recomputes "Edited" from the library instead of trusting the file', () => {

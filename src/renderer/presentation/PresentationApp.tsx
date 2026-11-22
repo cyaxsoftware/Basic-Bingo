@@ -4,6 +4,7 @@ import { AudienceBoard } from './components/AudienceBoard';
 import { BingoBanner } from './components/BingoBanner';
 import { CallDisplay } from './components/CallDisplay';
 import { ComingSoon } from './components/ComingSoon';
+import { ShownPattern } from './components/ShownPattern';
 import styles from './PresentationApp.module.css';
 
 export interface PresentationAppProps {
@@ -31,7 +32,11 @@ export function PresentationApp({ store }: PresentationAppProps) {
       <div className={styles.stage}>
         {onBoard ? (
           <>
-            <CallDisplay calledNumbers={snapshot.game.calledNumbers} />
+            {/* The call display, and under it (or beside it, on squarer screens) the pattern the operator pushed. */}
+            <div className={styles.aside}>
+              <CallDisplay calledNumbers={snapshot.game.calledNumbers} />
+              {snapshot.shownPattern ? <ShownPattern pattern={snapshot.shownPattern} /> : null}
+            </div>
             <AudienceBoard calledNumbers={snapshot.game.calledNumbers} />
           </>
         ) : (

@@ -1,4 +1,4 @@
-import { act, render, screen } from '@testing-library/react';
+import { act, render, screen, within } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 import { createSnapshotStore } from '../shared/snapshotStore';
 import { createFakeBingoApi, makeSnapshot } from '../test/fakeBingoApi';
@@ -129,5 +129,68 @@ describe('PresentationApp', () => {
     await screen.findByRole('img', { name: 'B-3' });
     expect(screen.queryAllByRole('button')).toHaveLength(0);
     expect(document.querySelectorAll('input, select, textarea, a[href]')).toHaveLength(0);
+  });
+
+  describe('the pushed pattern', () => {
+    const shown = { title: 'Crazy Y', cells: [true, ...Array<boolean>(23).fill(false), true] };
+
+    it('shows nothing about a pattern until the operator pushes one', async () => {
+      renderPresentation();
+      await screen.findByText('Ready for first call');
+      expect(screen.queryByRole('region', { name: 'Winning pattern' })).toBeNull();
+    });
+
+    it('shows the pushed title and exactly the lit squares, with no free center', async () => {
+      renderPresentation(makeSnapshot({ shownPattern: shown }));
+      const panel = await screen.findByRole('region', { name: 'Winning pattern' });
+      expect(within(panel).getByRole('heading', { name: 'Crazy Y' })).toBeInTheDocument();
+      expect(within(panel).getByRole('img', { name: 'Crazy Y: 2 of 25 squares' })).toBeInTheDocument();
+      for (let index = 0; index < 25; index++) {
+        const lit = index === 0 || index === 24;
+        expect(screen.getByTestId(`pattern-cell-${index}`)).toHaveAttribute('data-on', String(lit));
+      }
+      expect(screen.getByTestId('pattern-cell-12')).toHaveAttribute('data-on', 'false');
+    });
+
+    it('follows the pushed pattern, not the working copy', async () => {
+      const { api } = renderPresentation(makeSnapshot({ shownPattern: shown }));
+      await screen.findByRole('region', { name: 'Winning pattern' });
+      act(() =>
+        api.push(
+          makeSnapshot({
+            revision: 2,
+            shownPattern: shown,
+            activePattern: {
+              sourcePatternId: null,
+              title: 'Edited later',
+              cells: Array(25).fill(true),
+              editedFromLibrary: false,
+            },
+          }),
+        ),
+      );
+      expect(screen.getByRole('heading', { name: 'Crazy Y' })).toBeInTheDocument();
+      expect(screen.queryByText('Edited later')).toBeNull();
+      expect(screen.getByTestId('pattern-cell-12')).toHaveAttribute('data-on', 'false');
+    });
+
+    it('updates when a new pattern is pushed, and goes away when hidden', async () => {
+      const { api } = renderPresentation(makeSnapshot({ shownPattern: shown }));
+      await screen.findByRole('region', { name: 'Winning pattern' });
+      act(() =>
+        api.push(
+          makeSnapshot({ revision: 2, shownPattern: { title: 'Blackout', cells: Array(25).fill(true) } }),
+        ),
+      );
+      expect(screen.getByRole('heading', { name: 'Blackout' })).toBeInTheDocument();
+      act(() => api.push(makeSnapshot({ revision: 3, shownPattern: null })));
+      expect(screen.queryByRole('region', { name: 'Winning pattern' })).toBeNull();
+    });
+
+    it('stays read-only: no controls were added', async () => {
+      renderPresentation(makeSnapshot({ shownPattern: shown }));
+      await screen.findByRole('region', { name: 'Winning pattern' });
+      expect(screen.queryAllByRole('button')).toHaveLength(0);
+    });
   });
 });

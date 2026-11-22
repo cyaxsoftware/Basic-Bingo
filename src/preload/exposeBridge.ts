@@ -43,6 +43,8 @@ export function createControllerApi(): ControllerApi {
     renamePattern: (patternId, title) => ipcRenderer.invoke(IpcChannel.renamePattern, patternId, title),
     duplicatePattern: (patternId) => ipcRenderer.invoke(IpcChannel.duplicatePattern, patternId),
     deletePattern: (patternId) => ipcRenderer.invoke(IpcChannel.deletePattern, patternId),
+    showPatternOnProjector: () => ipcRenderer.invoke(IpcChannel.showPatternOnProjector),
+    hidePatternOnProjector: () => ipcRenderer.invoke(IpcChannel.hidePatternOnProjector),
     listDisplays: () => ipcRenderer.invoke(IpcChannel.listDisplays),
     openPresentation: (displayId) => ipcRenderer.invoke(IpcChannel.openPresentation, displayId),
     openPreview: () => ipcRenderer.invoke(IpcChannel.openPreview),

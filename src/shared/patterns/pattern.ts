@@ -48,6 +48,15 @@ export interface ActivePattern {
 
 export type PatternLibrary = readonly Pattern[];
 
+/**
+ * What the projector shows: a SNAPSHOT of the working pattern, taken when the operator pushes it. Editing the
+ * working copy afterwards does not change it until the operator pushes again.
+ */
+export interface ShownPattern {
+  readonly title: string;
+  readonly cells: PatternCells;
+}
+
 export function isPatternCells(value: unknown): value is PatternCells {
   if (!Array.isArray(value) || value.length !== PATTERN_CELL_COUNT) return false;
   // Visit every index. Array#every skips holes, so `new Array(25)` with one cell set would pass it and

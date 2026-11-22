@@ -53,6 +53,9 @@ describe('Patterns view', () => {
     await userEvent.click(item(view, 'Big L'));
     expect(item(view, 'Big L')).toHaveAttribute('aria-current', 'true');
     expect(item(view, 'Blackout')).not.toHaveAttribute('aria-current');
+    // The Pattern card is not on this screen (it would point at itself); it shows the choice back on the game.
+    expect(screen.queryByRole('button', { name: /^Pattern/ })).toBeNull();
+    await userEvent.click(screen.getByRole('button', { name: /Back to game/ }));
     expect(screen.getByRole('button', { name: /^Pattern/ })).toHaveTextContent('Big L');
   });
 

@@ -18,6 +18,9 @@ export interface ControllerActions {
   renameActivePattern(title: string): void;
   updateSavedPattern(): void;
   saveActivePatternAsNew(): void;
+  /** Push the working pattern to the projector (a snapshot; later edits wait for the next push). */
+  showPatternOnProjector(): void;
+  hidePatternOnProjector(): void;
   openPresentation(displayId: number): void;
   openPreview(): void;
   closePresentation(): void;
@@ -65,6 +68,8 @@ export function useControllerActions(api: ControllerApi): ControllerActions {
       renameActivePattern: (title: string) => run(() => api.renameActivePattern(title)),
       updateSavedPattern: () => run(() => api.updateSavedPattern()),
       saveActivePatternAsNew: () => run(() => api.saveActivePatternAsNew()),
+      showPatternOnProjector: () => run(() => api.showPatternOnProjector()),
+      hidePatternOnProjector: () => run(() => api.hidePatternOnProjector()),
       openPresentation: (displayId: number) => run(() => api.openPresentation(displayId)),
       openPreview: () => run(() => api.openPreview()),
       closePresentation: () => run(() => api.closePresentation()),

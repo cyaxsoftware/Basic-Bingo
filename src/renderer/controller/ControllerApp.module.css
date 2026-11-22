@@ -1,19 +1,28 @@
 /*
  * The Controller is one CSS grid with named areas, so the same pieces can be
- * rearranged between two layouts without touching the markup:
+ * rearranged between three layouts without touching the markup:
  *
  *  - Stacked (default, narrower windows): a slim top bar; the mode tabs and the
  *    BINGO button share one row; the call summary is a thin strip; the ball grid
  *    gets everything left. This is also the short-window layout: it keeps all 75
  *    balls at 44 px or more down to about 910 x 480 CSS px.
- *  - Two columns (wide windows): the grid on the left, call summary and BINGO
- *    control in a side column.
+ *  - Two columns (from 1141 px): the ball board on the left, a side column on the
+ *    right with BINGO CALLED on top and the Current Call widget below it. The
+ *    projector controls form one widget in the top-right corner of the window.
+ *  - Three columns (from 1440 x 780 px): a left rail as well, with New Game and the pattern widget. Narrower
+ *    or shorter windows have the widget as a strip above the board instead (the rail is about 610 px tall).
+ *
+ * The board's row is as tall as the board itself needs (five rows of at most --row-cap, plus
+ * its padding) and no taller, so the board starts at the top of its area and the side column,
+ * which fills that same row, ends level with the board's bottom. In a window too short for
+ * that, the row shrinks and so do the board's rows, down to the touch floor.
  *
  * The two-column breakpoint is not arbitrary. The ball grid needs, at the 44 px
- * touch floor, 16 columns x 44 + 15 gaps x 6 + its padding (2 x 8) and border (2 x 1)
- * = 812 px. Two columns add page padding (2 x 16), a column gap (16) and the 260 px
- * side column: 812 + 32 + 16 + 260 = 1120 px. 1141 px leaves a little slack.
- * e2e/controllerLayout.spec.ts checks widths either side of it.
+ * touch floor, 16 columns x 44 = 704 px plus its padding (2 x 8) and border (2 x 1) = 722 px.
+ * Two columns add page padding (2 x 16), a column gap (16) and the 260 px side column:
+ * 722 + 32 + 16 + 260 = 1030 px, and 1141 px leaves room for the 48 px floor from 1280 wide.
+ * The rail breakpoint adds the 272 px rail and one more gap: at 1440 the board is still about
+ * 830 px wide. e2e/controllerLayout.spec.ts checks widths either side of both.
  */
 .layout {
   --layout-gap: var(--space-2);
@@ -68,6 +77,13 @@
   white-space: nowrap;
 }
 
+/* Takes the room between the title and New Game; the projector controls inside manage their own fit. */
+.projector {
+  flex: 1 1 0;
+  min-width: 0;
+  display: flex;
+}
+
 .tabs {
   grid-area: tabs;
 }
@@ -80,9 +96,24 @@
   display: none;
 }
 
+/*
+ * Stacked: the side column is not a box of its own. Its children take their own grid areas
+ * (BINGO beside the tabs, the summary strip, the pattern card), exactly as if they were
+ * children of the grid. Wide: it becomes a real column.
+ */
+.side {
+  display: contents;
+}
+
+.side > * {
+  min-width: 0;
+  min-height: 0;
+  margin-top: var(--layout-gap);
+}
+
 .summary {
   grid-area: summary;
-  /* The summary draws itself as a strip or a tall card depending on the width it is given. */
+  /* The summary draws itself as a strip or a compact card depending on the width it is given. */
   container-type: inline-size;
   display: flex;
   flex-direction: column;
@@ -103,9 +134,35 @@
   grid-area: bingo;
 }
 
-/* On the Patterns screen the card would point at itself, and a short window needs the height for the editor. */
-.layout[data-view='patterns'] .pattern {
-  display: none;
+.rail {
+  grid-area: rail;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  align-self: start;
+}
+
+.strip {
+  grid-area: strip;
+}
+
+/* New Game fills the rail; the dialog it opens is fixed-position and takes no room. */
+.rail > button:first-child {
+  width: 100%;
+}
+
+/* Holds the mode's content (the ball grid, or a placeholder) and gives it all the height left. */
+.panel {
+  grid-area: panel;
+  display: flex;
+  flex-direction: column;
+}
+
+/* On the Patterns screen the call strip makes way for the editor (the BINGO button stays). */
+@media (max-width: 1140px) {
+  .layout[data-view='patterns'] .summary {
+    display: none;
+  }
 }
 
 .back {
@@ -124,22 +181,12 @@
   outline-offset: 2px;
 }
 
-/* Holds the mode's content (the ball grid, or a placeholder) and gives it all the height left. */
-.panel {
-  grid-area: panel;
-  display: flex;
-  flex-direction: column;
-}
-
-/* Stacked and on the Patterns screen: the call strip makes way for the editor (the BINGO button stays). */
-@media (max-width: 1140px) {
-  .layout[data-view='patterns'] .summary {
-    display: none;
-  }
-}
-
 @media (min-width: 1141px) {
   .layout {
+    --row-cap: 80px;
+    --layout-gap: var(--space-3);
+    /* Five board rows at the cap, the grid's padding and border, and the margin above it. */
+    --board-track: calc(5 * var(--row-cap) + 2 * var(--space-2) + 2px + var(--layout-gap));
     --bingo-min-height: 84px;
     --bingo-min-width: 0px;
     --bingo-font-size: 1.4rem;
@@ -151,23 +198,92 @@
     padding: var(--space-3) var(--space-4);
     column-gap: var(--space-4);
     grid-template-columns: minmax(0, 1fr) 260px;
-    grid-template-rows: auto auto auto minmax(0, 1fr) auto auto;
+    /* The strip row is empty (zero height) unless the pattern widget is a strip above the board. */
+    grid-template-rows: auto auto auto auto minmax(0, var(--board-track)) minmax(0, 1fr);
     grid-template-areas:
       'header header'
       'tabs tabs'
       'notices notices'
-      'panel summary'
-      'panel pattern'
-      'panel bingo';
-    --layout-gap: var(--space-3);
+      'strip side'
+      'panel side'
+      '. .';
+  }
+
+  /* The Patterns screen and the mode placeholders take the whole height, not just the board's row. */
+  .layout[data-fill='true'] {
+    grid-template-areas:
+      'header header'
+      'tabs tabs'
+      'notices notices'
+      'strip side'
+      'panel side'
+      'panel .';
   }
 
   .title {
     font-size: 1.4rem;
   }
 
+  /* The projector controls become one widget in the top-right corner of the window. */
+  .projector {
+    flex: 0 1 780px;
+    margin-left: auto;
+    padding: var(--space-1) var(--space-2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    background: var(--panel);
+  }
+
+  .projector > * {
+    justify-content: flex-end;
+  }
+
+  .side {
+    grid-area: side;
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-3);
+  }
+
+  .side > * {
+    margin-top: 0;
+  }
+
+  .bingo,
+  .pattern {
+    flex: none;
+  }
+
   .pattern {
     width: auto;
+  }
+
+  /* The Current Call widget takes whatever the column has left, which ends level with the board. */
+  .summary {
+    flex: 1;
+  }
+}
+
+@media (min-width: 1440px) and (min-height: 780px) {
+  .layout {
+    grid-template-columns: 272px minmax(0, 1fr) 260px;
+    grid-template-areas:
+      'header header header'
+      'tabs tabs tabs'
+      'notices notices notices'
+      'rail panel side'
+      'rail panel side'
+      'rail . .';
+  }
+
+  .layout[data-fill='true'] {
+    grid-template-areas:
+      'header header header'
+      'tabs tabs tabs'
+      'notices notices notices'
+      'rail panel side'
+      'rail panel side'
+      'rail panel .';
   }
 }
 

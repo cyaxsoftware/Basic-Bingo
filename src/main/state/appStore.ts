@@ -68,6 +68,7 @@ export class AppStore {
       presentationMode: options.initialData.presentation.mode,
       patternLibrary: options.initialData.patterns.library,
       activePattern: options.initialData.patterns.active,
+      shownPattern: options.initialData.patterns.shown,
       presentation: { kind: 'closed' },
       displays: [],
       preferredDisplayId: options.initialData.settings.preferredDisplayId,
@@ -106,7 +107,11 @@ export class AppStore {
    * commands leave state untouched. Touches no game state, so New Game and mode changes never affect patterns.
    */
   dispatchPattern(command: PatternCommand): CommandResult {
-    const current = { library: this.snapshot.patternLibrary, active: this.snapshot.activePattern };
+    const current = {
+      library: this.snapshot.patternLibrary,
+      active: this.snapshot.activePattern,
+      shown: this.snapshot.shownPattern,
+    };
     let next;
     try {
       next = reducePatterns(current, command, { now: this.now().toISOString(), newId: this.newId });
@@ -114,7 +119,7 @@ export class AppStore {
       return fail(error instanceof Error ? error.message : String(error));
     }
     if (next !== current) {
-      this.update({ patternLibrary: next.library, activePattern: next.active });
+      this.update({ patternLibrary: next.library, activePattern: next.active, shownPattern: next.shown });
       this.persist();
     }
     return ok;
@@ -200,7 +205,11 @@ export class AppStore {
     return {
       game: this.snapshot.game,
       presentation: { mode: this.snapshot.presentationMode },
-      patterns: { library: this.snapshot.patternLibrary, active: this.snapshot.activePattern },
+      patterns: {
+        library: this.snapshot.patternLibrary,
+        active: this.snapshot.activePattern,
+        shown: this.snapshot.shownPattern,
+      },
       settings: { preferredDisplayId: this.snapshot.preferredDisplayId },
     };
   }
