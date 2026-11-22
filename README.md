@@ -59,6 +59,18 @@ button and no confirmation.
 The Controller shows the **current call**, the **previous five** calls (newest first) and the called
 count. The current call has a dark ring around it on the grid.
 
+### Presentation modes
+
+The four tabs under the top bar choose what the **projector** shows: **Game Board**, **Break Slideshow**,
+**Single Image** or **Countdown**. The selected tab always matches what the audience sees, and the choice
+is remembered across restarts. Tapping a tab switches immediately; with a keyboard, the arrow keys only
+move between tabs and Enter or Space switches. Switching modes never changes the called numbers or the BINGO
+banner, and **New Game** leaves the mode alone.
+
+Only Game Board is built so far. The other three show a "Coming soon" screen on the projector and a short
+note in the Controller (the call summary and the BINGO button stay available), until their controls arrive
+in milestone 4. The ball grid is only shown in Game Board mode.
+
 ### BINGO called and starting a new game
 
 - **BINGO CALLED** (under the call summary) raises the BINGO verification banner. While it is up, the same
@@ -142,6 +154,12 @@ The full dual-display checklist is in [docs/manual-acceptance-m1.md](docs/manual
   sync, toggle ordering, restart persistence, renderer sandboxing, the read-only Presentation bridge,
   and the single-instance lock. Each run uses a throwaway data folder (`BINGO_USER_DATA_DIR`, honored
   only in unpackaged builds), so tests never touch a real saved game.
+- **Controller layout checks** (`e2e/controllerLayout.spec.ts`) resize the real Controller to the logical
+  sizes a Windows laptop gives the app (1024×640, 1280×720, 1280×800, 1366×768, 1536×864), with a full call
+  history and the BINGO banner idle and up. They assert no scrolling, every ball on screen and at least 44 px
+  (48 px from 1280 wide), and every control at least 44 px. Set `BINGO_SCREENSHOT_DIR` to a folder to keep a
+  screenshot of each case, for example
+  `$env:BINGO_SCREENSHOT_DIR = "$PWD\layout-shots"; npx playwright test e2e/controllerLayout.spec.ts`.
 - Projection onto a physical second display can only be checked by hand (see the manual checklist).
 
 ## Project layout
@@ -164,9 +182,8 @@ docs/            Product design, milestone brief, architecture, acceptance check
 
 Deliberately **not** in milestone 1 (see [docs/product-design.md §8](docs/product-design.md)):
 
-- Final touch-first Controller and projector visual design; responsive tuning for 125% / 150% scaling (M2)
-- The presentation-mode tabs on the Controller (M2; the BINGO and New Game controls and the projector banner
-  are in)
+- Final projector board polish (M2). The touch-first Controller with mode tabs, the BINGO and New Game
+  controls and the projector banner are in.
 - Winning patterns and the pattern library (M3)
 - Image import, slideshows, single image, countdown timer (M4)
 - Installer polish (icon, signing), accessibility pass, extended recovery testing (M5)

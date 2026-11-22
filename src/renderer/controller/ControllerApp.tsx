@@ -1,9 +1,12 @@
+import { useId } from 'react';
 import type { ControllerApi } from '../../shared/ipc/contract';
 import type { SnapshotStore } from '../shared/snapshotStore';
 import { useSnapshotState } from '../shared/useSnapshotState';
 import { BallGrid } from './components/BallGrid';
 import { CallSummaryPanel } from './components/CallSummaryPanel';
 import { BingoBannerControl, NewGameControl } from './components/GameControls';
+import { ModePlaceholder } from './components/ModePlaceholder';
+import { modeTabId, ModeTabs } from './components/ModeTabs';
 import { NoticeArea } from './components/NoticeArea';
 import { PresentationControls } from './components/PresentationControls';
 import styles from './ControllerApp.module.css';
@@ -18,6 +21,7 @@ export interface ControllerAppProps {
 export function ControllerApp({ api, store }: ControllerAppProps) {
   const state = useSnapshotState(store);
   const actions = useControllerActions(api);
+  const panelId = useId();
 
   if (state.status === 'loading') {
     return <div className={styles.message}>Loading game…</div>;
@@ -32,6 +36,7 @@ export function ControllerApp({ api, store }: ControllerAppProps) {
 
   const { snapshot } = state;
   const { calledNumbers, bingoBannerVisible } = snapshot.game;
+  const mode = snapshot.presentationMode;
   return (
     <div className={styles.layout}>
       <header className={styles.header}>
@@ -52,6 +57,8 @@ export function ControllerApp({ api, store }: ControllerAppProps) {
         />
       </header>
 
+      <ModeTabs mode={mode} onSelect={actions.setPresentationMode} panelId={panelId} />
+
       <NoticeArea
         notices={snapshot.notices}
         persistence={snapshot.persistence}
@@ -61,7 +68,14 @@ export function ControllerApp({ api, store }: ControllerAppProps) {
       />
 
       <main className={styles.main}>
-        <BallGrid calledNumbers={calledNumbers} onToggle={actions.toggleBall} />
+        <div className={styles.panel} role="tabpanel" id={panelId} aria-labelledby={modeTabId(mode)}>
+          {mode === 'gameBoard' ? (
+            <BallGrid calledNumbers={calledNumbers} onToggle={actions.toggleBall} />
+          ) : (
+            <ModePlaceholder mode={mode} />
+          )}
+        </div>
+        {/* Milestone 3's pattern panel goes in this column, between the summary and the BINGO control. */}
         <div className={styles.side}>
           <CallSummaryPanel calledNumbers={calledNumbers} />
           <BingoBannerControl

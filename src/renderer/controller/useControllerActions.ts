@@ -1,5 +1,6 @@
 import { useCallback, useMemo, useState } from 'react';
 import type { CommandResult, ControllerApi } from '../../shared/ipc/contract';
+import type { PresentationMode } from '../../shared/presentation/presentationMode';
 
 export interface ControllerActions {
   toggleBall(ball: number): void;
@@ -7,6 +8,8 @@ export interface ControllerActions {
   dismissBingoBanner(): void;
   /** Clears the game. Callers must have confirmed with the operator first. */
   newGame(): void;
+  /** Choose what the projector shows. Never changes the game. */
+  setPresentationMode(mode: PresentationMode): void;
   openPresentation(displayId: number): void;
   openPreview(): void;
   closePresentation(): void;
@@ -39,6 +42,7 @@ export function useControllerActions(api: ControllerApi): ControllerActions {
       showBingoBanner: () => run(() => api.showBingoBanner()),
       dismissBingoBanner: () => run(() => api.dismissBingoBanner()),
       newGame: () => run(() => api.newGame()),
+      setPresentationMode: (mode: PresentationMode) => run(() => api.setPresentationMode(mode)),
       openPresentation: (displayId: number) => run(() => api.openPresentation(displayId)),
       openPreview: () => run(() => api.openPreview()),
       closePresentation: () => run(() => api.closePresentation()),

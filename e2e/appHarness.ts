@@ -38,7 +38,9 @@ export async function launchApp(
     env: { ...process.env, BINGO_USER_DATA_DIR: userDataDir },
   });
   const controller = await app.firstWindow();
-  await controller.getByRole('group', { name: 'B row' }).waitFor();
+  // Present in every presentation mode (the ball grid is not: other modes show a placeholder), and
+  // rendered only once the first snapshot has arrived, so the whole Controller is ready.
+  await controller.getByRole('heading', { name: 'Offline Bingo' }).waitFor();
   return { app, controller };
 }
 
@@ -94,6 +96,35 @@ export function viewportSize(page: Page): Promise<{ width: number; height: numbe
     };
     return { width: document.documentElement.clientWidth, height: document.documentElement.clientHeight };
   });
+}
+
+/**
+ * Give the Controller an exact viewport, as a laptop at some Windows scaling would.
+ *
+ * The app maximizes the window once it is ready to show, which can land after the UI appears, so
+ * wait for that first or the late maximize would undo the resize. The window's minimum size is
+ * lowered because a real small work area shrinks it too, while this test screen is larger.
+ */
+export async function resizeController(
+  app: ElectronApplication,
+  controller: Page,
+  width: number,
+  height: number,
+): Promise<{ width: number; height: number }> {
+  const isMaximized = () =>
+    app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0]?.isMaximized() ?? false);
+  await expect.poll(isMaximized).toBe(true);
+  await app.evaluate(
+    ({ BrowserWindow }, size) => {
+      const window = BrowserWindow.getAllWindows()[0];
+      window?.unmaximize();
+      window?.setMinimumSize(300, 300);
+      window?.setContentSize(size.width, size.height);
+    },
+    { width, height },
+  );
+  await expect.poll(() => viewportSize(controller)).toEqual({ width, height });
+  return viewportSize(controller);
 }
 
 /** Resize the Presentation window's content area (a Preview window is freely resizable). */

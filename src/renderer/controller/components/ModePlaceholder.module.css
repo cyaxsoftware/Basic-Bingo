@@ -1,0 +1,26 @@
+.panel {
+  flex: 1;
+  min-height: 0;
+  display: grid;
+  align-content: center;
+  justify-items: center;
+  gap: var(--space-3);
+  padding: var(--space-6);
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  text-align: center;
+  font-size: 1.1rem;
+  color: var(--text-muted);
+}
+
+.panel p {
+  margin: 0;
+  max-width: 36em;
+}
+
+.title {
+  margin: 0;
+  font-size: 1.6rem;
+  color: var(--text);
+}

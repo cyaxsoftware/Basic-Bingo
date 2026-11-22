@@ -28,6 +28,13 @@
   gap: var(--space-4);
 }
 
+/* Holds the mode's content (the ball grid, or a placeholder) and gives it all the height left. */
+.panel {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
 .side {
   display: flex;
   flex-direction: column;

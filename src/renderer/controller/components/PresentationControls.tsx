@@ -80,8 +80,14 @@ export function PresentationControls({
         <span className={styles.hint}>No second display. Press Win+P → Extend, or use Preview.</span>
       )}
 
-      <button type="button" className={styles.secondary} onClick={onRefreshDisplays}>
-        Refresh displays
+      {/* The accessible name keeps the full words; the short visible label saves top-bar width. */}
+      <button
+        type="button"
+        className={styles.secondary}
+        aria-label="Refresh displays"
+        onClick={onRefreshDisplays}
+      >
+        Refresh
       </button>
       <button type="button" className={styles.secondary} onClick={onPreview}>
         Preview
