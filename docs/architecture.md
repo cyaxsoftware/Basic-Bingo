@@ -51,11 +51,16 @@ Key rules:
   but independent: changing the mode never touches the game, and a new game leaves the mode alone.
   `presentation` (window status), `displays` and `notices` are runtime-only. Future timers get their
   own sections rather than being mixed into `game`.
-- **Patterns are pure rules in `src/shared/patterns`.** The active pattern is a working COPY of a library
+- **Patterns are pure rules in `src/shared/patterns`, applied by one reducer (`reducePatterns`).** The active pattern is a working COPY of a library
   template: selecting and editing change only the copy, and the library changes only on an explicit update or
   save-as-new. Every one of the 25 cells, the center included, is an ordinary editable cell (no free-space
   rule). The module takes `now` and new ids as arguments, so it stays deterministic. It lives outside
-  `GameState`, like the presentation mode, so New Game cannot touch it; persisting and exposing it is a later card.
+  `GameState`, like the presentation mode, so New Game cannot touch it. It is persisted next to the game
+  (`patterns` in the V3 file) and exposed as `snapshot.patternLibrary` and `snapshot.activePattern`. The nine
+  Controller-only commands are `selectPattern`, `setActivePatternCell(index, on)`, `renameActivePattern`,
+  `updateSavedPattern`, `saveActivePatternAsNew`, `createPattern`, `renamePattern`, `duplicatePattern` and
+  `deletePattern`. The IPC handlers check argument types; the rules (cell 0 to 24, title 1 to 60 characters,
+  exactly 25 cells, known ids) live in the reducer, so they apply to every caller.
 
 ## Shared code boundaries
 
@@ -82,6 +87,7 @@ and `CommandResult`. Main, preload and renderers all import it, so TypeScript ca
 | `bingo:dismiss-bingo-banner`| Controller   | hide the banner; calls untouched            |
 | `bingo:new-game`            | Controller   | clear calls and banner (UI must confirm)    |
 | `bingo:set-presentation-mode`| Controller  | choose the audience view                    |
+| `bingo:select-pattern` ... `bingo:delete-pattern` | Controller | nine pattern commands (below)    |
 | `bingo:list-displays`       | Controller   | re-read displays (also updates snapshot)    |
 | `bingo:open-presentation`   | Controller   | fullscreen on a display id                  |
 | `bingo:open-preview`        | Controller   | resizable preview window                    |
@@ -97,13 +103,15 @@ if someone modified its page.
 
 `src/main/persistence/`:
 
-- `persistedState.ts`: the on-disk documents (`PersistedStateV1` is frozen; `PersistedStateV2` adds the
-  BINGO banner and stays open to M2 changes until M2 ships), zod
+- `persistedState.ts`: the on-disk documents (`PersistedStateV1` and `V2` are frozen; `PersistedStateV3` adds
+  the pattern library and the active pattern and stays open to M3 changes until M3 ships), zod
   validation, the migration table, and explicit conversion between the current document and
   `AppData` (the durable state the app uses). Documents never reference live domain types such as
   `GameState`, so growing the game model cannot change what an existing file means.
-- `fixtures/state-v1.json` / `state-v2.json`: representative files for each version; tests load them on
-  every run (a V1 file must keep loading, migrated to V2 with the banner hidden).
+- `fixtures/state-v1.json` / `state-v2.json` / `state-v3.json`: representative files for each version; tests
+  load them on every run (an old file must keep loading, migrated up: V1 gets the banner hidden, V2 gets the
+  default pattern library and an empty working pattern). Pattern data is checked entry by entry on load: one
+  damaged pattern is dropped with a warning, and a missing section restores the defaults, never costing the game.
 - `stateRepository.ts`: storage under `%APPDATA%\Offline Bingo Display\bingo-data\`.
 
 Save sequence: write `state.json.tmp` → `fsync` → **re-validate** the current `state.json` and copy it to

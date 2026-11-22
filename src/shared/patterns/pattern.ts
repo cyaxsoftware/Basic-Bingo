@@ -13,6 +13,12 @@
 export const PATTERN_SIZE = 5;
 export const PATTERN_CELL_COUNT = PATTERN_SIZE * PATTERN_SIZE;
 export const MAX_PATTERN_TITLE_LENGTH = 60;
+export const MAX_PATTERN_ID_LENGTH = 200;
+
+/** The one id rule, shared by the save-file loader and the IPC handlers so they can never disagree. */
+export function isValidPatternId(value: unknown): value is string {
+  return typeof value === 'string' && value.length > 0 && value.length <= MAX_PATTERN_ID_LENGTH;
+}
 
 /** Exactly {@link PATTERN_CELL_COUNT} booleans, row-major: index = row * 5 + column. */
 export type PatternCells = readonly boolean[];

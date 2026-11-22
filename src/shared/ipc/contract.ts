@@ -15,6 +15,7 @@
  */
 import type { BallNumber } from '../game/balls';
 import type { GameState } from '../game/gameState';
+import type { ActivePattern, Pattern, PatternCells } from '../patterns/pattern';
 import type { PresentationMode } from '../presentation/presentationMode';
 
 // ---------------------------------------------------------------------------
@@ -71,6 +72,10 @@ export interface AppSnapshot {
   readonly game: GameState;
   /** Persisted: which view the audience display shows. Separate from the game. */
   readonly presentationMode: PresentationMode;
+  /** Persisted: the saved pattern library. Separate from the game. */
+  readonly patternLibrary: readonly Pattern[];
+  /** Persisted: the working copy of a pattern the game is showing (edits never touch the library by themselves). */
+  readonly activePattern: ActivePattern;
   /** Runtime-only: what the Presentation window is doing. Never persisted. */
   readonly presentation: PresentationStatus;
   /** Runtime-only: currently connected displays. */
@@ -96,6 +101,15 @@ export const IpcChannel = {
   dismissBingoBanner: 'bingo:dismiss-bingo-banner',
   newGame: 'bingo:new-game',
   setPresentationMode: 'bingo:set-presentation-mode',
+  selectPattern: 'bingo:select-pattern',
+  setActivePatternCell: 'bingo:set-active-pattern-cell',
+  renameActivePattern: 'bingo:rename-active-pattern',
+  updateSavedPattern: 'bingo:update-saved-pattern',
+  saveActivePatternAsNew: 'bingo:save-active-pattern-as-new',
+  createPattern: 'bingo:create-pattern',
+  renamePattern: 'bingo:rename-pattern',
+  duplicatePattern: 'bingo:duplicate-pattern',
+  deletePattern: 'bingo:delete-pattern',
   listDisplays: 'bingo:list-displays',
   openPresentation: 'bingo:open-presentation',
   openPreview: 'bingo:open-preview',
@@ -126,6 +140,21 @@ export interface ControllerApi extends PresentationApi {
   newGame(): Promise<CommandResult>;
   /** Choose what the audience display shows. Never changes the game. */
   setPresentationMode(mode: PresentationMode): Promise<CommandResult>;
+  /** Show a library pattern: replaces the working copy with a fresh, unedited copy of it. */
+  selectPattern(patternId: string): Promise<CommandResult>;
+  /** Set one cell (0 to 24, the center included) of the working copy on or off. Never changes the library. */
+  setActivePatternCell(index: number, on: boolean): Promise<CommandResult>;
+  /** Rename the working copy (not the saved pattern). */
+  renameActivePattern(title: string): Promise<CommandResult>;
+  /** Write the working copy back into the saved pattern it came from. */
+  updateSavedPattern(): Promise<CommandResult>;
+  /** Save the working copy as a new library pattern (default title: its current title). */
+  saveActivePatternAsNew(title?: string): Promise<CommandResult>;
+  createPattern(title: string, cells: PatternCells): Promise<CommandResult>;
+  renamePattern(patternId: string, title: string): Promise<CommandResult>;
+  duplicatePattern(patternId: string): Promise<CommandResult>;
+  /** The caller must have confirmed with the operator first. */
+  deletePattern(patternId: string): Promise<CommandResult>;
   /** Re-reads displays from Windows and returns them (the snapshot updates too). */
   listDisplays(): Promise<readonly DisplayInfo[]>;
   openPresentation(displayId: number): Promise<CommandResult>;

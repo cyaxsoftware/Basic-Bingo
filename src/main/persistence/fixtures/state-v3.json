@@ -1,0 +1,149 @@
+{
+  "schemaVersion": 3,
+  "savedAt": "2026-11-22T21:30:00.000Z",
+  "game": {
+    "calledNumbers": [3, 17, 9, 31, 52, 75],
+    "bingoBannerVisible": true
+  },
+  "presentation": {
+    "mode": "slideshow"
+  },
+  "patterns": {
+    "library": [
+      {
+        "id": "seed-four-corners",
+        "title": "Four Corners",
+        "cells": [
+          true,
+          false,
+          false,
+          false,
+          true,
+          false,
+          false,
+          false,
+          false,
+          false,
+          false,
+          false,
+          false,
+          false,
+          false,
+          false,
+          false,
+          false,
+          false,
+          false,
+          true,
+          false,
+          false,
+          false,
+          true
+        ],
+        "createdAt": "2026-01-01T00:00:00.000Z",
+        "updatedAt": "2026-01-01T00:00:00.000Z"
+      },
+      {
+        "id": "seed-big-l",
+        "title": "Big L",
+        "cells": [
+          true,
+          false,
+          false,
+          false,
+          false,
+          true,
+          false,
+          false,
+          false,
+          false,
+          true,
+          false,
+          false,
+          false,
+          false,
+          true,
+          false,
+          false,
+          false,
+          false,
+          true,
+          true,
+          true,
+          true,
+          true
+        ],
+        "createdAt": "2026-01-01T00:00:00.000Z",
+        "updatedAt": "2026-01-01T00:00:00.000Z"
+      },
+      {
+        "id": "mine-plus",
+        "title": "Plus Sign",
+        "cells": [
+          false,
+          false,
+          true,
+          false,
+          false,
+          false,
+          false,
+          true,
+          false,
+          false,
+          true,
+          true,
+          true,
+          true,
+          true,
+          false,
+          false,
+          true,
+          false,
+          false,
+          false,
+          false,
+          true,
+          false,
+          false
+        ],
+        "createdAt": "2026-11-22T20:00:00.000Z",
+        "updatedAt": "2026-11-22T20:00:00.000Z"
+      }
+    ],
+    "active": {
+      "sourcePatternId": "seed-big-l",
+      "title": "Big L plus",
+      "cells": [
+        true,
+        false,
+        false,
+        false,
+        false,
+        true,
+        false,
+        false,
+        false,
+        false,
+        true,
+        false,
+        true,
+        false,
+        false,
+        true,
+        false,
+        false,
+        false,
+        false,
+        true,
+        true,
+        true,
+        true,
+        true
+      ],
+      "editedFromLibrary": true
+    }
+  },
+  "settings": {
+    "preferredDisplayId": 2779098405
+  }
+}
