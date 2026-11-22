@@ -1,6 +1,7 @@
 import type { SnapshotStore } from '../shared/snapshotStore';
 import { useSnapshotState } from '../shared/useSnapshotState';
 import { AudienceBoard } from './components/AudienceBoard';
+import { BingoBanner } from './components/BingoBanner';
 import { CallDisplay } from './components/CallDisplay';
 import { ComingSoon } from './components/ComingSoon';
 import styles from './PresentationApp.module.css';
@@ -22,16 +23,21 @@ export function PresentationApp({ store }: PresentationAppProps) {
   }
 
   const { snapshot } = state;
+  const onBoard = snapshot.presentationMode === 'gameBoard';
   return (
     <div className={styles.root} data-mode={snapshot.presentation.kind} data-view={snapshot.presentationMode}>
-      {snapshot.presentationMode === 'gameBoard' ? (
-        <>
-          <CallDisplay calledNumbers={snapshot.game.calledNumbers} />
-          <AudienceBoard calledNumbers={snapshot.game.calledNumbers} />
-        </>
-      ) : (
-        <ComingSoon mode={snapshot.presentationMode} />
-      )}
+      {/* Shown above the Game Board only. In other modes the flag is untouched and returns with the board. */}
+      {onBoard && snapshot.game.bingoBannerVisible ? <BingoBanner /> : null}
+      <div className={styles.stage}>
+        {onBoard ? (
+          <>
+            <CallDisplay calledNumbers={snapshot.game.calledNumbers} />
+            <AudienceBoard calledNumbers={snapshot.game.calledNumbers} />
+          </>
+        ) : (
+          <ComingSoon mode={snapshot.presentationMode} />
+        )}
+      </div>
     </div>
   );
 }

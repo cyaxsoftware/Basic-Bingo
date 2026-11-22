@@ -6,7 +6,13 @@ import { mkdtemp, rm } from 'node:fs/promises';
 import { createRequire } from 'node:module';
 import os from 'node:os';
 import path from 'node:path';
-import { _electron as electron, type ElectronApplication, type Locator, type Page } from '@playwright/test';
+import {
+  _electron as electron,
+  expect,
+  type ElectronApplication,
+  type Locator,
+  type Page,
+} from '@playwright/test';
 
 export const PROJECT_ROOT = path.resolve(__dirname, '..');
 
@@ -69,6 +75,45 @@ export function horizontalOverflow(page: Page): Promise<number> {
     const { document } = globalThis as unknown as { document: DocumentLike };
     return document.documentElement.scrollWidth - document.documentElement.clientWidth;
   });
+}
+
+/** How many pixels the page is taller than its window (0 means no vertical scrolling). */
+export function verticalOverflow(page: Page): Promise<number> {
+  return page.evaluate(() => {
+    const { document } = globalThis as unknown as {
+      document: { documentElement: { scrollHeight: number; clientHeight: number } };
+    };
+    return document.documentElement.scrollHeight - document.documentElement.clientHeight;
+  });
+}
+
+export function viewportSize(page: Page): Promise<{ width: number; height: number }> {
+  return page.evaluate(() => {
+    const { document } = globalThis as unknown as {
+      document: { documentElement: { clientWidth: number; clientHeight: number } };
+    };
+    return { width: document.documentElement.clientWidth, height: document.documentElement.clientHeight };
+  });
+}
+
+/** Resize the Presentation window's content area (a Preview window is freely resizable). */
+export async function resizePresentation(
+  app: ElectronApplication,
+  page: Page,
+  width: number,
+  height: number,
+): Promise<{ width: number; height: number }> {
+  await app.evaluate(
+    ({ BrowserWindow }, size) => {
+      const window = BrowserWindow.getAllWindows().find((w) =>
+        w.webContents.getURL().includes('presentation'),
+      );
+      window?.setContentSize(size.width, size.height);
+    },
+    { width, height },
+  );
+  await expect.poll(() => viewportSize(page)).toEqual({ width, height });
+  return viewportSize(page);
 }
 
 export function viewportWidth(page: Page): Promise<number> {

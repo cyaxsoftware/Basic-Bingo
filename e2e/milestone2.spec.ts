@@ -10,7 +10,9 @@ import {
   horizontalOverflow,
   launchApp,
   removeUserDataDir,
+  resizePresentation,
   tapBall,
+  verticalOverflow,
   viewportWidth,
   waitForPresentationWindow,
 } from './appHarness';
@@ -158,3 +160,103 @@ test('the BINGO control never forces horizontal scrolling at 150% laptop scaling
   }
   await app.close();
 });
+
+const BANNER_TEXT = 'BINGO CALLED — PLEASE HOLD YOUR CARDS';
+
+test('BINGO CALLED shows the banner on Preview until Dismiss, without changing any call', async () => {
+  const { app, controller } = await launchApp(userDataDir);
+  await tapBall(controller, 'B-3');
+  await tapBall(controller, 'I-17');
+  await controller.getByRole('button', { name: 'Preview' }).click();
+  const presentation = await waitForPresentationWindow(app);
+  const banner = presentation.getByRole('alert');
+  await expect(banner).toBeHidden();
+
+  await controller.getByRole('button', { name: 'BINGO CALLED' }).click();
+  await expect(banner).toHaveText(BANNER_TEXT);
+  // The board and the current call stay visible underneath it.
+  await expect(presentation.getByRole('img', { name: 'I-17' })).toBeVisible();
+  await expect(presentation.getByLabel('Bingo board')).toBeVisible();
+  // The audience window gained no controls.
+  await expect(presentation.getByRole('button')).toHaveCount(0);
+
+  // More calls while it is up: the banner stays.
+  await tapBall(controller, 'N-33');
+  await expect(banner).toHaveText(BANNER_TEXT);
+
+  // Away from the board and back: the flag was never touched, so the banner returns.
+  await controller.evaluate(() =>
+    (
+      globalThis as unknown as { bingo: { setPresentationMode(m: string): Promise<unknown> } }
+    ).bingo.setPresentationMode('slideshow'),
+  );
+  await expect(presentation.getByRole('heading', { name: 'Break Slideshow' })).toBeVisible();
+  await expect(banner).toBeHidden();
+  await controller.evaluate(() =>
+    (
+      globalThis as unknown as { bingo: { setPresentationMode(m: string): Promise<unknown> } }
+    ).bingo.setPresentationMode('gameBoard'),
+  );
+  await expect(banner).toHaveText(BANNER_TEXT);
+
+  // Closing and reopening the Presentation window does not lose it.
+  await controller.getByRole('button', { name: 'Stop' }).click();
+  await expect(controller.getByRole('status')).toHaveText('Not projecting');
+  await controller.getByRole('button', { name: 'Preview' }).click();
+  const reopened = await waitForPresentationWindow(app);
+  await expect(reopened.getByRole('alert')).toHaveText(BANNER_TEXT);
+
+  // Dismiss removes it and leaves every call exactly as it was.
+  await controller.getByRole('button', { name: 'Dismiss BINGO Banner' }).click();
+  await expect(reopened.getByRole('alert')).toBeHidden();
+  expect(await ballLabels(controller.getByTestId('previous-calls'))).toEqual(['I-17', 'B-3']);
+  await expect(controller.getByTestId('current-call').getByRole('img')).toHaveAccessibleName('N-33');
+  await expect(controller.getByTestId('called-count')).toHaveText('Called: 3 of 75');
+
+  await app.close();
+});
+
+for (const [name, width, height] of [
+  ['16x9', 1920, 1080],
+  ['4x3', 1024, 768],
+] as const) {
+  test(`the banner and the whole board fit on screen at ${name} (${width}x${height})`, async () => {
+    const testInfo = test.info();
+    const { app, controller } = await launchApp(userDataDir);
+    for (const label of ['B-3', 'I-17', 'N-33', 'G-48', 'O-61', 'B-9']) await tapBall(controller, label);
+    await controller.getByRole('button', { name: 'BINGO CALLED' }).click();
+    await controller.getByRole('button', { name: 'Preview' }).click();
+    const presentation = await waitForPresentationWindow(app);
+    await expect(presentation.getByRole('alert')).toHaveText(BANNER_TEXT);
+
+    const size = await resizePresentation(app, presentation, width, height);
+    // Let the layout settle, then keep a picture of it for a human to look at.
+    await presentation.waitForTimeout(300);
+    await testInfo.attach(`banner-${name}.png`, {
+      body: await presentation.screenshot(),
+      contentType: 'image/png',
+    });
+
+    expect(await horizontalOverflow(presentation)).toBe(0);
+    expect(await verticalOverflow(presentation)).toBe(0);
+    for (const [what, locator] of [
+      ['banner', presentation.getByRole('alert')],
+      ['call display', presentation.getByLabel('Current call', { exact: true })],
+      ['board', presentation.getByLabel('Bingo board')],
+    ] as const) {
+      const box = await locator.boundingBox();
+      expect(box, what).not.toBeNull();
+      if (!box) continue;
+      expect(box.x, `${what} left edge`).toBeGreaterThanOrEqual(0);
+      expect(box.y, `${what} top edge`).toBeGreaterThanOrEqual(0);
+      expect(box.x + box.width, `${what} right edge`).toBeLessThanOrEqual(size.width);
+      expect(box.y + box.height, `${what} bottom edge`).toBeLessThanOrEqual(size.height);
+    }
+    // Every number is still on screen, not clipped away by the banner.
+    for (const ball of [1, 75]) {
+      const cell = await presentation.getByTestId(`board-ball-${ball}`).boundingBox();
+      expect(cell && cell.y + cell.height, `ball ${ball} bottom`).toBeLessThanOrEqual(size.height);
+    }
+    await app.close();
+  });
+}
