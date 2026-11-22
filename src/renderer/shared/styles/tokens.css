@@ -13,6 +13,10 @@
   /* White N balls need a visible edge on light backgrounds. */
   --ball-n-ring: #374151;
 
+  /* BINGO verification banner (projector). White on this red is about 6.5:1, above WCAG AA for large text. */
+  --bingo-banner-bg: #b91c1c;
+  --bingo-banner-text: #ffffff;
+
   --font-sans: 'Segoe UI', system-ui, -apple-system, sans-serif;
 
   --radius-sm: 6px;
