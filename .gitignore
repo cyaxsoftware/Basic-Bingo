@@ -27,3 +27,6 @@ Thumbs.db
 # Local scratch (backlog tooling, logs, screenshots)
 .backlog-tmp/
 .recovery/
+
+# Local hand-off file between the builder and the PR reviewer (working state, not source)
+review-queue.txt
