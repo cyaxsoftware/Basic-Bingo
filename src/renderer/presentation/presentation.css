@@ -6,6 +6,11 @@
   --stage-muted: #9ca3af;
   --uncalled-fill: #2a2f37;
   --uncalled-text: #c7ccd4;
+  /* Uncalled board numbers: plain and quieter than the called balls, but still readable from the back (5:1). */
+  --stage-dim: #8b929c;
+  /* The winning pattern: lit squares red on white, as the audience already knows it. */
+  --pattern-on: #f44336;
+  --pattern-off: #ffffff;
   --current-ring: #ffffff;
 }
 

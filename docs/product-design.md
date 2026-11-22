@@ -76,7 +76,8 @@ No internet connection, cloud database, user account, local HTTP server, or sepa
 **Visual intent:** Large, crisp display, charcoal background, high contrast and saturated BINGO colors. No operator tools, controls, cursors, navigation bars, or visible application chrome.
 
 **Game Board layout:**
-- The pushed pattern graphic and title under the call display on the left, or beside it in the top band when the screen aspect ratio is narrow. Nothing is shown until the operator pushes a pattern.
+- **Layout (16:9):** the 75-number board in a panel across the top, the pushed pattern (graphic and title, no panel) to its left, and a band along the bottom with the large current ball (captioned CURRENT CALL) and the previous five (captioned PREVIOUS CALLS). **Squarer screens (4:3, 5:4):** the board takes the full width at the top, and the pattern sits beside the current and previous calls in the band below it. Nothing is shown in the pattern's place until the operator pushes a pattern; the board then takes the full width.
+- **Pattern look:** lit squares are red and the others white, drawn straight on the stage background. Row letters are large text in their row's color; uncalled numbers are plain and quieter than called ones but still readable (about 5:1); called numbers are filled circles.
 - 75-number board dominates the display; B/I/N/G/O letterheads and row colors clearly group numbers.
 - Uncalled numbers are visible rather than nearly black. Called numbers are filled in their conventional colors: **B blue, I red, N white, G green, O yellow**. Use dark numerals within filled circles for readability, subject to contrast checks.
 - The **current call** is visually emphasized both within the numbered grid and separately in a larger ball display.

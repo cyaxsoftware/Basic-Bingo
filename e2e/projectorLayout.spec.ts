@@ -2,8 +2,8 @@
  * Projector (Presentation) layout at the display areas it is shown on (design doc §4.2: "test common
  * 1920x1080, 1366x768, 1280x720 and 1024x768 display areas. No essential content should fall off screen").
  *
- * Measured in the real app through a Preview window resized to each area. For every size, in three
- * states (empty, mid-game, BINGO banner up) it asserts:
+ * Measured in the real app through a Preview window resized to each area. For every size, in four
+ * states (empty, mid-game, BINGO banner up, a pattern pushed to the projector) it asserts:
  *  - every element is fully inside the viewport and nothing scrolls
  *  - nothing overlaps: not the main regions, and not any two balls, letters or labels
  *
@@ -30,7 +30,7 @@ export const PROJECTOR_SIZES = [
   { width: 1024, height: 768 },
 ] as const;
 
-type GameState = 'empty' | 'mid-game' | 'banner up';
+type GameState = 'empty' | 'mid-game' | 'banner up' | 'pattern shown';
 
 interface Box {
   readonly name: string;
@@ -108,7 +108,10 @@ async function measure(presentation: Page, size: { width: number; height: number
 
   const callPanel = await boxes(presentation.getByLabel('Current call', { exact: true }), 'call display');
   const board = await boxes(presentation.getByLabel('Bingo board'), 'board');
-  const regions = [...banner, ...callPanel, ...board];
+  // The pattern is on the projector only after the operator pushes it.
+  const pattern = await boxes(presentation.getByLabel('Winning pattern', { exact: true }), 'pattern');
+  expect(pattern, 'pattern shown only when pushed').toHaveLength(state === 'pattern shown' ? 1 : 0);
+  const regions = [...banner, ...callPanel, ...board, ...pattern];
   expect(callPanel).toHaveLength(1);
   expect(board).toHaveLength(1);
 
@@ -127,7 +130,7 @@ async function measure(presentation: Page, size: { width: number; height: number
   ];
 
   expectInside([...regions, ...letters, ...cells, ...callParts], size);
-  expectNoOverlaps(regions, 'banner, call display and board');
+  expectNoOverlaps(regions, 'banner, call display, pattern and board');
   expectNoOverlaps([...letters, ...cells], 'board letters and balls');
   expectNoOverlaps(callParts, 'the call display contents');
   // Everything drawn in a region stays inside it.
@@ -153,18 +156,53 @@ async function measure(presentation: Page, size: { width: number; height: number
       `${part.name} inside the board (vertical)`,
     ).toBe(true);
   }
+  // The pushed pattern: its title and all 25 squares are inside its region and do not overlap.
+  if (pattern[0]) {
+    const title = await boxes(presentation.getByRole('heading', { name: 'Big L' }), 'pattern title');
+    const squares = await boxes(presentation.locator('[data-testid^="pattern-cell-"]'), 'pattern square');
+    expect(title).toHaveLength(1);
+    expect(squares).toHaveLength(25);
+    expectInside([...title, ...squares], size);
+    expectNoOverlaps([...title, ...squares], 'the pattern title and squares');
+    for (const part of [...title, ...squares]) {
+      const region = pattern[0];
+      expect(
+        region &&
+          part.left >= region.left - 0.5 &&
+          part.right <= region.right + 0.5 &&
+          part.top >= region.top - 0.5 &&
+          part.bottom <= region.bottom + 0.5,
+        `${part.name} inside the pattern region`,
+      ).toBe(true);
+    }
+  }
   return { callPanel: callPanel[0], board: board[0], cells };
 }
 
 // One Electron launch per game state: the same Preview window is resized through every resolution, which
 // keeps the full suite fast. Each resolution is its own step, so a failure names the size.
-for (const state of ['empty', 'mid-game', 'banner up'] as const) {
+for (const state of ['empty', 'mid-game', 'banner up', 'pattern shown'] as const) {
   test(`projector layout at all four resolutions, ${state}`, async () => {
     const { app, controller } = await launchApp(userDataDir);
     if (state !== 'empty') {
       for (const label of ['B-3', 'I-17', 'N-33', 'G-48', 'O-61', 'B-9']) await tapBall(controller, label);
     }
     if (state === 'banner up') await controller.getByRole('button', { name: 'BINGO CALLED' }).click();
+    if (state === 'pattern shown') {
+      // Push Big L through the real bridge, as the Show on projector button does.
+      await controller.evaluate(async () => {
+        const api = (
+          globalThis as unknown as {
+            bingo: {
+              selectPattern(id: string): Promise<unknown>;
+              showPatternOnProjector(): Promise<unknown>;
+            };
+          }
+        ).bingo;
+        await api.selectPattern('seed-big-l');
+        await api.showPatternOnProjector();
+      });
+    }
     await controller.getByRole('button', { name: 'Preview' }).click();
     const presentation = await waitForPresentationWindow(app);
 

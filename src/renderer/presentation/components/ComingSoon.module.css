@@ -1,7 +1,6 @@
-/* Fills the whole stage; the grid layout of the game board does not apply here. */
+/* Fills the whole stage; the layout of the game board does not apply here. */
 .root {
-  grid-column: 1 / -1;
-  grid-row: 1 / -1;
+  flex: 1;
   display: grid;
   place-content: center;
   gap: 2vmin;

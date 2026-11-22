@@ -1,6 +1,6 @@
 /*
- * .root stacks the optional BINGO banner above the .stage. .stage holds the
- * game layout (or a placeholder) and takes whatever height is left.
+ * .root stacks the optional BINGO banner above the .stage. .stage takes whatever height is left and holds the
+ * game layout (or a placeholder).
  */
 .root {
   display: flex;
@@ -10,35 +10,64 @@
   padding: 2.5vmin;
 }
 
-/* Wide screens (16:9): call display on the left, board on the right. */
 .stage {
   flex: 1;
   min-height: 0;
-  display: grid;
-  grid-template-columns: minmax(0, 30%) minmax(0, 1fr);
-  gap: 2vmin;
+  display: flex;
+  flex-direction: column;
 }
 
 /*
- * The call display fills the column; a pushed pattern, when there is one, takes the lower part of it (45%).
- * With nothing pushed the call display has the whole column, as before.
+ * The game board layout, wide screens (16:9): the 75-number board across the top, with the winning pattern
+ * to its left, and the current and previous calls in a band along the bottom. With no pattern pushed, the
+ * board takes the full width.
  */
-.aside {
-  display: flex;
-  flex-direction: column;
-  gap: 2vmin;
-  min-width: 0;
+.game {
+  flex: 1;
   min-height: 0;
+  display: grid;
+  gap: 2vmin;
+  grid-template-columns: 21% minmax(0, 1fr);
+  grid-template-rows: 54% minmax(0, 1fr);
+  grid-template-areas:
+    'pattern board'
+    'calls calls';
 }
 
-.aside > :first-child {
+.game[data-pattern='none'] {
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-areas:
+    'board'
+    'calls';
+}
+
+/* Each area holds one component, which fills it. */
+.pattern,
+.board,
+.calls {
+  min-width: 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.pattern > *,
+.board > *,
+.calls > * {
   flex: 1;
   min-height: 0;
 }
 
-.aside > :nth-child(2) {
-  flex: none;
-  height: 45%;
+.pattern {
+  grid-area: pattern;
+}
+
+.board {
+  grid-area: board;
+}
+
+.calls {
+  grid-area: calls;
 }
 
 /* Projectors are output-only: hide the pointer when fullscreen. */
@@ -46,20 +75,20 @@
   cursor: none;
 }
 
-/* Squarer screens (4:3, 5:4): call display becomes a band above the board. */
+/* Squarer screens (4:3, 5:4): the board takes the full width, and the pattern sits beside the calls below it. */
 @media (max-aspect-ratio: 3/2) {
-  .stage {
+  .game {
+    grid-template-columns: 30% minmax(0, 1fr);
+    grid-template-rows: 50% minmax(0, 1fr);
+    grid-template-areas:
+      'board board'
+      'pattern calls';
+  }
+
+  .game[data-pattern='none'] {
     grid-template-columns: minmax(0, 1fr);
-    grid-template-rows: minmax(0, 30%) minmax(0, 1fr);
-  }
-
-  /* Squarer screens: the pattern sits beside the call display in the band, as tall as the band. */
-  .aside {
-    flex-direction: row;
-  }
-
-  .aside > :nth-child(2) {
-    height: auto;
-    aspect-ratio: 1.3 / 1;
+    grid-template-areas:
+      'board'
+      'calls';
   }
 }

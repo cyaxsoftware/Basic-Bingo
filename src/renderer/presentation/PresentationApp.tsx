@@ -31,14 +31,20 @@ export function PresentationApp({ store }: PresentationAppProps) {
       {onBoard && snapshot.game.bingoBannerVisible ? <BingoBanner /> : null}
       <div className={styles.stage}>
         {onBoard ? (
-          <>
-            {/* The call display, and under it (or beside it, on squarer screens) the pattern the operator pushed. */}
-            <div className={styles.aside}>
-              <CallDisplay calledNumbers={snapshot.game.calledNumbers} />
-              {snapshot.shownPattern ? <ShownPattern pattern={snapshot.shownPattern} /> : null}
+          <div className={styles.game} data-pattern={snapshot.shownPattern ? 'shown' : 'none'}>
+            {/* The pattern the operator pushed (nothing until they do), the board, and the calls. */}
+            {snapshot.shownPattern ? (
+              <div className={styles.pattern}>
+                <ShownPattern pattern={snapshot.shownPattern} />
+              </div>
+            ) : null}
+            <div className={styles.board}>
+              <AudienceBoard calledNumbers={snapshot.game.calledNumbers} />
             </div>
-            <AudienceBoard calledNumbers={snapshot.game.calledNumbers} />
-          </>
+            <div className={styles.calls}>
+              <CallDisplay calledNumbers={snapshot.game.calledNumbers} />
+            </div>
+          </div>
         ) : (
           <ComingSoon mode={snapshot.presentationMode} />
         )}
