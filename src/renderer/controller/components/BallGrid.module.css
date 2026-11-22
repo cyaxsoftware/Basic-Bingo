@@ -1,23 +1,20 @@
 /*
- * The grid is a size container and takes whatever the layout leaves it. Balls are
- * sized from BOTH the width and the height available (like the projector's board),
- * so adding a panel above or beside it makes the balls a little smaller instead of
- * pushing the grid into scrolling. The floor keeps every ball a usable touch target;
- * only below that floor does the grid fall back to scrolling.
+ * The grid is a size container and takes whatever the layout leaves it. Plain numbers sit in cells that are
+ * as wide as the grid allows (16 columns: the letter and 15 balls, no gaps) and up to --row-cap tall, so there
+ * is room around every number. The tap target is the WHOLE cell; only the drawn chip is smaller, so extra
+ * space around a number never makes it harder to hit. Called numbers get the filled B/I/N/G/O circle.
  *
- * 16 columns (letter + 15 balls) and 5 rows. --cell is used only by descendants,
- * because container query units resolve against the nearest ancestor container.
+ * Both dimensions shrink with the window, never below the touch floor; only below that does the grid fall
+ * back to scrolling. --col and --row are used only by descendants, because container query units resolve
+ * against the nearest ancestor container.
  */
 .grid {
-  --col-gap: 6px;
-  --row-gap: 6px;
-  --ball-floor: 44px;
-  --ball-cap: 76px;
-  --cell: clamp(
-    var(--ball-floor),
-    min(calc((100cqw - 15 * var(--col-gap)) / 16), calc((100cqh - 4 * var(--row-gap)) / 5)),
-    var(--ball-cap)
-  );
+  --floor: 44px;
+  --row-cap: 80px;
+  --col: max(var(--floor), calc(100cqw / 16));
+  --row: clamp(var(--floor), calc(100cqh / 5), var(--row-cap));
+  /* The drawn circle, kept clear of its neighbours. */
+  --chip: min(64px, calc(min(var(--col), var(--row)) - 10px));
 
   container-type: size;
   flex: 1;
@@ -26,7 +23,6 @@
   flex-direction: column;
   align-items: center;
   justify-content: safe center;
-  gap: var(--row-gap);
   padding: var(--space-2);
   background: var(--panel);
   border: 1px solid var(--border);
@@ -36,51 +32,58 @@
 
 .row {
   display: grid;
-  grid-template-columns: repeat(16, var(--cell));
-  grid-auto-rows: var(--cell);
-  gap: var(--col-gap);
-  align-items: center;
+  grid-template-columns: repeat(16, var(--col));
+  grid-auto-rows: var(--row);
+  align-items: stretch;
 }
 
 .letter {
   display: grid;
   place-items: center;
-  width: var(--cell);
-  height: var(--cell);
-  border-radius: var(--radius-sm);
-  background: var(--ball-color);
-  color: var(--ball-ink);
-  border: 2px solid var(--ball-ring);
-  font-size: calc(var(--cell) * 0.5);
+  color: var(--text);
+  font-size: calc(var(--chip) * 0.8);
   font-weight: 800;
 }
 
 .ball {
-  width: var(--cell);
-  height: var(--cell);
+  display: grid;
+  place-items: center;
   padding: 0;
-  border-radius: 50%;
-  border: 3px solid var(--uncalled-border);
-  background: var(--uncalled-bg);
-  color: var(--uncalled-text);
-  font-size: calc(var(--cell) * 0.38);
-  font-weight: 600;
+  border: 0;
+  background: none;
   cursor: pointer;
+}
+
+.chip {
+  display: grid;
+  place-items: center;
+  width: var(--chip);
+  height: var(--chip);
+  border: 3px solid transparent;
+  border-radius: 50%;
+  color: var(--uncalled-text);
+  font-size: calc(var(--chip) * 0.42);
+  font-weight: 600;
   transition: transform 80ms ease-out;
 }
 
 /* Immediate press feedback before the round-trip to main completes. */
-.ball:active {
+.ball:active .chip {
   transform: scale(0.92);
 }
 
+/* The ring goes around the drawn chip, not the (larger) invisible tap area. */
 .ball:focus-visible {
+  outline: none;
+}
+
+.ball:focus-visible .chip {
   outline: 3px solid var(--accent);
   outline-offset: 2px;
 }
 
-.ball[data-status='called'],
-.ball[data-status='current'] {
+.ball[data-status='called'] .chip,
+.ball[data-status='current'] .chip {
   background: var(--ball-color);
   border-color: var(--ball-ring);
   color: var(--ball-ink);
@@ -88,7 +91,7 @@
 }
 
 /* Current call: extra non-color cue (thick dark ring), not just a different fill. */
-.ball[data-status='current'] {
+.ball[data-status='current'] .chip {
   box-shadow:
     0 0 0 3px var(--panel),
     0 0 0 7px var(--current-ring);
