@@ -164,7 +164,7 @@ test('pushing the pattern shows it on the projector; later edits wait for the ne
   await second.app.close();
 });
 
-test('blacking out a row shows on both screens, is only a reminder, and survives a restart and New Game', async () => {
+test('blacking out a row hides it on the projector, disables its balls, and survives a restart and New Game', async () => {
   const first = await launchApp(userDataDir);
   await first.controller.getByRole('button', { name: 'Preview' }).click();
   const projector = await waitForPresentationWindow(first.app);
@@ -180,10 +180,11 @@ test('blacking out a row shows on both screens, is only a reminder, and survives
   await expect(projectorRow('N')).toHaveAttribute('data-disabled', 'true');
   await expect(projectorRow('B')).toHaveAttribute('data-disabled', 'false');
 
-  // Only a reminder: the calls are untouched, and a ball in that row can still be called.
+  // The numbers are gone from the projector, and the row's balls cannot be selected on the Controller.
+  await expect(projector.getByTestId('board-ball-33')).toBeHidden();
+  await expect(projector.getByTestId('board-ball-3')).toBeVisible();
+  await expect(first.controller.getByRole('button', { name: /^N-33,/ })).toBeDisabled();
   await expect(first.controller.getByTestId('called-count')).toHaveText('Called: 1 of 75');
-  await tapBall(first.controller, 'N-33');
-  await expect(first.controller.getByTestId('called-count')).toHaveText('Called: 2 of 75');
 
   // Set BINGO_SCREENSHOT_DIR to keep a picture of both screens for review.
   const keepIn = process.env['BINGO_SCREENSHOT_DIR'];

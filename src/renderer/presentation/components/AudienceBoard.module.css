@@ -59,10 +59,10 @@
   font-weight: 800;
 }
 
-/* A row this game does not use: black discs with barely-there numbers, and a quiet letter. */
+/* A row this game does not use: its balls just disappear (they keep their place, so the board does not shift),
+ * and only a quiet letter is left to show the row is not in play. */
 .row[data-disabled='true'] .cell {
-  background: var(--stage-blackout);
-  color: var(--stage-blackout-text);
+  visibility: hidden;
 }
 
 .row[data-disabled='true'] .letter {

@@ -97,13 +97,16 @@ describe('BallGrid', () => {
       }
     });
 
-    it('is only a reminder: balls in a blacked-out row can still be tapped', async () => {
+    it('disables every ball in a blacked-out row, and only those', async () => {
       const onToggle = vi.fn();
       renderGrid([], { disabledRows: ['B'], onToggle });
-      const ball = screen.getByRole('button', { name: 'B-3, not called' });
-      expect(ball).toBeEnabled();
-      await userEvent.click(ball);
-      expect(onToggle).toHaveBeenCalledWith(3);
+      const row = screen.getByRole('group', { name: 'B row' });
+      for (const ball of within(row).getAllByRole('button', { name: /^B-\d+,/ })) expect(ball).toBeDisabled();
+      await userEvent.click(screen.getByRole('button', { name: 'B-3, not called' }));
+      expect(onToggle).not.toHaveBeenCalled();
+      // The letter is how the row comes back, so it stays tappable; other rows are untouched.
+      expect(screen.getByRole('button', { name: 'Black out B row' })).toBeEnabled();
+      expect(screen.getByRole('button', { name: 'I-17, not called' })).toBeEnabled();
     });
 
     it('keeps called balls in a blacked-out row called', () => {

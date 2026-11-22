@@ -127,20 +127,37 @@ describe('blacked-out rows', () => {
     expect(state.disabledRows).toEqual(['B', 'G', 'O']);
   });
 
-  it('is only a reminder: it never changes the calls or the banner', () => {
+  it('blacking a row out never changes the calls or the banner', () => {
     const played = reduceGame(reduceGame(INITIAL_GAME_STATE, { type: 'toggleBall', ball: 3 }), {
       type: 'showBingoBanner',
     });
     const next = toggle(played, 'B');
     expect(next.calledNumbers).toBe(played.calledNumbers);
     expect(next.bingoBannerVisible).toBe(true);
-    // A ball in a blacked-out row can still be called (and corrected).
-    expect(reduceGame(next, { type: 'toggleBall', ball: 4 }).calledNumbers).toEqual([3, 4]);
+  });
+
+  it('refuses to call a ball in a blacked-out row, and says how to fix it', () => {
+    const state = toggle(INITIAL_GAME_STATE, 'N');
+    expect(() => reduceGame(state, { type: 'toggleBall', ball: 33 })).toThrow(RangeError);
+    expect(() => reduceGame(state, { type: 'toggleBall', ball: 33 })).toThrow(
+      /N row is blacked out.*bring it back/,
+    );
+    // Other rows are unaffected.
+    expect(reduceGame(state, { type: 'toggleBall', ball: 3 }).calledNumbers).toEqual([3]);
+  });
+
+  it('refuses to un-call a ball in a blacked-out row too: the row has to come back first', () => {
+    const called = reduceGame(INITIAL_GAME_STATE, { type: 'toggleBall', ball: 33 });
+    const out = toggle(called, 'N');
+    expect(out.calledNumbers).toEqual([33]);
+    expect(() => reduceGame(out, { type: 'toggleBall', ball: 33 })).toThrow(RangeError);
+    // Bringing the row back makes it a normal ball again.
+    expect(reduceGame(toggle(out, 'N'), { type: 'toggleBall', ball: 33 }).calledNumbers).toEqual([]);
   });
 
   it('survives New Game, which clears only the calls and the banner', () => {
-    let state = toggle(toggle(INITIAL_GAME_STATE, 'I'), 'O');
-    state = reduceGame(state, { type: 'toggleBall', ball: 20 });
+    let state = reduceGame(INITIAL_GAME_STATE, { type: 'toggleBall', ball: 20 });
+    state = toggle(toggle(state, 'I'), 'O');
     const fresh = reduceGame(state, { type: 'newGame' });
     expect(fresh.calledNumbers).toEqual([]);
     expect(fresh.disabledRows).toEqual(['I', 'O']);

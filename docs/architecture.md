@@ -55,7 +55,7 @@ Key rules:
   template: selecting and editing change only the copy, and the library changes only on an explicit update or
   save-as-new. Every one of the 25 cells, the center included, is an ordinary editable cell (no free-space
   rule). The module takes `now` and new ids as arguments, so it stays deterministic. It lives outside
-  `GameState`, like the presentation mode, so New Game cannot touch it. (`GameState` also carries `disabledRows`, the rows the operator has blacked out as a visual reminder, set by the Controller-only `toggleRowDisabled(letter)` command; New Game keeps it, and it never affects the calls.) It is persisted next to the game
+  `GameState`, like the presentation mode, so New Game cannot touch it. (`GameState` also carries `disabledRows`, the rows the operator has blacked out as a visual reminder, set by the Controller-only `toggleRowDisabled(letter)` command; New Game keeps it, and `toggleBall` refuses a ball in a blacked-out row.) It is persisted next to the game
   (`patterns` in the V3 file) and exposed as `snapshot.patternLibrary`, `snapshot.activePattern` and
   `snapshot.shownPattern`. `shownPattern` is what the projector renders: a SNAPSHOT of the working pattern's title
   and cells, taken by `showPatternOnProjector` and cleared by `hidePatternOnProjector`. Editing the working copy

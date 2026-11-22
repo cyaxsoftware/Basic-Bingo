@@ -96,6 +96,19 @@ describe('registerIpcHandlers', () => {
       expect(ctx.store.getSnapshot().game.disabledRows).toEqual([]);
     });
 
+    it('rejects a ball in a blacked-out row, leaving the calls alone, and accepts it once the row is back', () => {
+      ctx.ipc.invoke(CONTROLLER_ID, IpcChannel.toggleRowDisabled, 'N');
+      const before = ctx.store.getSnapshot();
+      const result = ctx.ipc.invoke(CONTROLLER_ID, IpcChannel.toggleBall, 33) as CommandResult;
+      expect(result.ok).toBe(false);
+      expect(!result.ok && result.error).toMatch(/N row is blacked out/);
+      expect(ctx.store.getSnapshot()).toBe(before);
+
+      ctx.ipc.invoke(CONTROLLER_ID, IpcChannel.toggleRowDisabled, 'N');
+      expect(ctx.ipc.invoke(CONTROLLER_ID, IpcChannel.toggleBall, 33)).toEqual({ ok: true });
+      expect(ctx.store.getSnapshot().game.calledNumbers).toEqual([33]);
+    });
+
     it('rejects it from the Presentation window and from strangers, changing nothing', () => {
       const before = ctx.store.getSnapshot();
       expect((ctx.ipc.invoke(PRESENTATION_ID, IpcChannel.toggleRowDisabled, 'B') as CommandResult).ok).toBe(

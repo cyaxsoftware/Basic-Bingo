@@ -150,7 +150,7 @@ The projector must reflect a single canonical state transaction. Both windows re
 - **Proposed default:** leave the selected presentation mode unchanged. If the operator resets during a slideshow, they can manually return to Game Board when ready.
 
 ### 5.2a Blacked-out rows
-Some games do not use every row. Tapping a row's letter (B, I, N, G or O) on the Controller blacks that row out on both screens (black discs, numbers barely visible, a quiet letter), and tapping it again brings it back. It is a **visual reminder only**: it never changes which balls can be called (a ball in a blacked-out row can still be tapped, and called balls stay called), and it is a separate game field, `disabledRows`, in B, I, N, G, O order. It is persisted, survives a restart, and is kept by New Game like the pattern.
+Some games do not use every row. Tapping a row's letter (B, I, N, G or O) on the Controller blacks that row out, and tapping it again brings it back. On the Controller the row's balls become dark discs that **cannot be tapped**; the rules refuse to call or un-call a ball in a blacked-out row, so nothing can be added to a row the game is not using. Calls already made in the row stay as they are, and the row has to be brought back to change them. On the projector the row's numbers **disappear** and only a quiet letter is left. It is a separate game field, `disabledRows`, in B, I, N, G, O order, persisted, surviving a restart, and kept by New Game like the pattern.
 
 ### 5.3 BINGO verification banner
 - `SHOW_BINGO_BANNER` sets visibility true, idempotently.

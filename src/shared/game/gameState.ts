@@ -9,7 +9,14 @@
  *   2. Handle it in `reduceGame` and add tests in gameState.test.ts.
  *   3. Expose it through the IPC contract (see docs/architecture.md).
  */
-import { assertValidBall, BINGO_LETTERS, isBingoLetter, type BallNumber, type BingoLetter } from './balls';
+import {
+  assertValidBall,
+  BINGO_LETTERS,
+  isBingoLetter,
+  letterForBall,
+  type BallNumber,
+  type BingoLetter,
+} from './balls';
 import { toggleBall } from './calledNumbers';
 
 export interface GameState {
@@ -21,8 +28,9 @@ export interface GameState {
    */
   readonly bingoBannerVisible: boolean;
   /**
-   * Rows (letters) the operator has blacked out because this game does not use them. A visual reminder only:
-   * it never changes which balls can be called. In B, I, N, G, O order. Kept by New Game, like the pattern.
+   * Rows (letters) the operator has blacked out because this game does not use them. The balls in a blacked-out
+   * row cannot be called or un-called until the row is brought back (calls already made stay as they are). In
+   * B, I, N, G, O order. Kept by New Game, like the pattern.
    */
   readonly disabledRows: readonly BingoLetter[];
 }
@@ -50,6 +58,10 @@ export function reduceGame(state: GameState, command: GameCommand): GameState {
   switch (command.type) {
     case 'toggleBall': {
       assertValidBall(command.ball);
+      const letter = letterForBall(command.ball);
+      if (state.disabledRows.includes(letter)) {
+        throw new RangeError(`The ${letter} row is blacked out. Tap its letter to bring it back first.`);
+      }
       return { ...state, calledNumbers: toggleBall(state.calledNumbers, command.ball) };
     }
     case 'showBingoBanner':
