@@ -3,6 +3,7 @@ import type { SnapshotStore } from '../shared/snapshotStore';
 import { useSnapshotState } from '../shared/useSnapshotState';
 import { BallGrid } from './components/BallGrid';
 import { CallSummaryPanel } from './components/CallSummaryPanel';
+import { BingoBannerControl, NewGameControl } from './components/GameControls';
 import { NoticeArea } from './components/NoticeArea';
 import { PresentationControls } from './components/PresentationControls';
 import styles from './ControllerApp.module.css';
@@ -30,6 +31,7 @@ export function ControllerApp({ api, store }: ControllerAppProps) {
   }
 
   const { snapshot } = state;
+  const { calledNumbers, bingoBannerVisible } = snapshot.game;
   return (
     <div className={styles.layout}>
       <header className={styles.header}>
@@ -43,6 +45,11 @@ export function ControllerApp({ api, store }: ControllerAppProps) {
           onStop={actions.closePresentation}
           onRefreshDisplays={actions.refreshDisplays}
         />
+        <NewGameControl
+          calledCount={calledNumbers.length}
+          bannerVisible={bingoBannerVisible}
+          onNewGame={actions.newGame}
+        />
       </header>
 
       <NoticeArea
@@ -54,8 +61,15 @@ export function ControllerApp({ api, store }: ControllerAppProps) {
       />
 
       <main className={styles.main}>
-        <BallGrid calledNumbers={snapshot.game.calledNumbers} onToggle={actions.toggleBall} />
-        <CallSummaryPanel calledNumbers={snapshot.game.calledNumbers} />
+        <BallGrid calledNumbers={calledNumbers} onToggle={actions.toggleBall} />
+        <div className={styles.side}>
+          <CallSummaryPanel calledNumbers={calledNumbers} />
+          <BingoBannerControl
+            bannerVisible={bingoBannerVisible}
+            onShow={actions.showBingoBanner}
+            onDismiss={actions.dismissBingoBanner}
+          />
+        </div>
       </main>
     </div>
   );

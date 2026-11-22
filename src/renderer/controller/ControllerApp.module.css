@@ -28,6 +28,17 @@
   gap: var(--space-4);
 }
 
+.side {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  min-height: 0;
+}
+
+.side > :first-child {
+  flex: 1;
+}
+
 /* Narrow windows (e.g. 150% scaling): summary moves above the grid rather than shrinking balls. */
 @media (max-width: 1100px) {
   .main {
@@ -36,6 +47,21 @@
   }
   .main > :last-child {
     order: -1;
+  }
+  /* Summary strip and BINGO control share one row above the grid, and wrap
+     rather than overflow when the strip needs the width (full history at 150%). */
+  .side {
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-items: stretch;
+  }
+  .side > :first-child {
+    flex: 1 1 auto;
+    min-width: 0;
+  }
+  .side > :last-child {
+    flex: 1 1 240px;
+    min-width: 0;
   }
 }
 
