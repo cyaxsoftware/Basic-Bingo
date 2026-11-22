@@ -112,8 +112,13 @@ A failed save sets `snapshot.persistence` to `error`; the Controller shows it un
   `showInactive()` so keyboard focus stays on the Controller.
 - **Preview:** a normal 960×540 window centered on the Controller's display.
 - At most one Presentation window exists; opening a new one replaces the old one.
-- If the projected display disappears, the window is destroyed (never left off-screen) and a warning
-  notice is added. If its resolution changes, the window is refit.
+- **Status follows the real window:** `opening` while it loads, then `projecting` / `preview` only on
+  `ready-to-show`. A main-frame load failure, a renderer crash, a lost display, or the Controller being
+  moved onto the projected display closes the window (never left off-screen or covering the Controller)
+  and adds an operator notice. Every handler checks it still belongs to the current window, so late
+  events from a replaced window are ignored. If the display's resolution changes, the window is refit.
+- The manager receives its window factory from `main.ts`, so `presentationWindowManager.test.ts` drives
+  these transitions with fake windows and a fake screen.
 - The Controller opens on the built-in (internal) display, falling back to the Windows primary display.
 
 ## Lifecycle

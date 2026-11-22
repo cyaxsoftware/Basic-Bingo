@@ -17,6 +17,8 @@ export function describePresentation(status: PresentationStatus): string {
   switch (status.kind) {
     case 'closed':
       return 'Not projecting';
+    case 'opening':
+      return 'Opening presentation…';
     case 'preview':
       return 'Preview window open';
     case 'projecting':

@@ -19,6 +19,7 @@ import { resolveDataDirectory } from './persistence/dataDirectory';
 import { JsonStateRepository, type LoadResult } from './persistence/stateRepository';
 import { installOfflinePolicy } from './security/offlinePolicy';
 import { AppStore } from './state/appStore';
+import { createAppWindow } from './windows/createAppWindow';
 import { createControllerWindow } from './windows/controllerWindow';
 import { DisplayManager } from './windows/displayManager';
 import { PresentationWindowManager } from './windows/presentationWindowManager';
@@ -88,7 +89,12 @@ async function startApplication(registry: WindowRegistry): Promise<void> {
     const window = registry.getController();
     return window ? window.getBounds() : null;
   });
-  const presentation = new PresentationWindowManager({ store, displays, registry });
+  const presentation = new PresentationWindowManager({
+    store,
+    displays,
+    registry,
+    createWindow: (options) => createAppWindow('presentation', options),
+  });
 
   registerIpcHandlers(ipcMain, { store, presentation, displays, senders: registry });
   store.subscribe((snapshot) => registry.broadcast(snapshot));

@@ -44,6 +44,8 @@ export interface DisplayInfo {
 
 export type PresentationStatus =
   | { readonly kind: 'closed' }
+  /** Window created but not yet ready to show. Never reported as working until it is. */
+  | { readonly kind: 'opening' }
   | { readonly kind: 'preview' }
   | { readonly kind: 'projecting'; readonly displayId: number; readonly displayLabel: string };
 
