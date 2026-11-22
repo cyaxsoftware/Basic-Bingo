@@ -11,6 +11,7 @@
  * cannot throw "Attempted to register a second handler".
  */
 import { isValidBall } from '../../shared/game/balls';
+import { isValidPatternId } from '../../shared/patterns';
 import { isPresentationMode } from '../../shared/presentation/presentationMode';
 import {
   fail,
@@ -59,10 +60,6 @@ export interface IpcDependencies {
 }
 
 const MAX_NOTICE_ID_LENGTH = 100;
-const MAX_PATTERN_ID_LENGTH = 200;
-
-const isPatternId = (value: unknown): value is string =>
-  typeof value === 'string' && value.length > 0 && value.length <= MAX_PATTERN_ID_LENGTH;
 
 export function registerIpcHandlers(ipc: IpcMainLike, deps: IpcDependencies): void {
   const { store, presentation, displays, senders } = deps;
@@ -123,7 +120,7 @@ export function registerIpcHandlers(ipc: IpcMainLike, deps: IpcDependencies): vo
   // characters, unknown ids, exactly 25 cells) live in the shared reducer, which the store runs, so they apply
   // to every caller and come back as an ordinary failed result.
   command(IpcChannel.selectPattern, (patternId) =>
-    isPatternId(patternId)
+    isValidPatternId(patternId)
       ? store.dispatchPattern({ type: 'selectPattern', patternId })
       : fail('Invalid pattern id.'),
   );
@@ -156,19 +153,19 @@ export function registerIpcHandlers(ipc: IpcMainLike, deps: IpcDependencies): vo
   );
 
   command(IpcChannel.renamePattern, (patternId, title) =>
-    isPatternId(patternId) && typeof title === 'string'
+    isValidPatternId(patternId) && typeof title === 'string'
       ? store.dispatchPattern({ type: 'renamePattern', patternId, title })
       : fail('Choose a saved pattern and a new title.'),
   );
 
   command(IpcChannel.duplicatePattern, (patternId) =>
-    isPatternId(patternId)
+    isValidPatternId(patternId)
       ? store.dispatchPattern({ type: 'duplicatePattern', patternId })
       : fail('Invalid pattern id.'),
   );
 
   command(IpcChannel.deletePattern, (patternId) =>
-    isPatternId(patternId)
+    isValidPatternId(patternId)
       ? store.dispatchPattern({ type: 'deletePattern', patternId })
       : fail('Invalid pattern id.'),
   );

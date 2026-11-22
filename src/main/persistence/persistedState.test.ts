@@ -6,6 +6,7 @@ import {
   BLANK_ACTIVE_TITLE,
   blankActivePattern,
   createDefaultLibrary,
+  isValidPatternId,
   reducePatterns,
 } from '../../shared/patterns';
 import stateV1Fixture from './fixtures/state-v1.json';
@@ -366,6 +367,57 @@ describe('V3 save format (milestone 3, unreleased)', () => {
       );
       expect(result.warnings.join(' ')).toMatch(/active pattern was missing or damaged/);
       expect(result.state.patterns.library.map((p) => p.id)).toEqual(['a']);
+    });
+
+    it.each([undefined, null, 'oops', 7, {}])(
+      'keeps a valid working copy next to an unreadable library (%j)',
+      (library) => {
+        const edited = {
+          sourcePatternId: 'seed-big-l',
+          title: 'Big L plus',
+          cells: [true, ...Array(11).fill(false), true, ...Array(12).fill(false)],
+          editedFromLibrary: false,
+        };
+        const result = parse({ library, active: edited });
+        expect(result.state.patterns.library).toHaveLength(createDefaultLibrary().length);
+        expect(result.warnings.join(' ')).toMatch(/default patterns were restored/);
+        expect(result.warnings.join(' ')).not.toMatch(/active pattern/);
+        // Still attached to the reseeded template, and shown as edited.
+        expect(result.state.patterns.active).toMatchObject({
+          sourcePatternId: 'seed-big-l',
+          title: 'Big L plus',
+          editedFromLibrary: true,
+        });
+        expect(result.state.patterns.active.cells).toEqual(edited.cells);
+      },
+    );
+
+    it('resets only the working copy when both it and the library are damaged', () => {
+      const result = parse({ library: 'x', active: 'y' });
+      expect(result.state.patterns.library).toHaveLength(createDefaultLibrary().length);
+      expect(result.warnings.join(' ')).toMatch(/default patterns were restored/);
+      expect(result.warnings.join(' ')).toMatch(/active pattern was missing or damaged/);
+    });
+
+    it('loads exactly the ids the IPC rule accepts', () => {
+      for (const length of [1, 199, 200, 201, 500]) {
+        const id = 'x'.repeat(length);
+        const kept = parse({ library: [good(id, 'T')], active: blank }).state.patterns.library.length === 1;
+        expect(kept, `id of ${length} characters`).toBe(isValidPatternId(id));
+      }
+      expect(isValidPatternId('x'.repeat(200))).toBe(true);
+      expect(isValidPatternId('x'.repeat(201))).toBe(false);
+    });
+
+    it('drops a pattern with a too-long id, and detaches a working copy pointing at one', () => {
+      const tooLong = 'x'.repeat(201);
+      const result = parse({
+        library: [good('keep'), good(tooLong, 'T')],
+        active: { ...blank, sourcePatternId: tooLong },
+      });
+      expect(result.state.patterns.library.map((p) => p.id)).toEqual(['keep']);
+      expect(result.warnings.join(' ')).toMatch(/Removed 1 damaged or duplicate saved pattern/);
+      expect(result.state.patterns.active.sourcePatternId).toBeNull();
     });
 
     it('recomputes "Edited" from the library instead of trusting the file', () => {

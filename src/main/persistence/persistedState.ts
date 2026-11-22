@@ -30,6 +30,7 @@ import {
   blankActivePattern,
   createDefaultLibrary,
   isPatternCells,
+  isValidPatternId,
   normalizeTitle,
   reconcileActive,
   SEED_TIMESTAMP,
@@ -290,7 +291,7 @@ const isRecord = (value: unknown): value is Record<string, unknown> =>
 function validPattern(entry: unknown): PersistedPatternV3 | null {
   if (!isRecord(entry)) return null;
   const { id, title, cells, createdAt, updatedAt } = entry;
-  if (typeof id !== 'string' || id.length === 0 || !isPatternCells(cells)) return null;
+  if (!isValidPatternId(id) || !isPatternCells(cells)) return null;
   let cleanTitle: string;
   try {
     cleanTitle = normalizeTitle(title);
@@ -318,7 +319,7 @@ function validActive(entry: unknown): ActivePattern | null {
   }
   // "Edited" is recomputed from the library afterwards, never trusted from the file.
   return {
-    sourcePatternId: typeof sourcePatternId === 'string' ? sourcePatternId : null,
+    sourcePatternId: isValidPatternId(sourcePatternId) ? sourcePatternId : null,
     title: cleanTitle,
     cells: [...cells],
     editedFromLibrary: false,
@@ -327,30 +328,37 @@ function validActive(entry: unknown): ActivePattern | null {
 
 /**
  * Check the pattern section entry by entry. One damaged pattern is dropped (with a warning), never the whole
- * library or the game; a missing or unreadable section restores the defaults. A deliberately empty library is
- * respected.
+ * library or the game. The library and the working copy are recovered independently: an unreadable library
+ * restores the defaults but still keeps a valid working copy (the operator's edits), and a damaged working
+ * copy resets only itself. A deliberately empty library is respected.
  */
 function normalizePatterns(raw: unknown): { patterns: PersistedStateV3['patterns']; warnings: string[] } {
-  if (!isRecord(raw) || !Array.isArray(raw['library'])) {
+  if (!isRecord(raw)) {
     return {
       patterns: defaultPersistedPatterns(),
       warnings: ['The saved patterns were missing or damaged, so the default patterns were restored.'],
     };
   }
   const warnings: string[] = [];
-  const library: Pattern[] = [];
-  const seen = new Set<string>();
-  let dropped = 0;
-  for (const entry of raw['library']) {
-    const pattern = validPattern(entry);
-    if (!pattern || seen.has(pattern.id)) {
-      dropped += 1;
-      continue;
+  let library: Pattern[];
+  if (Array.isArray(raw['library'])) {
+    library = [];
+    const seen = new Set<string>();
+    let dropped = 0;
+    for (const entry of raw['library']) {
+      const pattern = validPattern(entry);
+      if (!pattern || seen.has(pattern.id)) {
+        dropped += 1;
+        continue;
+      }
+      seen.add(pattern.id);
+      library.push(pattern);
     }
-    seen.add(pattern.id);
-    library.push(pattern);
+    if (dropped > 0) warnings.push(`Removed ${dropped} damaged or duplicate saved pattern(s).`);
+  } else {
+    library = [...createDefaultLibrary()];
+    warnings.push('The saved pattern library was missing or damaged, so the default patterns were restored.');
   }
-  if (dropped > 0) warnings.push(`Removed ${dropped} damaged or duplicate saved pattern(s).`);
 
   let active = validActive(raw['active']);
   if (!active) {
