@@ -24,6 +24,9 @@ export default defineConfig({
           environment: 'jsdom',
           include: ['src/renderer/**/*.test.{ts,tsx}'],
           setupFiles: ['src/renderer/test/setup.ts'],
+          // Vitest replaces stylesheets with empty text. Let `?raw` imports through, so the design-token
+          // contrast test reads the real token files (src/renderer/shared/styles/tokens.test.ts).
+          css: { include: [/\.css\?raw$/] },
         },
       },
     ],
