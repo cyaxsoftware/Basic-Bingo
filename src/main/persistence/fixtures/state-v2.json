@@ -1,0 +1,11 @@
+{
+  "schemaVersion": 2,
+  "savedAt": "2026-11-22T19:15:00.000Z",
+  "game": {
+    "calledNumbers": [3, 17, 9, 31, 52, 75],
+    "bingoBannerVisible": true
+  },
+  "settings": {
+    "preferredDisplayId": 2779098405
+  }
+}

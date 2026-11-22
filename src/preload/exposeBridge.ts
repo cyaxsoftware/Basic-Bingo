@@ -30,6 +30,9 @@ export function createControllerApi(): ControllerApi {
   return {
     ...createPresentationApi(),
     toggleBall: (ball) => ipcRenderer.invoke(IpcChannel.toggleBall, ball),
+    showBingoBanner: () => ipcRenderer.invoke(IpcChannel.showBingoBanner),
+    dismissBingoBanner: () => ipcRenderer.invoke(IpcChannel.dismissBingoBanner),
+    newGame: () => ipcRenderer.invoke(IpcChannel.newGame),
     listDisplays: () => ipcRenderer.invoke(IpcChannel.listDisplays),
     openPresentation: (displayId) => ipcRenderer.invoke(IpcChannel.openPresentation, displayId),
     openPreview: () => ipcRenderer.invoke(IpcChannel.openPreview),

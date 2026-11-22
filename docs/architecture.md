@@ -86,11 +86,13 @@ if someone modified its page.
 
 `src/main/persistence/`:
 
-- `persistedState.ts`: the on-disk documents (`PersistedStateV1`, frozen once released), zod
+- `persistedState.ts`: the on-disk documents (`PersistedStateV1` is frozen; `PersistedStateV2` adds the
+  BINGO banner and stays open to M2 changes until M2 ships), zod
   validation, the migration table, and explicit conversion between the current document and
   `AppData` (the durable state the app uses). Documents never reference live domain types such as
   `GameState`, so growing the game model cannot change what an existing file means.
-- `fixtures/state-v1.json`: a representative released V1 file; tests load it on every run.
+- `fixtures/state-v1.json` / `state-v2.json`: representative files for each version; tests load them on
+  every run (a V1 file must keep loading, migrated to V2 with the banner hidden).
 - `stateRepository.ts`: storage under `%APPDATA%\Offline Bingo Display\bingo-data\`.
 
 Save sequence: write `state.json.tmp` → `fsync` → **re-validate** the current `state.json` and copy it to
@@ -153,7 +155,7 @@ A failed save sets `snapshot.persistence` to `error`; the Controller shows it un
 
 ## Recipe: adding a command end to end
 
-Example: `NEW_GAME` (milestone 2). Touch these files in order:
+Example: `newGame` (added in milestone 2). Touch these files in order:
 
 1. **Rule** — `src/shared/game/gameState.ts`: add `{ type: 'newGame' }` to `GameCommand` and handle it
    in `reduceGame`. The `never` check in the `default` branch fails to compile until you do.
@@ -172,7 +174,7 @@ Example: `NEW_GAME` (milestone 2). Touch these files in order:
 If the command changes **persisted** data, follow the steps at the top of `persistedState.ts`: add a new
 document version with its own game shape, a migration from the previous version, updated
 `toPersistedState` / `fromPersistedState`, and a fixture for the new version, while the existing
-`state-v1.json` test keeps passing. The compiler points at `fromPersistedState` as soon as `GameState`
+`state-v*.json` tests keep passing. The compiler points at `fromPersistedState` as soon as `GameState`
 gains a required field.
 
 ## Why these choices

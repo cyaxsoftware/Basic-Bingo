@@ -103,6 +103,12 @@ export function registerIpcHandlers(ipc: IpcMainLike, deps: IpcDependencies): vo
     return store.dispatch({ type: 'toggleBall', ball });
   });
 
+  command(IpcChannel.showBingoBanner, () => store.dispatch({ type: 'showBingoBanner' }));
+
+  command(IpcChannel.dismissBingoBanner, () => store.dispatch({ type: 'dismissBingoBanner' }));
+
+  command(IpcChannel.newGame, () => store.dispatch({ type: 'newGame' }));
+
   command(IpcChannel.openPresentation, (displayId) => {
     if (typeof displayId !== 'number' || !Number.isSafeInteger(displayId)) {
       return fail('Choose a display to project to.');

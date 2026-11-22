@@ -19,7 +19,7 @@ class FakePersister implements StatePersister {
 
 function createStore(calledNumbers: number[] = []) {
   const persister = new FakePersister();
-  const initialData = { ...createDefaultAppData(), game: { calledNumbers } };
+  const initialData = { ...createDefaultAppData(), game: { calledNumbers, bingoBannerVisible: false } };
   const store = new AppStore({ initialData, persister });
   const snapshots: AppSnapshot[] = [];
   store.subscribe((s) => snapshots.push(s));

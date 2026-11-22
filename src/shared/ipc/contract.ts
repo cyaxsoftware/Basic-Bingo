@@ -89,6 +89,9 @@ export const IpcChannel = {
   getSnapshot: 'bingo:get-snapshot',
   // Commands (Controller window only)
   toggleBall: 'bingo:toggle-ball',
+  showBingoBanner: 'bingo:show-bingo-banner',
+  dismissBingoBanner: 'bingo:dismiss-bingo-banner',
+  newGame: 'bingo:new-game',
   listDisplays: 'bingo:list-displays',
   openPresentation: 'bingo:open-presentation',
   openPreview: 'bingo:open-preview',
@@ -111,6 +114,12 @@ export interface PresentationApi {
 /** API exposed to the Controller window as `window.bingo`. */
 export interface ControllerApi extends PresentationApi {
   toggleBall(ball: BallNumber): Promise<CommandResult>;
+  /** Raise the BINGO CALLED banner (idempotent). It stays until dismissed or a new game starts. */
+  showBingoBanner(): Promise<CommandResult>;
+  /** Hide the banner. Never changes the calls. */
+  dismissBingoBanner(): Promise<CommandResult>;
+  /** Clear all calls and the banner. The caller is responsible for confirming with the operator. */
+  newGame(): Promise<CommandResult>;
   /** Re-reads displays from Windows and returns them (the snapshot updates too). */
   listDisplays(): Promise<readonly DisplayInfo[]>;
   openPresentation(displayId: number): Promise<CommandResult>;

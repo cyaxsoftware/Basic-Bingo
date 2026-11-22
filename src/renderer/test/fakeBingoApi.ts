@@ -3,8 +3,15 @@
  * Uses the real shared reducer so game behavior matches the main process.
  */
 import { vi } from 'vitest';
-import { reduceGame } from '../../shared/game/gameState';
-import { fail, ok, type AppSnapshot, type ControllerApi, type DisplayInfo } from '../../shared/ipc/contract';
+import { reduceGame, type GameCommand } from '../../shared/game/gameState';
+import {
+  fail,
+  ok,
+  type AppSnapshot,
+  type CommandResult,
+  type ControllerApi,
+  type DisplayInfo,
+} from '../../shared/ipc/contract';
 
 export const LAPTOP: DisplayInfo = {
   id: 1,
@@ -29,7 +36,7 @@ export const PROJECTOR: DisplayInfo = {
 export function makeSnapshot(overrides: Partial<AppSnapshot> = {}): AppSnapshot {
   return {
     revision: 1,
-    game: { calledNumbers: [] },
+    game: { calledNumbers: [], bingoBannerVisible: false },
     presentation: { kind: 'closed' },
     displays: [LAPTOP, PROJECTOR],
     preferredDisplayId: null,
@@ -53,6 +60,17 @@ export function createFakeBingoApi(initial: AppSnapshot = makeSnapshot()): FakeB
     listeners.forEach((l) => l(snapshot));
   };
 
+  const dispatchGame = (command: GameCommand): CommandResult => {
+    try {
+      const game = reduceGame(snapshot.game, command);
+      // Like the real store: a no-op command publishes nothing.
+      if (game !== snapshot.game) publish({ game });
+      return ok;
+    } catch (error) {
+      return fail((error as Error).message);
+    }
+  };
+
   return {
     push(next) {
       snapshot = next;
@@ -64,14 +82,10 @@ export function createFakeBingoApi(initial: AppSnapshot = makeSnapshot()): FakeB
       listeners.add(listener);
       return () => listeners.delete(listener);
     }),
-    toggleBall: vi.fn(async (ball: number) => {
-      try {
-        publish({ game: reduceGame(snapshot.game, { type: 'toggleBall', ball }) });
-        return ok;
-      } catch (error) {
-        return fail((error as Error).message);
-      }
-    }),
+    toggleBall: vi.fn(async (ball: number) => dispatchGame({ type: 'toggleBall', ball })),
+    showBingoBanner: vi.fn(async () => dispatchGame({ type: 'showBingoBanner' })),
+    dismissBingoBanner: vi.fn(async () => dispatchGame({ type: 'dismissBingoBanner' })),
+    newGame: vi.fn(async () => dispatchGame({ type: 'newGame' })),
     listDisplays: vi.fn(async () => snapshot.displays),
     openPresentation: vi.fn(async (displayId: number) => {
       const display = snapshot.displays.find((d) => d.id === displayId);

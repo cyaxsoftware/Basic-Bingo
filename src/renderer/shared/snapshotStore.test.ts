@@ -30,11 +30,11 @@ describe('createSnapshotStore', () => {
     const listener = vi.fn();
     store.subscribe(listener);
 
-    api.push(makeSnapshot({ revision: 3, game: { calledNumbers: [1] } }));
-    api.push(makeSnapshot({ revision: 5, game: { calledNumbers: [2] } }));
+    api.push(makeSnapshot({ revision: 3, game: { calledNumbers: [1], bingoBannerVisible: false } }));
+    api.push(makeSnapshot({ revision: 5, game: { calledNumbers: [2], bingoBannerVisible: false } }));
     expect(listener).not.toHaveBeenCalled();
 
-    api.push(makeSnapshot({ revision: 6, game: { calledNumbers: [3] } }));
+    api.push(makeSnapshot({ revision: 6, game: { calledNumbers: [3], bingoBannerVisible: false } }));
     expect(listener).toHaveBeenCalledOnce();
     const state = store.getState();
     expect(state.status === 'ready' && state.snapshot.game.calledNumbers).toEqual([3]);

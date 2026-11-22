@@ -18,7 +18,9 @@ describe('PresentationApp', () => {
   });
 
   it('shows the latest state immediately on open', async () => {
-    renderPresentation(makeSnapshot({ revision: 7, game: { calledNumbers: [3, 17, 9] } }));
+    renderPresentation(
+      makeSnapshot({ revision: 7, game: { calledNumbers: [3, 17, 9], bingoBannerVisible: false } }),
+    );
     expect(await screen.findByRole('img', { name: 'B-9' })).toBeInTheDocument();
     const previous = screen.getByRole('list', { name: 'Previous calls' });
     expect(previous).toHaveTextContent(/17.*3/);
@@ -30,13 +32,15 @@ describe('PresentationApp', () => {
   it('updates when main publishes a newer snapshot', async () => {
     const { api } = renderPresentation();
     await screen.findByText('Ready for first call');
-    act(() => api.push(makeSnapshot({ revision: 2, game: { calledNumbers: [3] } })));
+    act(() =>
+      api.push(makeSnapshot({ revision: 2, game: { calledNumbers: [3], bingoBannerVisible: false } })),
+    );
     expect(screen.getByRole('img', { name: 'B-3' })).toBeInTheDocument();
     expect(screen.queryByText('Ready for first call')).not.toBeInTheDocument();
   });
 
   it('has no interactive controls', async () => {
-    renderPresentation(makeSnapshot({ game: { calledNumbers: [1, 2, 3] } }));
+    renderPresentation(makeSnapshot({ game: { calledNumbers: [1, 2, 3], bingoBannerVisible: false } }));
     await screen.findByRole('img', { name: 'B-3' });
     expect(screen.queryAllByRole('button')).toHaveLength(0);
     expect(document.querySelectorAll('input, select, textarea, a[href]')).toHaveLength(0);
