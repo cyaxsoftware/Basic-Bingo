@@ -1,4 +1,4 @@
-import { useEffect, useId, useRef, type KeyboardEvent, type ReactNode } from 'react';
+import { useEffect, useId, useRef, type KeyboardEvent as ReactKeyboardEvent, type ReactNode } from 'react';
 import styles from './ConfirmDialog.module.css';
 
 export interface ConfirmDialogProps {
@@ -19,7 +19,8 @@ const FOCUSABLE =
  * Built by hand rather than with <dialog>.showModal() so that the focus rules
  * behave the same under test and in Electron:
  *  - focus starts on Cancel, so a stray touch or Enter cannot confirm
- *  - Tab and Shift+Tab stay inside the dialog; Escape cancels
+ *  - Tab and Shift+Tab stay inside the dialog; Escape cancels from anywhere on the page
+ *  - clicking the backdrop or the dialog's own text never drops focus to <body>
  *  - focus returns to whatever opened the dialog when it closes
  */
 export function ConfirmDialog({
@@ -54,19 +55,30 @@ export function ConfirmDialog({
     };
   }, []);
 
-  const handleKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
-    if (event.key === 'Escape') {
-      event.stopPropagation();
-      onCancel();
-      return;
-    }
+  // Document-level, so Escape still works if focus ever ends up on <body>.
+  useEffect(() => {
+    const cancelOnEscape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        event.stopPropagation();
+        onCancel();
+      }
+    };
+    document.addEventListener('keydown', cancelOnEscape);
+    return () => document.removeEventListener('keydown', cancelOnEscape);
+  }, [onCancel]);
+
+  const handleKeyDown = (event: ReactKeyboardEvent<HTMLDivElement>) => {
     if (event.key !== 'Tab') return;
 
     const focusable = Array.from(dialogRef.current?.querySelectorAll<HTMLElement>(FOCUSABLE) ?? []);
     const first = focusable[0];
     const last = focusable[focusable.length - 1];
     if (!first || !last) return;
-    if (event.shiftKey && document.activeElement === first) {
+    // Focus sits on the dialog box itself after a click on its text; Shift+Tab must not leave it.
+    if (
+      event.shiftKey &&
+      (document.activeElement === first || document.activeElement === dialogRef.current)
+    ) {
       event.preventDefault();
       last.focus();
     } else if (!event.shiftKey && document.activeElement === last) {
@@ -76,9 +88,16 @@ export function ConfirmDialog({
   };
 
   return (
-    <div className={styles.backdrop}>
+    // preventDefault on mousedown keeps focus where it is when the shaded backdrop is clicked.
+    <div
+      className={styles.backdrop}
+      onMouseDown={(event) => {
+        if (event.target === event.currentTarget) event.preventDefault();
+      }}
+    >
       <div
         ref={dialogRef}
+        tabIndex={-1}
         className={styles.dialog}
         role="dialog"
         aria-modal="true"

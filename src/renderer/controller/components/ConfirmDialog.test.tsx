@@ -87,6 +87,43 @@ describe('ConfirmDialog', () => {
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
   });
 
+  it('still cancels on Escape and restores focus after a click on the backdrop', async () => {
+    render(<Harness />);
+    await openDialog();
+    const backdrop = screen.getByRole('dialog').parentElement as HTMLElement;
+
+    await userEvent.click(backdrop);
+    expect(screen.getByRole('dialog')).toBeInTheDocument(); // a backdrop click does not dismiss
+    expect(screen.getByRole('dialog').contains(document.activeElement)).toBe(true);
+
+    await userEvent.keyboard('{Escape}');
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Open' })).toHaveFocus();
+  });
+
+  it('keeps focus inside, and Tab and Escape working, after a click on the dialog text', async () => {
+    render(<Harness />);
+    await openDialog();
+    const dialog = screen.getByRole('dialog');
+
+    await userEvent.click(screen.getByText('Details'));
+    expect(dialog.contains(document.activeElement)).toBe(true);
+    await userEvent.tab({ shift: true });
+    expect(dialog.contains(document.activeElement)).toBe(true);
+
+    await userEvent.keyboard('{Escape}');
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+  });
+
+  it('cancels on Escape even if focus has ended up on the page body', async () => {
+    render(<Harness />);
+    await openDialog();
+    (document.activeElement as HTMLElement).blur();
+    expect(document.body).toHaveFocus();
+    await userEvent.keyboard('{Escape}');
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+  });
+
   it('is operable by touch or pointer', async () => {
     const onConfirm = vi.fn();
     render(<Harness onConfirm={onConfirm} />);

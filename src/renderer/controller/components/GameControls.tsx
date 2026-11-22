@@ -13,25 +13,28 @@ export interface BingoBannerControlProps {
  * The prominent BINGO control. While the banner is up, the same spot offers
  * Dismiss instead, so the operator never has to hunt for it. The banner never
  * hides on its own.
+ *
+ * It is ONE button whose label and action change, not two buttons swapped in
+ * and out: React then keeps the same DOM element, so a keyboard operator who
+ * pressed Enter keeps focus on it.
  */
 export function BingoBannerControl({ bannerVisible, onShow, onDismiss }: BingoBannerControlProps) {
   return (
     <div className={styles.bingo}>
+      {/* aria-live rather than role="status": the Controller's one status region is the projector's. */}
+      {/* Describes the game flag only. Whether a projector is open is shown separately in the header. */}
       {bannerVisible ? (
-        <>
-          {/* aria-live rather than role="status": the Controller's one status region is the projector's. */}
-          <p className={styles.bannerStatus} aria-live="polite">
-            BINGO banner is showing on the projector
-          </p>
-          <button type="button" className={styles.dismiss} onClick={onDismiss}>
-            Dismiss BINGO Banner
-          </button>
-        </>
-      ) : (
-        <button type="button" className={styles.bingoCalled} onClick={onShow}>
-          BINGO CALLED
-        </button>
-      )}
+        <p className={styles.bannerStatus} aria-live="polite">
+          BINGO banner enabled
+        </p>
+      ) : null}
+      <button
+        type="button"
+        className={bannerVisible ? styles.dismiss : styles.bingoCalled}
+        onClick={bannerVisible ? onDismiss : onShow}
+      >
+        {bannerVisible ? 'Dismiss BINGO Banner' : 'BINGO CALLED'}
+      </button>
     </div>
   );
 }

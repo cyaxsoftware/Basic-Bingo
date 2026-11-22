@@ -48,13 +48,20 @@
   .main > :last-child {
     order: -1;
   }
-  /* Summary strip and BINGO control share one row above the grid. */
+  /* Summary strip and BINGO control share one row above the grid, and wrap
+     rather than overflow when the strip needs the width (full history at 150%). */
   .side {
     flex-direction: row;
+    flex-wrap: wrap;
     align-items: stretch;
   }
+  .side > :first-child {
+    flex: 1 1 auto;
+    min-width: 0;
+  }
   .side > :last-child {
-    flex: 0 0 280px;
+    flex: 1 1 240px;
+    min-width: 0;
   }
 }
 

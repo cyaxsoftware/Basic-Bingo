@@ -18,6 +18,11 @@
   box-shadow: 0 12px 40px rgb(0 0 0 / 35%);
 }
 
+/* Focusable only so a click on its text keeps focus inside; not a tab stop, so no ring. */
+.dialog:focus {
+  outline: none;
+}
+
 .title {
   margin: 0 0 var(--space-3);
   font-size: 1.4rem;

@@ -22,7 +22,26 @@ describe('BINGO banner controls', () => {
     expect(api.current().game).toEqual({ calledNumbers: [3, 17, 9], bingoBannerVisible: true });
     expect(await button('Dismiss BINGO Banner')).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'BINGO CALLED' })).not.toBeInTheDocument();
-    expect(screen.getByText(/banner is showing/i)).toHaveAttribute('aria-live', 'polite');
+    const status = screen.getByText('BINGO banner enabled');
+    expect(status).toHaveAttribute('aria-live', 'polite');
+    // It describes the game flag. With no projector open, it must not claim the audience can see it.
+    expect(status).not.toHaveTextContent(/projector/i);
+    expect(screen.getByRole('status')).toHaveTextContent('Not projecting');
+  });
+
+  it('keeps keyboard focus on the same control when the banner is raised and dismissed', async () => {
+    renderController();
+    const bingo = await button('BINGO CALLED');
+    bingo.focus();
+    await userEvent.keyboard('{Enter}');
+    const dismiss = await button('Dismiss BINGO Banner');
+    expect(dismiss).toBe(bingo); // same DOM element, so focus cannot be dropped
+    expect(dismiss).toHaveFocus();
+
+    await userEvent.keyboard('{Enter}');
+    const again = await button('BINGO CALLED');
+    expect(again).toBe(bingo);
+    expect(again).toHaveFocus();
   });
 
   it('dismisses the banner and leaves the calls and current call alone', async () => {
