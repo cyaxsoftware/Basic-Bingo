@@ -151,6 +151,9 @@ The full dual-display checklist is in [docs/manual-acceptance-m1.md](docs/manual
 
 - **Unit and component tests** (`npm test`) live next to the code as `*.test.ts(x)`: game rules,
   persistence and recovery, the store, IPC validation, display selection, and the React views.
+- **When to run what.** Per card: `npm run check`, plus `npm run test:e2e:smoke` (five key end-to-end tests
+  tagged `@smoke`) when main, preload, windows or the UI changed. The full end-to-end suite runs at milestone
+  boundaries, before a release, or when asked, the same timing as AGENTS.md.
 - **End-to-end tests** (`npm run test:e2e`) launch the real app with Playwright: Controller → Preview
   sync, toggle ordering, restart persistence, renderer sandboxing, the read-only Presentation bridge,
   and the single-instance lock. Each run uses a throwaway data folder (`BINGO_USER_DATA_DIR`, honored
