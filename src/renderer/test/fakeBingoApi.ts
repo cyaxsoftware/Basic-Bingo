@@ -3,6 +3,7 @@
  * Uses the real shared reducer so game behavior matches the main process.
  */
 import { vi } from 'vitest';
+import type { BingoLetter } from '../../shared/game/balls';
 import { reduceGame, type GameCommand } from '../../shared/game/gameState';
 import {
   blankActivePattern,
@@ -44,7 +45,7 @@ export const PROJECTOR: DisplayInfo = {
 export function makeSnapshot(overrides: Partial<AppSnapshot> = {}): AppSnapshot {
   return {
     revision: 1,
-    game: { calledNumbers: [], bingoBannerVisible: false },
+    game: { calledNumbers: [], bingoBannerVisible: false, disabledRows: [] },
     presentationMode: 'gameBoard',
     patternLibrary: createDefaultLibrary(),
     activePattern: blankActivePattern(),
@@ -117,6 +118,9 @@ export function createFakeBingoApi(initial: AppSnapshot = makeSnapshot()): FakeB
       return () => listeners.delete(listener);
     }),
     toggleBall: vi.fn(async (ball: number) => dispatchGame({ type: 'toggleBall', ball })),
+    toggleRowDisabled: vi.fn(async (letter: BingoLetter) =>
+      dispatchGame({ type: 'toggleRowDisabled', letter }),
+    ),
     showBingoBanner: vi.fn(async () => dispatchGame({ type: 'showBingoBanner' })),
     dismissBingoBanner: vi.fn(async () => dispatchGame({ type: 'dismissBingoBanner' })),
     newGame: vi.fn(async () => dispatchGame({ type: 'newGame' })),

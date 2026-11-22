@@ -13,7 +13,7 @@
  *    snapshot whose revision is not newer than the one they already show.
  *  - Command handlers return {@link CommandResult}; they never throw across IPC.
  */
-import type { BallNumber } from '../game/balls';
+import type { BallNumber, BingoLetter } from '../game/balls';
 import type { GameState } from '../game/gameState';
 import type { ActivePattern, Pattern, PatternCells, ShownPattern } from '../patterns/pattern';
 import type { PresentationMode } from '../presentation/presentationMode';
@@ -99,6 +99,7 @@ export const IpcChannel = {
   getSnapshot: 'bingo:get-snapshot',
   // Commands (Controller window only)
   toggleBall: 'bingo:toggle-ball',
+  toggleRowDisabled: 'bingo:toggle-row-disabled',
   showBingoBanner: 'bingo:show-bingo-banner',
   dismissBingoBanner: 'bingo:dismiss-bingo-banner',
   newGame: 'bingo:new-game',
@@ -136,6 +137,8 @@ export interface PresentationApi {
 /** API exposed to the Controller window as `window.bingo`. */
 export interface ControllerApi extends PresentationApi {
   toggleBall(ball: BallNumber): Promise<CommandResult>;
+  /** Black out (or restore) a row the game does not use. Visual only; calls are unaffected. */
+  toggleRowDisabled(letter: BingoLetter): Promise<CommandResult>;
   /** Raise the BINGO CALLED banner (idempotent). It stays until dismissed or a new game starts. */
   showBingoBanner(): Promise<CommandResult>;
   /** Hide the banner. Never changes the calls. */

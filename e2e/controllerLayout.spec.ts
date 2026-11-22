@@ -200,8 +200,17 @@ async function expectLayoutFits(
   expect(gridScroll, 'the grid must not scroll internally').toEqual({ over: 0, overX: 0 });
 
   // All 75 balls are on screen and big enough to touch.
-  const balls = await rects(controller.getByRole('group').getByRole('button'));
+  const balls = await rects(controller.getByRole('button', { name: /^[BINGO]-\d+,/ }));
   expect(balls).toHaveLength(75);
+  // The five row letters are buttons too (tap one to black the row out), and as touchable as a ball.
+  const letters = await rects(controller.getByRole('button', { name: /^Black out [BINGO] row$/ }));
+  expect(letters).toHaveLength(5);
+  for (const [index, letter] of letters.entries()) {
+    expect(letter.width, `row letter ${index} width`).toBeGreaterThanOrEqual(minimumBallSize(width));
+    expect(letter.height, `row letter ${index} height`).toBeGreaterThanOrEqual(minimumBallSize(width));
+    expect(letter.right, `row letter ${index} right`).toBeLessThanOrEqual(width);
+    expect(letter.bottom, `row letter ${index} bottom`).toBeLessThanOrEqual(height);
+  }
   const minimum = minimumBallSize(width);
   for (const [index, ball] of balls.entries()) {
     expect(ball.width, `ball ${index + 1} width`).toBeGreaterThanOrEqual(minimum);

@@ -39,7 +39,10 @@ export function PresentationApp({ store }: PresentationAppProps) {
               </div>
             ) : null}
             <div className={styles.board}>
-              <AudienceBoard calledNumbers={snapshot.game.calledNumbers} />
+              <AudienceBoard
+                calledNumbers={snapshot.game.calledNumbers}
+                disabledRows={snapshot.game.disabledRows}
+              />
             </div>
             <div className={styles.calls}>
               <CallDisplay calledNumbers={snapshot.game.calledNumbers} />

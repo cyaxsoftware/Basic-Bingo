@@ -118,7 +118,12 @@ export function ControllerApp({ api, store }: ControllerAppProps) {
       {view === 'game' ? (
         <div className={styles.panel} role="tabpanel" id={panelId} aria-labelledby={modeTabId(mode)}>
           {mode === 'gameBoard' ? (
-            <BallGrid calledNumbers={calledNumbers} onToggle={actions.toggleBall} />
+            <BallGrid
+              calledNumbers={calledNumbers}
+              disabledRows={snapshot.game.disabledRows}
+              onToggle={actions.toggleBall}
+              onToggleRow={actions.toggleRow}
+            />
           ) : (
             <ModePlaceholder mode={mode} />
           )}

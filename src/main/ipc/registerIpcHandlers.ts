@@ -10,7 +10,7 @@
  * channels are removed first, so a hot restart or accidental second call
  * cannot throw "Attempted to register a second handler".
  */
-import { isValidBall } from '../../shared/game/balls';
+import { isBingoLetter, isValidBall } from '../../shared/game/balls';
 import { isValidPatternId } from '../../shared/patterns';
 import { isPresentationMode } from '../../shared/presentation/presentationMode';
 import {
@@ -104,6 +104,12 @@ export function registerIpcHandlers(ipc: IpcMainLike, deps: IpcDependencies): vo
     if (!isValidBall(ball)) return fail(`Invalid ball ${String(ball)}: expected an integer from 1 to 75.`);
     return store.dispatch({ type: 'toggleBall', ball });
   });
+
+  command(IpcChannel.toggleRowDisabled, (letter) =>
+    isBingoLetter(letter)
+      ? store.dispatch({ type: 'toggleRowDisabled', letter })
+      : fail('Invalid row: expected B, I, N, G or O.'),
+  );
 
   command(IpcChannel.showBingoBanner, () => store.dispatch({ type: 'showBingoBanner' }));
 

@@ -24,7 +24,10 @@ class FakePersister implements StatePersister {
 
 function createStore(calledNumbers: number[] = []) {
   const persister = new FakePersister();
-  const initialData = { ...createDefaultAppData(), game: { calledNumbers, bingoBannerVisible: false } };
+  const initialData = {
+    ...createDefaultAppData(),
+    game: { calledNumbers, bingoBannerVisible: false, disabledRows: [] },
+  };
   const store = new AppStore({ initialData, persister });
   const snapshots: AppSnapshot[] = [];
   store.subscribe((s) => snapshots.push(s));
@@ -362,7 +365,11 @@ describe('AppStore patterns', () => {
 
     store.dispatch({ type: 'newGame' });
 
-    expect(store.getSnapshot().game).toEqual({ calledNumbers: [], bingoBannerVisible: false });
+    expect(store.getSnapshot().game).toEqual({
+      calledNumbers: [],
+      bingoBannerVisible: false,
+      disabledRows: [],
+    });
     expect(store.getSnapshot().activePattern).toBe(patternBefore);
     expect(store.getSnapshot().patternLibrary).toBe(libraryBefore);
     expect(store.getSnapshot().activePattern).toMatchObject({ title: 'Big L plus', editedFromLibrary: true });

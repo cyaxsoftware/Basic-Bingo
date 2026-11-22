@@ -103,6 +103,7 @@ test('renderers are sandboxed and the Presentation bridge is read-only', { tag: 
     'showBingoBanner',
     'showPatternOnProjector',
     'toggleBall',
+    'toggleRowDisabled',
     'updateSavedPattern',
   ]);
 

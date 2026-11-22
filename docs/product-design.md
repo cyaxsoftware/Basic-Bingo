@@ -55,6 +55,7 @@ No internet connection, cloud database, user account, local HTTP server, or sepa
 - In Game Board mode, allocate the largest possible area to an interactive 5-by-15 number layout, grouped into five rows of 15, with B/I/N/G/O row indicators.
 - Visible current call, last five *previous* calls, and called-ball count.
 - A prominent **BINGO CALLED** button. When the banner is active, show an equally prominent **Dismiss BINGO Banner** control.
+- Tapping a row letter blacks that row out (see 5.2a); the letters are drawn in their ball colors.
 - Pattern selection, active pattern grid and editable name. Tapping pattern cells edits the active pattern directly. The default UI can use a compact pattern panel that expands for editing, but editing must remain accessible without taking the operator away from the active game screen.
 - **New Game** is secondary and confirmation-protected. Do not place it where accidental touch is likely.
 
@@ -144,9 +145,12 @@ The projector must reflect a single canonical state transaction. Both windows re
 
 ### 5.2 Reset
 - `NEW_GAME` requires an explicit confirmation that identifies what will be cleared.
-- Clear `calledNumbers` and `bingoBannerVisible`; retain `activePattern` including title and in-game edits.
+- Clear `calledNumbers` and `bingoBannerVisible`; retain `activePattern` including title and in-game edits, and the blacked-out rows (5.4a).
 - Reset must **not** delete saved patterns or media collections.
 - **Proposed default:** leave the selected presentation mode unchanged. If the operator resets during a slideshow, they can manually return to Game Board when ready.
+
+### 5.2a Blacked-out rows
+Some games do not use every row. Tapping a row's letter (B, I, N, G or O) on the Controller blacks that row out on both screens (black discs, numbers barely visible, a quiet letter), and tapping it again brings it back. It is a **visual reminder only**: it never changes which balls can be called (a ball in a blacked-out row can still be tapped, and called balls stay called), and it is a separate game field, `disabledRows`, in B, I, N, G, O order. It is persisted, survives a restart, and is kept by New Game like the pattern.
 
 ### 5.3 BINGO verification banner
 - `SHOW_BINGO_BANNER` sets visibility true, idempotently.

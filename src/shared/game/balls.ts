@@ -11,6 +11,10 @@ export const BALLS_PER_LETTER = 15;
 export const BINGO_LETTERS = ['B', 'I', 'N', 'G', 'O'] as const;
 export type BingoLetter = (typeof BINGO_LETTERS)[number];
 
+export function isBingoLetter(value: unknown): value is BingoLetter {
+  return typeof value === 'string' && (BINGO_LETTERS as readonly string[]).includes(value);
+}
+
 /** A validated ball number in 1..75. Use {@link isValidBall} to narrow. */
 export type BallNumber = number;
 

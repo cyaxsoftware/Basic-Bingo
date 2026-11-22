@@ -163,3 +163,55 @@ test('pushing the pattern shows it on the projector; later edits wait for the ne
   await expect(restored.getByRole('region', { name: 'Winning pattern' })).toHaveCount(0);
   await second.app.close();
 });
+
+test('blacking out a row shows on both screens, is only a reminder, and survives a restart and New Game', async () => {
+  const first = await launchApp(userDataDir);
+  await first.controller.getByRole('button', { name: 'Preview' }).click();
+  const projector = await waitForPresentationWindow(first.app);
+  const projectorRow = (letter: string) => projector.getByTestId(`board-row-${letter}`);
+  await expect(projectorRow('N')).toHaveAttribute('data-disabled', 'false');
+
+  await tapBall(first.controller, 'B-3');
+  await first.controller.getByRole('button', { name: 'Black out N row' }).click();
+  await expect(first.controller.getByRole('group', { name: 'N row' })).toHaveAttribute(
+    'data-disabled',
+    'true',
+  );
+  await expect(projectorRow('N')).toHaveAttribute('data-disabled', 'true');
+  await expect(projectorRow('B')).toHaveAttribute('data-disabled', 'false');
+
+  // Only a reminder: the calls are untouched, and a ball in that row can still be called.
+  await expect(first.controller.getByTestId('called-count')).toHaveText('Called: 1 of 75');
+  await tapBall(first.controller, 'N-33');
+  await expect(first.controller.getByTestId('called-count')).toHaveText('Called: 2 of 75');
+
+  // Set BINGO_SCREENSHOT_DIR to keep a picture of both screens for review.
+  const keepIn = process.env['BINGO_SCREENSHOT_DIR'];
+  if (keepIn) {
+    await first.controller.waitForTimeout(300);
+    await writeFile(path.join(keepIn, 'rows-controller.png'), await first.controller.screenshot());
+    await writeFile(path.join(keepIn, 'rows-projector.png'), await projector.screenshot());
+  }
+
+  // New Game clears the calls and keeps the blacked-out row, like the pattern.
+  await first.controller.getByRole('button', { name: 'New Game' }).click();
+  await first.controller.getByRole('button', { name: 'Start New Game' }).click();
+  await expect(first.controller.getByTestId('called-count')).toHaveText('Called: 0 of 75');
+  await expect(projectorRow('N')).toHaveAttribute('data-disabled', 'true');
+  await first.app.close();
+
+  // Restart: still blacked out on both screens.
+  const second = await launchApp(userDataDir);
+  await expect(second.controller.getByRole('group', { name: 'N row' })).toHaveAttribute(
+    'data-disabled',
+    'true',
+  );
+  await second.controller.getByRole('button', { name: 'Preview' }).click();
+  const restored = await waitForPresentationWindow(second.app);
+  await expect(restored.getByTestId('board-row-N')).toHaveAttribute('data-disabled', 'true');
+
+  // Tapping the letter again brings the row back, everywhere.
+  await second.controller.getByRole('button', { name: 'Black out N row' }).click();
+  await expect(restored.getByTestId('board-row-N')).toHaveAttribute('data-disabled', 'false');
+  await second.app.close();
+});

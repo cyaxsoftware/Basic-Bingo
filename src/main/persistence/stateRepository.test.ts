@@ -9,7 +9,7 @@ import { JsonStateRepository, type RepositoryFileSystem } from './stateRepositor
 function stateWith(calledNumbers: number[], preferredDisplayId: number | null = null): PersistedState {
   return {
     ...createDefaultPersistedState(),
-    game: { calledNumbers, bingoBannerVisible: false },
+    game: { calledNumbers, bingoBannerVisible: false, disabledRows: [] },
     settings: { preferredDisplayId },
   };
 }

@@ -58,3 +58,13 @@
   color: var(--ball-ink);
   font-weight: 800;
 }
+
+/* A row this game does not use: black discs with barely-there numbers, and a quiet letter. */
+.row[data-disabled='true'] .cell {
+  background: var(--stage-blackout);
+  color: var(--stage-blackout-text);
+}
+
+.row[data-disabled='true'] .letter {
+  color: var(--stage-blackout-text);
+}

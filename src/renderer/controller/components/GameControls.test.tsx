@@ -5,7 +5,10 @@ import { createSnapshotStore } from '../../shared/snapshotStore';
 import { createFakeBingoApi, makeSnapshot } from '../../test/fakeBingoApi';
 import { ControllerApp } from '../ControllerApp';
 
-function renderController(game = { calledNumbers: [3, 17, 9], bingoBannerVisible: false }, extra = {}) {
+function renderController(
+  game = { calledNumbers: [3, 17, 9], bingoBannerVisible: false, disabledRows: [] },
+  extra = {},
+) {
   const api = createFakeBingoApi(makeSnapshot({ game, ...extra }));
   render(<ControllerApp api={api} store={createSnapshotStore(api)} />);
   return api;
@@ -19,7 +22,11 @@ describe('BINGO banner controls', () => {
     await userEvent.click(await button('BINGO CALLED'));
 
     expect(api.showBingoBanner).toHaveBeenCalledTimes(1);
-    expect(api.current().game).toEqual({ calledNumbers: [3, 17, 9], bingoBannerVisible: true });
+    expect(api.current().game).toEqual({
+      calledNumbers: [3, 17, 9],
+      bingoBannerVisible: true,
+      disabledRows: [],
+    });
     expect(await button('Dismiss BINGO Banner')).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'BINGO CALLED' })).not.toBeInTheDocument();
     const status = screen.getByText('BINGO banner enabled');
@@ -45,34 +52,40 @@ describe('BINGO banner controls', () => {
   });
 
   it('dismisses the banner and leaves the calls and current call alone', async () => {
-    const api = renderController({ calledNumbers: [3, 17, 9], bingoBannerVisible: true });
+    const api = renderController({ calledNumbers: [3, 17, 9], bingoBannerVisible: true, disabledRows: [] });
     await userEvent.click(await button('Dismiss BINGO Banner'));
 
     expect(api.dismissBingoBanner).toHaveBeenCalledTimes(1);
-    expect(api.current().game).toEqual({ calledNumbers: [3, 17, 9], bingoBannerVisible: false });
+    expect(api.current().game).toEqual({
+      calledNumbers: [3, 17, 9],
+      bingoBannerVisible: false,
+      disabledRows: [],
+    });
     expect(await button('BINGO CALLED')).toBeInTheDocument();
     expect(within(screen.getByTestId('current-call')).getByRole('img')).toHaveAccessibleName('B-9');
   });
 
   it('keeps the banner up while balls are tapped; only Dismiss hides it', async () => {
-    const api = renderController({ calledNumbers: [3], bingoBannerVisible: true });
+    const api = renderController({ calledNumbers: [3], bingoBannerVisible: true, disabledRows: [] });
     await userEvent.click(await button(/^I-17,/));
     await userEvent.click(await button(/^B-3,/));
-    expect(api.current().game).toEqual({ calledNumbers: [17], bingoBannerVisible: true });
+    expect(api.current().game).toEqual({ calledNumbers: [17], bingoBannerVisible: true, disabledRows: [] });
     expect(screen.getByRole('button', { name: 'Dismiss BINGO Banner' })).toBeInTheDocument();
   });
 
   it('reflects a banner raised elsewhere (snapshot is the source of truth)', async () => {
     const api = renderController();
     await button('BINGO CALLED');
-    api.push(makeSnapshot({ revision: 5, game: { calledNumbers: [3], bingoBannerVisible: true } }));
+    api.push(
+      makeSnapshot({ revision: 5, game: { calledNumbers: [3], bingoBannerVisible: true, disabledRows: [] } }),
+    );
     expect(await button('Dismiss BINGO Banner')).toBeInTheDocument();
   });
 });
 
 describe('New Game', () => {
   it('opens a confirmation that names what is cleared and what is kept, without clearing anything', async () => {
-    const api = renderController({ calledNumbers: [3, 17, 9], bingoBannerVisible: true });
+    const api = renderController({ calledNumbers: [3, 17, 9], bingoBannerVisible: true, disabledRows: [] });
     await userEvent.click(await button('New Game'));
 
     const dialog = screen.getByRole('dialog', { name: 'Start a new game?' });
@@ -87,19 +100,23 @@ describe('New Game', () => {
   });
 
   it('says so plainly when there is nothing to clear', async () => {
-    renderController({ calledNumbers: [], bingoBannerVisible: false });
+    renderController({ calledNumbers: [], bingoBannerVisible: false, disabledRows: [] });
     await userEvent.click(await button('New Game'));
     expect(screen.getByRole('dialog')).toHaveTextContent('nothing yet');
   });
 
   it('Cancel changes nothing and returns focus to New Game', async () => {
-    const api = renderController({ calledNumbers: [3, 17, 9], bingoBannerVisible: true });
+    const api = renderController({ calledNumbers: [3, 17, 9], bingoBannerVisible: true, disabledRows: [] });
     await userEvent.click(await button('New Game'));
     await userEvent.click(screen.getByRole('button', { name: 'Cancel' }));
 
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
     expect(api.newGame).not.toHaveBeenCalled();
-    expect(api.current().game).toEqual({ calledNumbers: [3, 17, 9], bingoBannerVisible: true });
+    expect(api.current().game).toEqual({
+      calledNumbers: [3, 17, 9],
+      bingoBannerVisible: true,
+      disabledRows: [],
+    });
     expect(screen.getByRole('button', { name: 'New Game' })).toHaveFocus();
   });
 
@@ -113,14 +130,14 @@ describe('New Game', () => {
 
   it('Confirm sends newGame: calls and banner clear, the presentation mode stays', async () => {
     const api = renderController(
-      { calledNumbers: [3, 17, 9], bingoBannerVisible: true },
+      { calledNumbers: [3, 17, 9], bingoBannerVisible: true, disabledRows: [] },
       { presentationMode: 'slideshow' },
     );
     await userEvent.click(await button('New Game'));
     await userEvent.click(screen.getByRole('button', { name: 'Start New Game' }));
 
     expect(api.newGame).toHaveBeenCalledTimes(1);
-    expect(api.current().game).toEqual({ calledNumbers: [], bingoBannerVisible: false });
+    expect(api.current().game).toEqual({ calledNumbers: [], bingoBannerVisible: false, disabledRows: [] });
     expect(api.current().presentationMode).toBe('slideshow');
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
     expect(await screen.findByText('No calls yet')).toBeInTheDocument();

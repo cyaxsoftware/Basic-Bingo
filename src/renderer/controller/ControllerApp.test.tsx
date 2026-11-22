@@ -62,4 +62,35 @@ describe('ControllerApp', () => {
     await userEvent.click(screen.getByRole('button', { name: 'Dismiss' }));
     expect(api.dismissNotice).toHaveBeenCalledWith('lost');
   });
+
+  it('blacks out a row from its letter, brings it back, and never touches the calls', async () => {
+    const api = renderController();
+    await screen.findByRole('group', { name: 'N row' });
+    await tap(/^N-33,/);
+
+    await userEvent.click(screen.getByRole('button', { name: 'Black out N row' }));
+    expect(api.current().game.disabledRows).toEqual(['N']);
+    expect(api.current().game.calledNumbers).toEqual([33]);
+    expect(screen.getByRole('group', { name: 'N row' })).toHaveAttribute('data-disabled', 'true');
+    expect(screen.getByRole('button', { name: 'Black out N row' })).toHaveAttribute('aria-pressed', 'true');
+
+    // The row can still be used if the operator taps it: this is a reminder, not a lock.
+    await tap(/^N-34,/);
+    expect(api.current().game.calledNumbers).toEqual([33, 34]);
+
+    await userEvent.click(screen.getByRole('button', { name: 'Black out N row' }));
+    expect(api.current().game.disabledRows).toEqual([]);
+    expect(screen.getByRole('group', { name: 'N row' })).toHaveAttribute('data-disabled', 'false');
+  });
+
+  it('keeps the blacked-out rows through New Game', async () => {
+    const api = renderController();
+    await screen.findByRole('group', { name: 'B row' });
+    await tap(/^B-3,/);
+    await userEvent.click(screen.getByRole('button', { name: 'Black out O row' }));
+    await userEvent.click(screen.getByRole('button', { name: 'New Game' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Start New Game' }));
+    expect(api.current().game.calledNumbers).toEqual([]);
+    expect(api.current().game.disabledRows).toEqual(['O']);
+  });
 });

@@ -1,4 +1,5 @@
 import { useCallback, useMemo, useState } from 'react';
+import type { BingoLetter } from '../../shared/game/balls';
 import type { CommandResult, ControllerApi } from '../../shared/ipc/contract';
 import type { PresentationMode } from '../../shared/presentation/presentationMode';
 
@@ -6,6 +7,8 @@ export type UnsavedEdits = 'update' | 'saveAsNew' | 'discard';
 
 export interface ControllerActions {
   toggleBall(ball: number): void;
+  /** Black out (or restore) a row this game does not use. Visual only. */
+  toggleRow(letter: BingoLetter): void;
   showBingoBanner(): void;
   dismissBingoBanner(): void;
   /** Clears the game. Callers must have confirmed with the operator first. */
@@ -50,6 +53,7 @@ export function useControllerActions(api: ControllerApi): ControllerActions {
   return useMemo(
     () => ({
       toggleBall: (ball: number) => run(() => api.toggleBall(ball)),
+      toggleRow: (letter: BingoLetter) => run(() => api.toggleRowDisabled(letter)),
       showBingoBanner: () => run(() => api.showBingoBanner()),
       dismissBingoBanner: () => run(() => api.dismissBingoBanner()),
       newGame: () => run(() => api.newGame()),

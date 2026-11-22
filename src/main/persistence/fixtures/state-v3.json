@@ -3,7 +3,8 @@
   "savedAt": "2026-11-22T21:30:00.000Z",
   "game": {
     "calledNumbers": [3, 17, 9, 31, 52, 75],
-    "bingoBannerVisible": true
+    "bingoBannerVisible": true,
+    "disabledRows": ["N"]
   },
   "presentation": {
     "mode": "slideshow"

@@ -15,15 +15,21 @@ export interface BoardCell {
 
 export interface BoardRow {
   readonly letter: BingoLetter;
+  /** The operator blacked this row out (this game does not use it). Visual only. */
+  readonly disabled: boolean;
   readonly cells: readonly BoardCell[];
 }
 
 /** Five rows (B, I, N, G, O) of 15 cells each, with per-ball status. */
-export function buildBoardRows(calledNumbers: CalledNumbers): BoardRow[] {
+export function buildBoardRows(
+  calledNumbers: CalledNumbers,
+  disabledRows: readonly BingoLetter[] = [],
+): BoardRow[] {
   const called = new Set(calledNumbers);
   const current = currentCall(calledNumbers);
   return BINGO_LETTERS.map((letter) => ({
     letter,
+    disabled: disabledRows.includes(letter),
     cells: ballsForLetter(letter).map((ball) => ({
       ball,
       letter,

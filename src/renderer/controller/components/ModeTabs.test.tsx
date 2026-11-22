@@ -88,7 +88,7 @@ describe('ModeTabs', () => {
 
 describe('mode tabs in the Controller', () => {
   function renderController(extra = {}) {
-    const game = { calledNumbers: [3, 17, 9], bingoBannerVisible: false };
+    const game = { calledNumbers: [3, 17, 9], bingoBannerVisible: false, disabledRows: [] };
     const api = createFakeBingoApi(makeSnapshot({ game, ...extra }));
     render(<ControllerApp api={api} store={createSnapshotStore(api)} />);
     return api;

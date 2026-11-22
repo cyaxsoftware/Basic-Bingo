@@ -8,6 +8,9 @@
   --uncalled-text: #c7ccd4;
   /* Uncalled board numbers: plain and quieter than the called balls, but still readable from the back (5:1). */
   --stage-dim: #8b929c;
+  /* A blacked-out row: solid black discs on the panel, with numbers only just visible. */
+  --stage-blackout: #000000;
+  --stage-blackout-text: #3a3f47;
   /* The winning pattern: lit squares red on white, as the audience already knows it. */
   --pattern-on: #f44336;
   --pattern-off: #ffffff;

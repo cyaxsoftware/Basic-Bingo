@@ -41,14 +41,14 @@ const DEFAULT_PATTERNS = { library: createDefaultLibrary(), active: blankActiveP
 
 // A V1 file predates the banner, so it must come back with the banner hidden.
 const V1_FIXTURE_APP_DATA: AppData = {
-  game: { calledNumbers: [3, 17, 9, 31, 52, 75], bingoBannerVisible: false },
+  game: { calledNumbers: [3, 17, 9, 31, 52, 75], bingoBannerVisible: false, disabledRows: [] },
   presentation: { mode: 'gameBoard' },
   patterns: DEFAULT_PATTERNS,
   settings: { preferredDisplayId: 2779098405 },
 };
 
 const V2_FIXTURE_APP_DATA: AppData = {
-  game: { calledNumbers: [3, 17, 9, 31, 52, 75], bingoBannerVisible: true },
+  game: { calledNumbers: [3, 17, 9, 31, 52, 75], bingoBannerVisible: true, disabledRows: [] },
   presentation: { mode: 'slideshow' },
   patterns: DEFAULT_PATTERNS,
   settings: { preferredDisplayId: 2779098405 },
@@ -104,7 +104,7 @@ describe('V1 save format is frozen (audit finding 5, #22)', () => {
         state: {
           schemaVersion: 3,
           savedAt: '2026-01-01T00:00:00.000Z',
-          game: { calledNumbers: expectedCalls, bingoBannerVisible: false },
+          game: { calledNumbers: expectedCalls, bingoBannerVisible: false, disabledRows: [] },
           presentation: { mode: 'gameBoard' },
           patterns: createDefaultPersistedState().patterns,
           settings: { preferredDisplayId: null },
@@ -156,7 +156,11 @@ describe('V2 save format is frozen (released in milestone 2)', () => {
     const parsed = parsePersistedState(stateV2Fixture);
     if (!parsed.ok) throw new Error(parsed.error);
     expect(parsed.state.schemaVersion).toBe(3);
-    expect(parsed.state.game).toEqual({ calledNumbers: [3, 17, 9, 31, 52, 75], bingoBannerVisible: true });
+    expect(parsed.state.game).toEqual({
+      calledNumbers: [3, 17, 9, 31, 52, 75],
+      bingoBannerVisible: true,
+      disabledRows: [],
+    });
     expect(parsed.state.presentation.mode).toBe('slideshow');
     expect(parsed.state.patterns.library.map((p) => p.title)).toEqual([
       'Four Corners',
@@ -191,7 +195,7 @@ describe('V2 save format is frozen (released in milestone 2)', () => {
     for (const bingoBannerVisible of [undefined, 'yes', 1, null]) {
       const result = parsePersistedState({
         schemaVersion: 2,
-        game: { calledNumbers: [1], bingoBannerVisible },
+        game: { calledNumbers: [1], bingoBannerVisible, disabledRows: [] },
       });
       expect(result.ok && result.state.game.bingoBannerVisible).toBe(false);
     }
@@ -223,6 +227,7 @@ describe('V3 save format (milestone 3, unreleased)', () => {
     expect(patterns.shown?.title).toBe('Big L');
     expect(patterns.shown?.cells[CENTER]).toBe(false);
     expect(game.bingoBannerVisible).toBe(true);
+    expect(game.disabledRows).toEqual(['N']);
     expect(presentation.mode).toBe('slideshow');
   });
 
@@ -270,14 +275,14 @@ describe('V3 save format (milestone 3, unreleased)', () => {
     }
   });
 
-  it('writes the banner, calls and patterns, and nothing else from the game', () => {
+  it('writes the banner, calls, blacked-out rows and patterns, and nothing else from the game', () => {
     const grown = {
       ...createDefaultAppData(),
-      game: { calledNumbers: [1, 2], bingoBannerVisible: true, somethingNew: 1 },
+      game: { calledNumbers: [1, 2], bingoBannerVisible: true, disabledRows: ['B'], somethingNew: 1 },
       presentation: { mode: 'countdown' },
     } as AppData;
     const written = toPersistedState(grown, new Date('2026-01-01T00:00:00Z'));
-    expect(written.game).toEqual({ calledNumbers: [1, 2], bingoBannerVisible: true });
+    expect(written.game).toEqual({ calledNumbers: [1, 2], bingoBannerVisible: true, disabledRows: ['B'] });
     expect(written.presentation).toEqual({ mode: 'countdown' });
     expect(written.savedAt).toBe('2026-01-01T00:00:00.000Z');
     expect(written.patterns).toEqual(createDefaultPersistedState().patterns);
@@ -292,7 +297,7 @@ describe('V3 save format (milestone 3, unreleased)', () => {
   describe('damaged pattern data never costs the game', () => {
     const document = (patterns: unknown) => ({
       schemaVersion: 3,
-      game: { calledNumbers: [3, 9], bingoBannerVisible: true },
+      game: { calledNumbers: [3, 9], bingoBannerVisible: true, disabledRows: [] },
       patterns,
     });
     const good = (id: string, title = id) => ({
@@ -478,12 +483,46 @@ describe('V3 save format (milestone 3, unreleased)', () => {
   });
 });
 
+describe('blacked-out rows in the save file', () => {
+  const document = (game: Record<string, unknown>) => ({
+    schemaVersion: 3,
+    game: { calledNumbers: [3], bingoBannerVisible: false, ...game },
+    patterns: undefined,
+  });
+  const load = (game: Record<string, unknown>) => {
+    const result = parsePersistedState(document(game));
+    if (!result.ok) throw new Error(result.error);
+    return result.state.game.disabledRows;
+  };
+
+  it('round-trips through app data', () => {
+    const data = {
+      ...createDefaultAppData(),
+      game: { ...createDefaultAppData().game, disabledRows: ['B', 'O'] as const },
+    };
+    expect(fromPersistedState(toPersistedState(data)).game.disabledRows).toEqual(['B', 'O']);
+  });
+
+  it('reads them from the file, and none when the field is missing (an older V3 file or a V2 file)', () => {
+    expect(load({ disabledRows: ['I', 'N'] })).toEqual(['I', 'N']);
+    expect(load({})).toEqual([]);
+  });
+
+  it.each(['B', 7, null, { B: true }, [1, 2], ['X', 'o']])('treats %j as no blacked-out rows', (rows) => {
+    expect(load({ disabledRows: rows })).toEqual([]);
+  });
+
+  it('keeps only the real letters, once each, in order', () => {
+    expect(load({ disabledRows: ['O', 'X', 'B', 'B', 4] })).toEqual(['B', 'O']);
+  });
+});
+
 describe('parsePersistedState', () => {
   it('accepts a valid current document', () => {
     const result = parsePersistedState({
       schemaVersion: 3,
       savedAt: '2026-01-01T00:00:00.000Z',
-      game: { calledNumbers: [3, 17, 9], bingoBannerVisible: true },
+      game: { calledNumbers: [3, 17, 9], bingoBannerVisible: true, disabledRows: [] },
       presentation: { mode: 'singleImage' },
       patterns: createDefaultPersistedState().patterns,
       settings: { preferredDisplayId: 12 },
@@ -494,7 +533,7 @@ describe('parsePersistedState', () => {
       state: {
         schemaVersion: 3,
         savedAt: '2026-01-01T00:00:00.000Z',
-        game: { calledNumbers: [3, 17, 9], bingoBannerVisible: true },
+        game: { calledNumbers: [3, 17, 9], bingoBannerVisible: true, disabledRows: [] },
         presentation: { mode: 'singleImage' },
         patterns: createDefaultPersistedState().patterns,
         settings: { preferredDisplayId: 12 },
@@ -530,7 +569,7 @@ describe('parsePersistedState', () => {
     expect(state).toMatchObject({
       schemaVersion: 3,
       savedAt: '2026-01-01T00:00:00.000Z',
-      game: { calledNumbers: [], bingoBannerVisible: false },
+      game: { calledNumbers: [], bingoBannerVisible: false, disabledRows: [] },
       presentation: { mode: 'gameBoard' },
       settings: { preferredDisplayId: null },
     });

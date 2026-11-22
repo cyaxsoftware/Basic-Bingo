@@ -10,6 +10,8 @@
  */
 .grid {
   --floor: 44px;
+  --blackout: #111827;
+  --blackout-text: #6b7280;
   --col: max(var(--floor), calc(100cqw / 16));
   /* --row-cap comes from the layout, which sizes the board's grid row from the same number. */
   --row: clamp(var(--floor), calc(100cqh / 5), var(--row-cap, 80px));
@@ -37,12 +39,43 @@
   align-items: stretch;
 }
 
+/*
+ * The row letter is a button (tap it to black the row out), as large as a ball cell. It is drawn in the ball's
+ * own color; the darker ring shade keeps the yellow O and the white N readable on the white panel.
+ */
 .letter {
   display: grid;
   place-items: center;
-  color: var(--text);
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--ball-ring);
   font-size: calc(var(--chip) * 0.8);
   font-weight: 800;
+  cursor: pointer;
+}
+
+.letter:active {
+  transform: scale(0.92);
+}
+
+.letter:focus-visible {
+  outline: 3px solid var(--accent);
+  outline-offset: -3px;
+}
+
+/* A blacked-out row: its letter is struck through and quiet, and every ball in it is a solid dark disc. */
+.letter[aria-pressed='true'] {
+  color: var(--text-muted);
+  text-decoration: line-through;
+  text-decoration-thickness: 0.08em;
+}
+
+.row[data-disabled='true'] .ball .chip {
+  background: var(--blackout);
+  border-color: var(--blackout);
+  color: var(--blackout-text);
+  box-shadow: none;
 }
 
 .ball {

@@ -24,8 +24,9 @@
  * (presentation window, displays, notices) is intentionally excluded.
  */
 import { z } from 'zod';
+import type { BingoLetter } from '../../shared/game/balls';
 import { normalizeCalledNumbers } from '../../shared/game/calledNumbers';
-import type { GameState } from '../../shared/game/gameState';
+import { normalizeDisabledRows, type GameState } from '../../shared/game/gameState';
 import {
   blankActivePattern,
   createDefaultLibrary,
@@ -100,6 +101,8 @@ export interface PersistedGameV3 {
   /** Ordered, unique balls 1..75; last element is the current call. */
   readonly calledNumbers: readonly number[];
   readonly bingoBannerVisible: boolean;
+  /** Rows blacked out for this game. Added during M3, while V3 was unreleased; a missing field means none. */
+  readonly disabledRows: readonly BingoLetter[];
 }
 
 export interface PersistedPresentationV3 {
@@ -158,6 +161,8 @@ const PersistedStateV3Schema = z.object({
   game: z.object({
     calledNumbers: z.array(z.unknown()),
     bingoBannerVisible: z.boolean().catch(false),
+    // Checked letter by letter in normalizeDisabledRows; anything else just means no row is blacked out.
+    disabledRows: z.unknown().catch([]),
   }),
   // An unknown mode (e.g. from a hand-edited file) falls back to the board rather than losing the game.
   presentation: z
@@ -219,7 +224,7 @@ export function createDefaultPersistedState(now: Date = new Date()): PersistedSt
   return {
     schemaVersion: 3,
     savedAt: now.toISOString(),
-    game: { calledNumbers: [], bingoBannerVisible: false },
+    game: { calledNumbers: [], bingoBannerVisible: false, disabledRows: [] },
     presentation: { mode: DEFAULT_PRESENTATION_MODE },
     patterns: defaultPersistedPatterns(),
     settings: { preferredDisplayId: null },
@@ -239,6 +244,7 @@ export function toPersistedState(data: AppData, now: Date = new Date()): Persist
     game: {
       calledNumbers: [...data.game.calledNumbers],
       bingoBannerVisible: data.game.bingoBannerVisible,
+      disabledRows: [...data.game.disabledRows],
     },
     presentation: { mode: data.presentation.mode },
     patterns: toPersistedPatterns(data.patterns),
@@ -251,6 +257,7 @@ export function fromPersistedState(document: PersistedState): AppData {
   const game: GameState = {
     calledNumbers: [...document.game.calledNumbers],
     bingoBannerVisible: document.game.bingoBannerVisible,
+    disabledRows: [...document.game.disabledRows],
   };
   const library: readonly Pattern[] = document.patterns.library.map((pattern) => ({
     ...pattern,
@@ -442,7 +449,11 @@ export function parsePersistedState(raw: unknown): ParseResult {
     state: {
       schemaVersion: 3,
       savedAt: parsed.data.savedAt,
-      game: { calledNumbers, bingoBannerVisible: parsed.data.game.bingoBannerVisible },
+      game: {
+        calledNumbers,
+        bingoBannerVisible: parsed.data.game.bingoBannerVisible,
+        disabledRows: normalizeDisabledRows(parsed.data.game.disabledRows),
+      },
       presentation: { mode: parsed.data.presentation.mode },
       patterns,
       settings: { preferredDisplayId: parsed.data.settings.preferredDisplayId },
