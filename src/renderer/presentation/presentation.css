@@ -1,0 +1,17 @@
+/* Presentation window globals: dark, high-contrast, readable from the back of a hall. */
+:root {
+  --stage: #121417;
+  --stage-panel: #1b1e23;
+  --stage-text: #f3f4f6;
+  --stage-muted: #9ca3af;
+  --uncalled-fill: #2a2f37;
+  --uncalled-text: #c7ccd4;
+  --current-ring: #ffffff;
+}
+
+body {
+  background: var(--stage);
+  color: var(--stage-text);
+  overflow: hidden;
+  user-select: none;
+}

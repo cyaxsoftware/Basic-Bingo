@@ -1,0 +1,36 @@
+/* Controller window globals: light, high-contrast, touch-first. */
+:root {
+  --surface: #f4f5f7;
+  --panel: #ffffff;
+  --border: #d5d9e0;
+  --text: #111827;
+  --text-muted: #4b5563;
+  --accent: #1d4ed8;
+  --accent-text: #ffffff;
+  --danger: #b91c1c;
+  --warning-bg: #fef3c7;
+  --warning-border: #d97706;
+  --error-bg: #fee2e2;
+  --error-border: #b91c1c;
+  --info-bg: #dbeafe;
+  --info-border: #1d4ed8;
+  /* Uncalled balls are grey, not white, so a called white N ball stands out. */
+  --uncalled-bg: #e8ebf0;
+  --uncalled-border: #e8ebf0;
+  --uncalled-text: #374151;
+  --current-ring: #111827;
+}
+
+body {
+  background: var(--surface);
+  color: var(--text);
+  /* No text selection or iOS-style callouts from long presses on a touchscreen. */
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+button {
+  font: inherit;
+  /* Removes the double-tap-to-zoom delay on touch. */
+  touch-action: manipulation;
+}

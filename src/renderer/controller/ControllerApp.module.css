@@ -1,0 +1,48 @@
+.layout {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  padding: var(--space-3) var(--space-4);
+  gap: var(--space-3);
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+  flex-wrap: wrap;
+}
+
+.title {
+  margin: 0;
+  font-size: 1.4rem;
+  font-weight: 700;
+}
+
+.main {
+  flex: 1;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 260px;
+  gap: var(--space-4);
+}
+
+/* Narrow windows (e.g. 150% scaling): summary moves above the grid rather than shrinking balls. */
+@media (max-width: 1100px) {
+  .main {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: auto 1fr;
+  }
+  .main > :last-child {
+    order: -1;
+  }
+}
+
+.message {
+  display: grid;
+  place-items: center;
+  height: 100%;
+  font-size: 1.25rem;
+  color: var(--text-muted);
+}

@@ -1,0 +1,18 @@
+{
+  // Main process, preload scripts, shared domain code and build configs.
+  // No DOM types here: main-process code must not assume a browser.
+  "extends": "./tsconfig.base.json",
+  "compilerOptions": {
+    "lib": ["ES2023"],
+    "types": ["node"]
+  },
+  "include": [
+    "src/main/**/*",
+    "src/preload/**/*",
+    "src/shared/**/*",
+    "src/types/**/*",
+    "e2e/**/*",
+    "*.mts",
+    "playwright.config.ts"
+  ]
+}

@@ -1,0 +1,26 @@
+/* Base look only. Width and font-size come from the caller's class. */
+.chip {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+  width: 2.6em;
+  aspect-ratio: 1;
+  border-radius: 50%;
+  background: var(--ball-color);
+  color: var(--ball-ink);
+  border: 0.08em solid var(--ball-ring);
+  font-weight: 800;
+  line-height: 1;
+  user-select: none;
+}
+
+.letter {
+  font-size: 0.42em;
+  opacity: 0.85;
+}
+
+.number {
+  font-size: 1em;
+}
