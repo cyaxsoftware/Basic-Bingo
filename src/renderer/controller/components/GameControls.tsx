@@ -68,8 +68,8 @@ export function NewGameControl({ calledCount, bannerVisible, onNewGame }: NewGam
             <strong>This will clear:</strong> {describeClears(calledCount, bannerVisible)}.
           </p>
           <p>
-            <strong>Kept:</strong> the winning pattern, saved patterns and images, and what the projector is
-            showing.
+            <strong>Kept:</strong> the winning pattern, saved patterns and images, and the selected
+            presentation mode.
           </p>
         </ConfirmDialog>
       ) : null}
