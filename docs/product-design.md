@@ -80,7 +80,7 @@ No internet connection, cloud database, user account, local HTTP server, or sepa
 - **Pattern look:** lit squares are red and the others white, drawn straight on the stage background. Row letters are large text in their row's color; uncalled numbers are plain and quieter than called ones but still readable (about 5:1); called numbers are filled circles.
 - 75-number board dominates the display; B/I/N/G/O letterheads and row colors clearly group numbers.
 - Uncalled numbers are visible rather than nearly black. Called numbers are filled in their conventional colors: **B blue, I red, N white, G green, O yellow**. Use dark numerals within filled circles for readability, subject to contrast checks.
-- The **current call** is shown in a larger ball display (with the white ring). On the projected board it is drawn like any other called number, with no extra border.
+- The **current call** is shown in a larger ball display, captioned CURRENT CALL, with no extra ring (its size and caption set it apart). On the projected board it is drawn like any other called number.
 - **Previous five** shows exactly up to five calls immediately preceding the current active call, newest first. The current ball is not duplicated in previous history.
 - When no calls exist, show a calm “Ready for first call” state, rather than a fake or stale number.
 - The BINGO banner overlays or occupies a substantial band, reading **BINGO CALLED — PLEASE HOLD YOUR CARDS**. Keep board context visible if possible. Banner stays until dismissed or reset.
