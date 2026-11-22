@@ -51,6 +51,11 @@ Key rules:
   but independent: changing the mode never touches the game, and a new game leaves the mode alone.
   `presentation` (window status), `displays` and `notices` are runtime-only. Future timers get their
   own sections rather than being mixed into `game`.
+- **Patterns are pure rules in `src/shared/patterns`.** The active pattern is a working COPY of a library
+  template: selecting and editing change only the copy, and the library changes only on an explicit update or
+  save-as-new. Every one of the 25 cells, the center included, is an ordinary editable cell (no free-space
+  rule). The module takes `now` and new ids as arguments, so it stays deterministic. It lives outside
+  `GameState`, like the presentation mode, so New Game cannot touch it; persisting and exposing it is a later card.
 
 ## Shared code boundaries
 
