@@ -90,7 +90,9 @@ const SCENARIO_SIZES = [
 ] as const;
 
 /** A realistic worst case for a projector's Windows monitor name. */
-const LONG_DISPLAY_LABEL = 'Epson EB-PU1008W Projector (Main Hall, Stage Left) — 1920×1080';
+const LONG_MONITOR_NAME = 'Epson EB-PU1008W Projector (Main Hall, Stage Left)';
+/** How the app labels it: the monitor name plus its physical resolution. */
+const LONG_DISPLAY_LABEL = `${LONG_MONITOR_NAME} — 1920×1080`;
 
 /** Raise the BINGO banner if asked, keep a picture, then assert the whole layout fits and is touchable. */
 async function expectLayoutFits(
@@ -174,14 +176,29 @@ for (const size of SCENARIO_SIZES) {
       await fillHistory(controller);
 
       // Projecting needs a real second monitor, which a test machine may not have, and would put a
-      // fullscreen window on the developer's screen. What matters here is how the layout copes with the
-      // long text, so put it into the real status pill and selector in the page.
+      // fullscreen window on the developer's screen. So report a synthetic projector alongside the real
+      // display (no window is opened), which gives the Controller its real selector with the long name in
+      // it on any machine, then put the long text into the status pill, which only Project would set.
+      await app.evaluate(({ BrowserWindow, screen }, name) => {
+        const own = screen.getDisplayMatching(BrowserWindow.getAllWindows()[0]!.getBounds());
+        const projector = {
+          id: 910001,
+          label: name,
+          bounds: { x: own.bounds.x + own.bounds.width, y: own.bounds.y, width: 1920, height: 1080 },
+          scaleFactor: 1,
+          internal: false,
+        } as unknown as typeof own;
+        screen.getAllDisplays = () => [own, projector];
+      }, LONG_MONITOR_NAME);
+      await controller.getByRole('button', { name: 'Refresh displays' }).click();
+      // Fail loudly if the selector is missing: without it this would quietly test the single-display hint.
+      const selector = controller.getByRole('combobox');
+      await expect(selector).toBeVisible();
+      await expect(selector.locator('option')).toHaveText(LONG_DISPLAY_LABEL);
+      await expect(controller.getByRole('button', { name: 'Project', exact: true })).toBeVisible();
       await controller.getByRole('status').evaluate((el, label) => {
         el.textContent = `Projecting on ${label}`;
         el.setAttribute('data-kind', 'projecting');
-      }, LONG_DISPLAY_LABEL);
-      await controller.locator('select option').evaluateAll((options, label) => {
-        for (const option of options) option.textContent = label;
       }, LONG_DISPLAY_LABEL);
 
       await expectLayoutFits(
