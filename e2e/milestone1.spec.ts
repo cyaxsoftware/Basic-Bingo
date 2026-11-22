@@ -90,6 +90,7 @@ test('renderers are sandboxed and the Presentation bridge is read-only', async (
     'onSnapshot',
     'openPresentation',
     'openPreview',
+    'setPresentationMode',
     'showBingoBanner',
     'toggleBall',
   ]);

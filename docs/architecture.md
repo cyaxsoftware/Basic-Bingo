@@ -46,9 +46,11 @@ Key rules:
   snapshot (`snapshotStore.ts`).
 - **Derived values are computed, not stored.** Current call, previous five, ball letters and board
   statuses come from `src/shared/game` selectors.
-- **Game state is separate from runtime state.** `snapshot.game` is persisted; `presentation`,
-  `displays` and `notices` are runtime-only. Future presentation modes and timers get their own
-  sections rather than being mixed into `game`.
+- **Game state is separate from display and runtime state.** `snapshot.game` and
+  `snapshot.presentationMode` (which view the audience sees; `src/shared/presentation`) are persisted
+  but independent: changing the mode never touches the game, and a new game leaves the mode alone.
+  `presentation` (window status), `displays` and `notices` are runtime-only. Future timers get their
+  own sections rather than being mixed into `game`.
 
 ## Shared code boundaries
 
@@ -71,6 +73,10 @@ and `CommandResult`. Main, preload and renderers all import it, so TypeScript ca
 | --------------------------- | ------------ | ------------------------------------------- |
 | `bingo:get-snapshot`        | any window   | current snapshot                            |
 | `bingo:toggle-ball`         | Controller   | toggle a ball                               |
+| `bingo:show-bingo-banner`   | Controller   | raise the BINGO CALLED banner (idempotent)  |
+| `bingo:dismiss-bingo-banner`| Controller   | hide the banner; calls untouched            |
+| `bingo:new-game`            | Controller   | clear calls and banner (UI must confirm)    |
+| `bingo:set-presentation-mode`| Controller  | choose the audience view                    |
 | `bingo:list-displays`       | Controller   | re-read displays (also updates snapshot)    |
 | `bingo:open-presentation`   | Controller   | fullscreen on a display id                  |
 | `bingo:open-preview`        | Controller   | resizable preview window                    |

@@ -39,6 +39,26 @@ describe('PresentationApp', () => {
     expect(screen.queryByText('Ready for first call')).not.toBeInTheDocument();
   });
 
+  it('shows a calm placeholder, not a blank screen, for modes that arrive in milestone 4', async () => {
+    const { api } = renderPresentation(makeSnapshot({ presentationMode: 'slideshow' }));
+    expect(await screen.findByRole('heading', { name: 'Break Slideshow' })).toBeInTheDocument();
+    expect(screen.getByText('Coming soon')).toBeInTheDocument();
+    expect(screen.queryByLabelText('Bingo board')).not.toBeInTheDocument();
+
+    act(() => api.push(makeSnapshot({ revision: 2, presentationMode: 'countdown' })));
+    expect(screen.getByRole('heading', { name: 'Countdown' })).toBeInTheDocument();
+  });
+
+  it('returns to the board with the game intact after a mode change', async () => {
+    const calls = { calledNumbers: [3, 17, 9], bingoBannerVisible: false };
+    const { api } = renderPresentation(makeSnapshot({ game: calls, presentationMode: 'singleImage' }));
+    await screen.findByRole('heading', { name: 'Single Image' });
+
+    act(() => api.push(makeSnapshot({ revision: 2, game: calls, presentationMode: 'gameBoard' })));
+    expect(screen.getByRole('img', { name: 'B-9' })).toBeInTheDocument();
+    expect(screen.getByTestId('board-ball-3')).toHaveAttribute('data-status', 'called');
+  });
+
   it('has no interactive controls', async () => {
     renderPresentation(makeSnapshot({ game: { calledNumbers: [1, 2, 3], bingoBannerVisible: false } }));
     await screen.findByRole('img', { name: 'B-3' });

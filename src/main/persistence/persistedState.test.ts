@@ -21,11 +21,13 @@ import { JsonStateRepository } from './stateRepository';
 // A V1 file predates the banner, so it must come back with the banner hidden.
 const V1_FIXTURE_APP_DATA: AppData = {
   game: { calledNumbers: [3, 17, 9, 31, 52, 75], bingoBannerVisible: false },
+  presentation: { mode: 'gameBoard' },
   settings: { preferredDisplayId: 2779098405 },
 };
 
 const V2_FIXTURE_APP_DATA: AppData = {
   game: { calledNumbers: [3, 17, 9, 31, 52, 75], bingoBannerVisible: true },
+  presentation: { mode: 'slideshow' },
   settings: { preferredDisplayId: 2779098405 },
 };
 
@@ -64,7 +66,7 @@ describe('V1 save format is frozen (audit finding 5, #22)', () => {
   it.each([
     ['a V1 game with calls', { calledNumbers: [4, 5] }, [4, 5]],
     ['a V1 game with no calls', { calledNumbers: [] }, []],
-  ])('migrates %s to V2 with the banner hidden', (_name, game, expectedCalls) => {
+  ])('migrates %s to V2 with the banner hidden and the board showing', (_name, game, expectedCalls) => {
     const result = parsePersistedState({
       schemaVersion: 1,
       savedAt: '2026-01-01T00:00:00.000Z',
@@ -78,6 +80,7 @@ describe('V1 save format is frozen (audit finding 5, #22)', () => {
         schemaVersion: 2,
         savedAt: '2026-01-01T00:00:00.000Z',
         game: { calledNumbers: expectedCalls, bingoBannerVisible: false },
+        presentation: { mode: 'gameBoard' },
         settings: { preferredDisplayId: null },
       },
     });
@@ -126,12 +129,14 @@ describe('V2 save format (milestone 2, unreleased)', () => {
   it('writes the banner and calls, and nothing else from the game', () => {
     const grown = {
       game: { calledNumbers: [1, 2], bingoBannerVisible: true, somethingNew: 1 },
+      presentation: { mode: 'countdown' },
       settings: { preferredDisplayId: null },
     } as AppData;
     expect(toPersistedState(grown, new Date('2026-01-01T00:00:00Z'))).toEqual({
       schemaVersion: 2,
       savedAt: '2026-01-01T00:00:00.000Z',
       game: { calledNumbers: [1, 2], bingoBannerVisible: true },
+      presentation: { mode: 'countdown' },
       settings: { preferredDisplayId: null },
     });
   });
@@ -141,6 +146,20 @@ describe('V2 save format (milestone 2, unreleased)', () => {
       expect(fromPersistedState(toPersistedState(data))).toEqual(data);
     }
   });
+
+  it.each([undefined, null, 'photos', 3, {}, { mode: 'photos' }, { mode: 7 }])(
+    'falls back to the game board for the invalid presentation section %j',
+    (presentation) => {
+      const result = parsePersistedState({
+        schemaVersion: 2,
+        game: { calledNumbers: [1] },
+        presentation,
+      });
+      expect(result.ok && result.state.presentation.mode).toBe('gameBoard');
+      // The game itself is never lost over a bad display setting.
+      expect(result.ok && result.state.game.calledNumbers).toEqual([1]);
+    },
+  );
 
   it('treats a missing or non-boolean banner flag as hidden', () => {
     for (const bingoBannerVisible of [undefined, 'yes', 1, null]) {
@@ -159,6 +178,7 @@ describe('parsePersistedState', () => {
       schemaVersion: 2,
       savedAt: '2026-01-01T00:00:00.000Z',
       game: { calledNumbers: [3, 17, 9], bingoBannerVisible: true },
+      presentation: { mode: 'singleImage' },
       settings: { preferredDisplayId: 12 },
     });
     expect(result).toEqual({
@@ -168,6 +188,7 @@ describe('parsePersistedState', () => {
         schemaVersion: 2,
         savedAt: '2026-01-01T00:00:00.000Z',
         game: { calledNumbers: [3, 17, 9], bingoBannerVisible: true },
+        presentation: { mode: 'singleImage' },
         settings: { preferredDisplayId: 12 },
       },
     });
@@ -202,6 +223,7 @@ describe('parsePersistedState', () => {
       schemaVersion: 2,
       savedAt: '2026-01-01T00:00:00.000Z',
       game: { calledNumbers: [], bingoBannerVisible: false },
+      presentation: { mode: 'gameBoard' },
       settings: { preferredDisplayId: null },
     });
   });

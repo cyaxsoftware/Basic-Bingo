@@ -5,6 +5,9 @@
     "calledNumbers": [3, 17, 9, 31, 52, 75],
     "bingoBannerVisible": true
   },
+  "presentation": {
+    "mode": "slideshow"
+  },
   "settings": {
     "preferredDisplayId": 2779098405
   }

@@ -33,6 +33,7 @@ export function createControllerApi(): ControllerApi {
     showBingoBanner: () => ipcRenderer.invoke(IpcChannel.showBingoBanner),
     dismissBingoBanner: () => ipcRenderer.invoke(IpcChannel.dismissBingoBanner),
     newGame: () => ipcRenderer.invoke(IpcChannel.newGame),
+    setPresentationMode: (mode) => ipcRenderer.invoke(IpcChannel.setPresentationMode, mode),
     listDisplays: () => ipcRenderer.invoke(IpcChannel.listDisplays),
     openPresentation: (displayId) => ipcRenderer.invoke(IpcChannel.openPresentation, displayId),
     openPreview: () => ipcRenderer.invoke(IpcChannel.openPreview),

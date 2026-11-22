@@ -48,6 +48,50 @@ describe('AppStore', () => {
     expect(persister.saved.at(-1)?.game.calledNumbers).toEqual([3, 9]);
   });
 
+  describe('presentation mode', () => {
+    it('starts on the game board and survives into the persisted document', async () => {
+      const { store, persister } = createStore();
+      expect(store.getSnapshot().presentationMode).toBe('gameBoard');
+      store.setPresentationMode('slideshow');
+      await flushPromises();
+      expect(persister.saved.at(-1)?.presentation).toEqual({ mode: 'slideshow' });
+    });
+
+    it('starts from the loaded mode', () => {
+      const persister = new FakePersister();
+      const initialData = { ...createDefaultAppData(), presentation: { mode: 'countdown' as const } };
+      const store = new AppStore({ initialData, persister });
+      expect(store.getSnapshot().presentationMode).toBe('countdown');
+      expect(store.getAppData().presentation.mode).toBe('countdown');
+    });
+
+    it('switching modes never changes a game field', () => {
+      const { store } = createStore([3, 9]);
+      store.dispatch({ type: 'showBingoBanner' });
+      const game = store.getSnapshot().game;
+      for (const mode of ['slideshow', 'singleImage', 'countdown', 'gameBoard'] as const) {
+        store.setPresentationMode(mode);
+        expect(store.getSnapshot().game).toBe(game);
+      }
+    });
+
+    it('a new game leaves the selected mode unchanged', () => {
+      const { store } = createStore([3, 9]);
+      store.setPresentationMode('slideshow');
+      store.dispatch({ type: 'newGame' });
+      expect(store.getSnapshot().game.calledNumbers).toEqual([]);
+      expect(store.getSnapshot().presentationMode).toBe('slideshow');
+    });
+
+    it('selecting the current mode again publishes and saves nothing', async () => {
+      const { store, snapshots, persister } = createStore();
+      store.setPresentationMode('gameBoard');
+      await flushPromises();
+      expect(snapshots).toHaveLength(0);
+      expect(persister.saved).toHaveLength(0);
+    });
+  });
+
   it('rejects invalid commands without changing state or revision', () => {
     const { store, snapshots, persister } = createStore([1]);
     const result = store.dispatch({ type: 'toggleBall', ball: 0 });

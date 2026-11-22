@@ -21,6 +21,7 @@ import {
   type PersistenceStatus,
   type PresentationStatus,
 } from '../../shared/ipc/contract';
+import type { PresentationMode } from '../../shared/presentation/presentationMode';
 import { toPersistedState, type AppData } from '../persistence/persistedState';
 import type { StatePersister } from '../persistence/stateRepository';
 
@@ -58,6 +59,7 @@ export class AppStore {
     this.snapshot = Object.freeze<AppSnapshot>({
       revision: 1,
       game: options.initialData.game,
+      presentationMode: options.initialData.presentation.mode,
       presentation: { kind: 'closed' },
       displays: [],
       preferredDisplayId: options.initialData.settings.preferredDisplayId,
@@ -86,6 +88,15 @@ export class AppStore {
     }
     if (next !== this.snapshot.game) {
       this.update({ game: next });
+      this.persist();
+    }
+    return ok;
+  }
+
+  /** Switch what the audience display shows. Touches no game state. */
+  setPresentationMode(mode: PresentationMode): CommandResult {
+    if (mode !== this.snapshot.presentationMode) {
+      this.update({ presentationMode: mode });
       this.persist();
     }
     return ok;
@@ -161,6 +172,7 @@ export class AppStore {
   getAppData(): AppData {
     return {
       game: this.snapshot.game,
+      presentation: { mode: this.snapshot.presentationMode },
       settings: { preferredDisplayId: this.snapshot.preferredDisplayId },
     };
   }

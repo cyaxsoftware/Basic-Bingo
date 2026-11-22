@@ -4,6 +4,7 @@
  */
 import { vi } from 'vitest';
 import { reduceGame, type GameCommand } from '../../shared/game/gameState';
+import { isPresentationMode, type PresentationMode } from '../../shared/presentation/presentationMode';
 import {
   fail,
   ok,
@@ -37,6 +38,7 @@ export function makeSnapshot(overrides: Partial<AppSnapshot> = {}): AppSnapshot 
   return {
     revision: 1,
     game: { calledNumbers: [], bingoBannerVisible: false },
+    presentationMode: 'gameBoard',
     presentation: { kind: 'closed' },
     displays: [LAPTOP, PROJECTOR],
     preferredDisplayId: null,
@@ -86,6 +88,11 @@ export function createFakeBingoApi(initial: AppSnapshot = makeSnapshot()): FakeB
     showBingoBanner: vi.fn(async () => dispatchGame({ type: 'showBingoBanner' })),
     dismissBingoBanner: vi.fn(async () => dispatchGame({ type: 'dismissBingoBanner' })),
     newGame: vi.fn(async () => dispatchGame({ type: 'newGame' })),
+    setPresentationMode: vi.fn(async (mode: PresentationMode) => {
+      if (!isPresentationMode(mode)) return fail('Choose a valid presentation mode.');
+      if (mode !== snapshot.presentationMode) publish({ presentationMode: mode });
+      return ok;
+    }),
     listDisplays: vi.fn(async () => snapshot.displays),
     openPresentation: vi.fn(async (displayId: number) => {
       const display = snapshot.displays.find((d) => d.id === displayId);

@@ -1,0 +1,23 @@
+/* Fills the whole stage; the grid layout of the game board does not apply here. */
+.root {
+  grid-column: 1 / -1;
+  grid-row: 1 / -1;
+  display: grid;
+  place-content: center;
+  gap: 2vmin;
+  text-align: center;
+  background: var(--stage-panel);
+  border-radius: 1.5vmin;
+}
+
+.title {
+  margin: 0;
+  font-size: 9vmin;
+  font-weight: 600;
+}
+
+.note {
+  margin: 0;
+  font-size: 4vmin;
+  color: var(--stage-muted);
+}

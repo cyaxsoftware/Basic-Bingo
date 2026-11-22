@@ -11,6 +11,7 @@
  * cannot throw "Attempted to register a second handler".
  */
 import { isValidBall } from '../../shared/game/balls';
+import { isPresentationMode } from '../../shared/presentation/presentationMode';
 import {
   fail,
   IpcChannel,
@@ -108,6 +109,11 @@ export function registerIpcHandlers(ipc: IpcMainLike, deps: IpcDependencies): vo
   command(IpcChannel.dismissBingoBanner, () => store.dispatch({ type: 'dismissBingoBanner' }));
 
   command(IpcChannel.newGame, () => store.dispatch({ type: 'newGame' }));
+
+  command(IpcChannel.setPresentationMode, (mode) => {
+    if (!isPresentationMode(mode)) return fail('Choose a valid presentation mode.');
+    return store.setPresentationMode(mode);
+  });
 
   command(IpcChannel.openPresentation, (displayId) => {
     if (typeof displayId !== 'number' || !Number.isSafeInteger(displayId)) {

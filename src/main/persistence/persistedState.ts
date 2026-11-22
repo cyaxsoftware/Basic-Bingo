@@ -26,6 +26,7 @@
 import { z } from 'zod';
 import { normalizeCalledNumbers } from '../../shared/game/calledNumbers';
 import type { GameState } from '../../shared/game/gameState';
+import { DEFAULT_PRESENTATION_MODE, type PresentationMode } from '../../shared/presentation/presentationMode';
 
 export const CURRENT_SCHEMA_VERSION = 2;
 
@@ -63,11 +64,17 @@ export interface PersistedGameV2 {
   readonly bingoBannerVisible: boolean;
 }
 
+export interface PersistedPresentationV2 {
+  /** Which view the audience display shows. Not part of the game. */
+  readonly mode: 'gameBoard' | 'slideshow' | 'singleImage' | 'countdown';
+}
+
 export interface PersistedStateV2 {
   readonly schemaVersion: 2;
   /** ISO timestamp of the save. Informational only. */
   readonly savedAt: string;
   readonly game: PersistedGameV2;
+  readonly presentation: PersistedPresentationV2;
   readonly settings: {
     readonly preferredDisplayId: number | null;
   };
@@ -83,6 +90,12 @@ const PersistedStateV2Schema = z.object({
     calledNumbers: z.array(z.unknown()),
     bingoBannerVisible: z.boolean().catch(false),
   }),
+  // An unknown mode (e.g. from a hand-edited file) falls back to the board rather than losing the game.
+  presentation: z
+    .object({
+      mode: z.enum(['gameBoard', 'slideshow', 'singleImage', 'countdown']).catch('gameBoard'),
+    })
+    .catch({ mode: 'gameBoard' }),
   settings: z
     .object({
       preferredDisplayId: z.number().int().nullable().catch(null),
@@ -100,6 +113,7 @@ export type PersistedState = PersistedStateV2;
 /** Durable state as the running app uses it (independent of the file format). */
 export interface AppData {
   readonly game: GameState;
+  readonly presentation: { readonly mode: PresentationMode };
   readonly settings: {
     readonly preferredDisplayId: number | null;
   };
@@ -110,6 +124,7 @@ export function createDefaultPersistedState(now: Date = new Date()): PersistedSt
     schemaVersion: 2,
     savedAt: now.toISOString(),
     game: { calledNumbers: [], bingoBannerVisible: false },
+    presentation: { mode: DEFAULT_PRESENTATION_MODE },
     settings: { preferredDisplayId: null },
   };
 }
@@ -128,6 +143,7 @@ export function toPersistedState(data: AppData, now: Date = new Date()): Persist
       calledNumbers: [...data.game.calledNumbers],
       bingoBannerVisible: data.game.bingoBannerVisible,
     },
+    presentation: { mode: data.presentation.mode },
     settings: { preferredDisplayId: data.settings.preferredDisplayId },
   };
 }
@@ -140,6 +156,7 @@ export function fromPersistedState(document: PersistedState): AppData {
   };
   return {
     game,
+    presentation: { mode: document.presentation.mode },
     settings: { preferredDisplayId: document.settings.preferredDisplayId },
   };
 }
@@ -154,13 +171,14 @@ export function fromPersistedState(document: PersistedState): AppData {
  * schema to reject.
  */
 const MIGRATIONS: Record<number, (raw: Record<string, unknown>) => Record<string, unknown>> = {
-  // V1 -> V2: the banner did not exist, so it starts hidden.
+  // V1 -> V2: the banner and the presentation mode did not exist, so they start hidden / on the board.
   1: (raw) => {
     const game = raw['game'];
+    const presentation = { mode: 'gameBoard' };
     if (typeof game !== 'object' || game === null || Array.isArray(game)) {
-      return { ...raw, schemaVersion: 2 };
+      return { ...raw, schemaVersion: 2, presentation };
     }
-    return { ...raw, schemaVersion: 2, game: { ...game, bingoBannerVisible: false } };
+    return { ...raw, schemaVersion: 2, game: { ...game, bingoBannerVisible: false }, presentation };
   },
 };
 
@@ -210,6 +228,7 @@ export function parsePersistedState(raw: unknown): ParseResult {
       schemaVersion: 2,
       savedAt: parsed.data.savedAt,
       game: { calledNumbers, bingoBannerVisible: parsed.data.game.bingoBannerVisible },
+      presentation: { mode: parsed.data.presentation.mode },
       settings: { preferredDisplayId: parsed.data.settings.preferredDisplayId },
     },
   };
