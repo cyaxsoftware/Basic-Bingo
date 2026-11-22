@@ -2,6 +2,7 @@ import type { SnapshotStore } from '../shared/snapshotStore';
 import { useSnapshotState } from '../shared/useSnapshotState';
 import { AudienceBoard } from './components/AudienceBoard';
 import { CallDisplay } from './components/CallDisplay';
+import { ComingSoon } from './components/ComingSoon';
 import styles from './PresentationApp.module.css';
 
 export interface PresentationAppProps {
@@ -22,9 +23,15 @@ export function PresentationApp({ store }: PresentationAppProps) {
 
   const { snapshot } = state;
   return (
-    <div className={styles.root} data-mode={snapshot.presentation.kind}>
-      <CallDisplay calledNumbers={snapshot.game.calledNumbers} />
-      <AudienceBoard calledNumbers={snapshot.game.calledNumbers} />
+    <div className={styles.root} data-mode={snapshot.presentation.kind} data-view={snapshot.presentationMode}>
+      {snapshot.presentationMode === 'gameBoard' ? (
+        <>
+          <CallDisplay calledNumbers={snapshot.game.calledNumbers} />
+          <AudienceBoard calledNumbers={snapshot.game.calledNumbers} />
+        </>
+      ) : (
+        <ComingSoon mode={snapshot.presentationMode} />
+      )}
     </div>
   );
 }

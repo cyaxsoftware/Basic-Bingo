@@ -7,7 +7,11 @@ import { createDefaultPersistedState, type PersistedState } from './persistedSta
 import { JsonStateRepository, type RepositoryFileSystem } from './stateRepository';
 
 function stateWith(calledNumbers: number[], preferredDisplayId: number | null = null): PersistedState {
-  return { ...createDefaultPersistedState(), game: { calledNumbers }, settings: { preferredDisplayId } };
+  return {
+    ...createDefaultPersistedState(),
+    game: { calledNumbers, bingoBannerVisible: false },
+    settings: { preferredDisplayId },
+  };
 }
 
 describe('JsonStateRepository', () => {

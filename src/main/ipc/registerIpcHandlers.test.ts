@@ -86,6 +86,74 @@ describe('registerIpcHandlers', () => {
     expect(ctx.store.getSnapshot().game.calledNumbers).toEqual([]);
   });
 
+  describe('BINGO banner and new game', () => {
+    const channels = [IpcChannel.showBingoBanner, IpcChannel.dismissBingoBanner, IpcChannel.newGame];
+
+    it.each(channels)('rejects %s from the Presentation window and leaves the game untouched', (channel) => {
+      ctx.store.dispatch({ type: 'toggleBall', ball: 7 });
+      const before = ctx.store.getSnapshot();
+      const result = ctx.ipc.invoke(PRESENTATION_ID, channel) as CommandResult;
+      expect(result.ok).toBe(false);
+      expect(ctx.store.getSnapshot()).toBe(before);
+    });
+
+    it.each(channels)('rejects %s from an unknown sender', (channel) => {
+      expect((ctx.ipc.invoke(STRANGER_ID, channel) as CommandResult).ok).toBe(false);
+    });
+
+    it('accepts show, dismiss and new game from the Controller', () => {
+      ctx.ipc.invoke(CONTROLLER_ID, IpcChannel.toggleBall, 3);
+      ctx.ipc.invoke(CONTROLLER_ID, IpcChannel.toggleBall, 9);
+
+      expect(ctx.ipc.invoke(CONTROLLER_ID, IpcChannel.showBingoBanner)).toEqual({ ok: true });
+      expect(ctx.store.getSnapshot().game).toEqual({ calledNumbers: [3, 9], bingoBannerVisible: true });
+
+      expect(ctx.ipc.invoke(CONTROLLER_ID, IpcChannel.dismissBingoBanner)).toEqual({ ok: true });
+      expect(ctx.store.getSnapshot().game).toEqual({ calledNumbers: [3, 9], bingoBannerVisible: false });
+
+      ctx.ipc.invoke(CONTROLLER_ID, IpcChannel.showBingoBanner);
+      expect(ctx.ipc.invoke(CONTROLLER_ID, IpcChannel.newGame)).toEqual({ ok: true });
+      expect(ctx.store.getSnapshot().game).toEqual({ calledNumbers: [], bingoBannerVisible: false });
+    });
+
+    it('showing the banner twice publishes only one snapshot', () => {
+      ctx.ipc.invoke(CONTROLLER_ID, IpcChannel.showBingoBanner);
+      const revision = ctx.store.getSnapshot().revision;
+      ctx.ipc.invoke(CONTROLLER_ID, IpcChannel.showBingoBanner);
+      expect(ctx.store.getSnapshot().revision).toBe(revision);
+    });
+  });
+
+  describe('presentation mode', () => {
+    it('is set from the Controller and leaves every game field alone', () => {
+      ctx.ipc.invoke(CONTROLLER_ID, IpcChannel.toggleBall, 3);
+      ctx.ipc.invoke(CONTROLLER_ID, IpcChannel.showBingoBanner);
+      const gameBefore = ctx.store.getSnapshot().game;
+
+      expect(ctx.ipc.invoke(CONTROLLER_ID, IpcChannel.setPresentationMode, 'countdown')).toEqual({
+        ok: true,
+      });
+      expect(ctx.store.getSnapshot().presentationMode).toBe('countdown');
+      expect(ctx.store.getSnapshot().game).toBe(gameBefore);
+    });
+
+    it('is rejected from the Presentation window', () => {
+      const result = ctx.ipc.invoke(PRESENTATION_ID, IpcChannel.setPresentationMode, 'slideshow');
+      expect((result as CommandResult).ok).toBe(false);
+      expect(ctx.store.getSnapshot().presentationMode).toBe('gameBoard');
+    });
+
+    it.each(['photos', '', 'GameBoard', 3, null, undefined, { mode: 'slideshow' }])(
+      'rejects the invalid mode %j without changing anything',
+      (mode) => {
+        const before = ctx.store.getSnapshot();
+        const result = ctx.ipc.invoke(CONTROLLER_ID, IpcChannel.setPresentationMode, mode) as CommandResult;
+        expect(result.ok).toBe(false);
+        expect(ctx.store.getSnapshot()).toBe(before);
+      },
+    );
+  });
+
   it('validates display ids before opening a presentation', () => {
     const bad = ctx.ipc.invoke(CONTROLLER_ID, IpcChannel.openPresentation, 'primary') as CommandResult;
     expect(bad.ok).toBe(false);

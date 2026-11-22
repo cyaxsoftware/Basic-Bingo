@@ -15,6 +15,7 @@
  */
 import type { BallNumber } from '../game/balls';
 import type { GameState } from '../game/gameState';
+import type { PresentationMode } from '../presentation/presentationMode';
 
 // ---------------------------------------------------------------------------
 // Snapshot (main -> renderers)
@@ -68,6 +69,8 @@ export interface AppSnapshot {
   readonly revision: number;
   /** Canonical game state. Persisted. */
   readonly game: GameState;
+  /** Persisted: which view the audience display shows. Separate from the game. */
+  readonly presentationMode: PresentationMode;
   /** Runtime-only: what the Presentation window is doing. Never persisted. */
   readonly presentation: PresentationStatus;
   /** Runtime-only: currently connected displays. */
@@ -89,6 +92,10 @@ export const IpcChannel = {
   getSnapshot: 'bingo:get-snapshot',
   // Commands (Controller window only)
   toggleBall: 'bingo:toggle-ball',
+  showBingoBanner: 'bingo:show-bingo-banner',
+  dismissBingoBanner: 'bingo:dismiss-bingo-banner',
+  newGame: 'bingo:new-game',
+  setPresentationMode: 'bingo:set-presentation-mode',
   listDisplays: 'bingo:list-displays',
   openPresentation: 'bingo:open-presentation',
   openPreview: 'bingo:open-preview',
@@ -111,6 +118,14 @@ export interface PresentationApi {
 /** API exposed to the Controller window as `window.bingo`. */
 export interface ControllerApi extends PresentationApi {
   toggleBall(ball: BallNumber): Promise<CommandResult>;
+  /** Raise the BINGO CALLED banner (idempotent). It stays until dismissed or a new game starts. */
+  showBingoBanner(): Promise<CommandResult>;
+  /** Hide the banner. Never changes the calls. */
+  dismissBingoBanner(): Promise<CommandResult>;
+  /** Clear all calls and the banner. The caller is responsible for confirming with the operator. */
+  newGame(): Promise<CommandResult>;
+  /** Choose what the audience display shows. Never changes the game. */
+  setPresentationMode(mode: PresentationMode): Promise<CommandResult>;
   /** Re-reads displays from Windows and returns them (the snapshot updates too). */
   listDisplays(): Promise<readonly DisplayInfo[]>;
   openPresentation(displayId: number): Promise<CommandResult>;

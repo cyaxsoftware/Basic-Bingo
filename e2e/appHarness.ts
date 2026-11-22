@@ -41,9 +41,17 @@ export async function tapBall(controller: Page, label: string): Promise<void> {
   await controller.getByRole('button', { name: new RegExp(`^${label},`) }).click();
 }
 
-export async function waitForPresentationWindow(app: ElectronApplication): Promise<Page> {
+/** The Presentation window, without assuming which view (board, placeholder...) it is showing. */
+export async function findPresentationWindow(app: ElectronApplication): Promise<Page> {
   const existing = app.windows().find((w) => w.url().includes('presentation'));
   const page = existing ?? (await app.waitForEvent('window'));
+  await page.waitForLoadState('domcontentloaded');
+  return page;
+}
+
+/** The Presentation window once it is showing the game board. */
+export async function waitForPresentationWindow(app: ElectronApplication): Promise<Page> {
+  const page = await findPresentationWindow(app);
   await page.getByLabel('Bingo board').waitFor();
   return page;
 }
