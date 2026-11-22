@@ -94,7 +94,7 @@ const LONG_MONITOR_NAME = 'Epson EB-PU1008W Projector (Main Hall, Stage Left)';
 /** How the app labels it: the monitor name plus its physical resolution. */
 const LONG_DISPLAY_LABEL = `${LONG_MONITOR_NAME} — 1920×1080`;
 
-/** Raise the BINGO banner if asked, keep a picture, then assert the whole layout fits and is touchable. */
+/** Keep a picture, then assert the whole layout fits and is touchable. (The banner is raised by the caller.) */
 async function expectLayoutFits(
   controller: Page,
   size: { readonly width: number; readonly height: number },
@@ -102,7 +102,6 @@ async function expectLayoutFits(
   pictureName: string,
 ): Promise<void> {
   const { width, height } = size;
-  if (state === 'banner up') await controller.getByRole('button', { name: 'BINGO CALLED' }).click();
   await controller.waitForTimeout(200);
 
   const picture = await controller.screenshot();
@@ -154,90 +153,110 @@ async function expectLayoutFits(
   await expect(controller.getByRole('tab')).toHaveCount(4);
 }
 
-for (const size of LAYOUT_SIZES) {
-  for (const state of ['idle', 'banner up'] as const) {
-    test(`Controller layout at ${size.width}x${size.height}, BINGO banner ${state}`, async () => {
-      const { app, controller } = await launchApp(userDataDir);
-      await resizeController(app, controller, size.width, size.height);
-      await fillHistory(controller);
-      await expectLayoutFits(controller, size, state, `controller-${size.width}x${size.height}`);
-      await app.close();
-    });
-  }
+const STATES = ['idle', 'banner up'] as const;
+
+/** Raise the BINGO banner once, before the sizes are stepped through (the same window is reused for all of them). */
+async function raiseBannerIf(controller: Page, state: BannerState): Promise<void> {
+  if (state === 'banner up') await controller.getByRole('button', { name: 'BINGO CALLED' }).click();
+}
+
+// One Electron launch per banner state: the same Controller window is resized through every size, which
+// keeps the full suite under a minute. Each size is its own step, so a failure names the size.
+for (const state of STATES) {
+  test(`Controller layout at every size, BINGO banner ${state}`, async () => {
+    const { app, controller } = await launchApp(userDataDir);
+    await fillHistory(controller);
+    await raiseBannerIf(controller, state);
+
+    for (const size of LAYOUT_SIZES) {
+      await test.step(`${size.width}x${size.height}`, async () => {
+        await resizeController(app, controller, size.width, size.height);
+        await expectLayoutFits(controller, size, state, `controller-${size.width}x${size.height}`);
+      });
+    }
+    await app.close();
+  });
 }
 
 // The top bar changes with what the operator is doing. These two states wrapped it onto a second row
 // and pushed the grid out of a 910x480 window (PR #55 review), so they are checked at several sizes.
-for (const size of SCENARIO_SIZES) {
-  for (const state of ['idle', 'banner up'] as const) {
-    test(`projecting on a display with a long name at ${size.width}x${size.height}, banner ${state}`, async () => {
-      const { app, controller } = await launchApp(userDataDir);
-      await resizeController(app, controller, size.width, size.height);
-      await fillHistory(controller);
+for (const state of STATES) {
+  test(`projecting on a display with a long name at the tight sizes, banner ${state}`, async () => {
+    const { app, controller } = await launchApp(userDataDir);
+    await fillHistory(controller);
 
-      // Projecting needs a real second monitor, which a test machine may not have, and would put a
-      // fullscreen window on the developer's screen. So report a synthetic projector alongside the real
-      // display (no window is opened), which gives the Controller its real selector with the long name in
-      // it on any machine, then put the long text into the status pill, which only Project would set.
-      await app.evaluate(({ BrowserWindow, screen }, name) => {
-        const own = screen.getDisplayMatching(BrowserWindow.getAllWindows()[0]!.getBounds());
-        const projector = {
-          id: 910001,
-          label: name,
-          bounds: { x: own.bounds.x + own.bounds.width, y: own.bounds.y, width: 1920, height: 1080 },
-          scaleFactor: 1,
-          internal: false,
-        } as unknown as typeof own;
-        screen.getAllDisplays = () => [own, projector];
-      }, LONG_MONITOR_NAME);
-      await controller.getByRole('button', { name: 'Refresh displays' }).click();
-      // Fail loudly if the selector is missing: without it this would quietly test the single-display hint.
-      const selector = controller.getByRole('combobox');
-      await expect(selector).toBeVisible();
-      await expect(selector.locator('option')).toHaveText(LONG_DISPLAY_LABEL);
-      await expect(controller.getByRole('button', { name: 'Project', exact: true })).toBeVisible();
-      await controller.getByRole('status').evaluate((el, label) => {
-        el.textContent = `Projecting on ${label}`;
-        el.setAttribute('data-kind', 'projecting');
-      }, LONG_DISPLAY_LABEL);
+    // Projecting needs a real second monitor, which a test machine may not have, and would put a
+    // fullscreen window on the developer's screen. So report a synthetic projector alongside the real
+    // display (no window is opened), which gives the Controller its real selector with the long name in
+    // it on any machine, then put the long text into the status pill, which only Project would set.
+    await app.evaluate(({ BrowserWindow, screen }, name) => {
+      const own = screen.getDisplayMatching(BrowserWindow.getAllWindows()[0]!.getBounds());
+      const projector = {
+        id: 910001,
+        label: name,
+        bounds: { x: own.bounds.x + own.bounds.width, y: own.bounds.y, width: 1920, height: 1080 },
+        scaleFactor: 1,
+        internal: false,
+      } as unknown as typeof own;
+      screen.getAllDisplays = () => [own, projector];
+    }, LONG_MONITOR_NAME);
+    await controller.getByRole('button', { name: 'Refresh displays' }).click();
+    // Fail loudly if the selector is missing: without it this would quietly test the single-display hint.
+    const selector = controller.getByRole('combobox');
+    await expect(selector).toBeVisible();
+    await expect(selector.locator('option')).toHaveText(LONG_DISPLAY_LABEL);
+    await expect(controller.getByRole('button', { name: 'Project', exact: true })).toBeVisible();
+    await controller.getByRole('status').evaluate((el, label) => {
+      el.textContent = `Projecting on ${label}`;
+      el.setAttribute('data-kind', 'projecting');
+    }, LONG_DISPLAY_LABEL);
+    await raiseBannerIf(controller, state);
 
-      await expectLayoutFits(
-        controller,
-        size,
-        state,
-        `controller-projecting-long-label-${size.width}x${size.height}`,
-      );
-      await app.close();
-    });
-
-    test(`single-display setup at ${size.width}x${size.height}, banner ${state}`, async () => {
-      const { app, controller } = await launchApp(userDataDir);
-      await resizeController(app, controller, size.width, size.height);
-      await fillHistory(controller);
-
-      // Report only the display the Controller is on, as a laptop with nothing plugged in would, then refresh.
-      await app.evaluate(({ BrowserWindow, screen }) => {
-        const own = screen.getDisplayMatching(BrowserWindow.getAllWindows()[0]!.getBounds());
-        screen.getAllDisplays = () => [own];
+    for (const size of SCENARIO_SIZES) {
+      await test.step(`${size.width}x${size.height}`, async () => {
+        await resizeController(app, controller, size.width, size.height);
+        await expectLayoutFits(
+          controller,
+          size,
+          state,
+          `controller-projecting-long-label-${size.width}x${size.height}`,
+        );
       });
-      await controller.getByRole('button', { name: 'Refresh displays' }).click();
-      const hint = controller.getByText(/No second display/);
-      await expect(hint).toBeVisible();
-      await expect(controller.getByRole('button', { name: 'Project', exact: true })).toHaveCount(0);
+    }
+    await app.close();
+  });
 
-      // The instructions stay fully readable: the hint is not cut off by its line clamp.
-      const clipped = await hint.evaluate((el) => el.scrollHeight - el.clientHeight);
-      expect(clipped, 'the single-display hint must not be clipped').toBeLessThanOrEqual(1);
-      await expect(hint).toContainText('Win+P');
-      await expect(controller.getByRole('button', { name: 'Preview' })).toBeVisible();
+  test(`single-display setup at the tight sizes, banner ${state}`, async () => {
+    const { app, controller } = await launchApp(userDataDir);
+    await fillHistory(controller);
 
-      await expectLayoutFits(
-        controller,
-        size,
-        state,
-        `controller-single-display-${size.width}x${size.height}`,
-      );
-      await app.close();
+    // Report only the display the Controller is on, as a laptop with nothing plugged in would, then refresh.
+    await app.evaluate(({ BrowserWindow, screen }) => {
+      const own = screen.getDisplayMatching(BrowserWindow.getAllWindows()[0]!.getBounds());
+      screen.getAllDisplays = () => [own];
     });
-  }
+    await controller.getByRole('button', { name: 'Refresh displays' }).click();
+    const hint = controller.getByText(/No second display/);
+    await expect(hint).toBeVisible();
+    await expect(controller.getByRole('button', { name: 'Project', exact: true })).toHaveCount(0);
+    await raiseBannerIf(controller, state);
+
+    for (const size of SCENARIO_SIZES) {
+      await test.step(`${size.width}x${size.height}`, async () => {
+        await resizeController(app, controller, size.width, size.height);
+        // The instructions stay fully readable: the hint is not cut off by its line clamp.
+        const clipped = await hint.evaluate((el) => el.scrollHeight - el.clientHeight);
+        expect(clipped, 'the single-display hint must not be clipped').toBeLessThanOrEqual(1);
+        await expect(hint).toContainText('Win+P');
+        await expect(controller.getByRole('button', { name: 'Preview' })).toBeVisible();
+        await expectLayoutFits(
+          controller,
+          size,
+          state,
+          `controller-single-display-${size.width}x${size.height}`,
+        );
+      });
+    }
+    await app.close();
+  });
 }

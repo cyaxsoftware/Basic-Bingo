@@ -156,28 +156,33 @@ async function measure(presentation: Page, size: { width: number; height: number
   return { callPanel: callPanel[0], board: board[0], cells };
 }
 
-for (const size of PROJECTOR_SIZES) {
-  for (const state of ['empty', 'mid-game', 'banner up'] as const) {
-    test(`projector layout at ${size.width}x${size.height}, ${state}`, async () => {
-      const { app, controller } = await launchApp(userDataDir);
-      if (state !== 'empty') {
-        for (const label of ['B-3', 'I-17', 'N-33', 'G-48', 'O-61', 'B-9']) await tapBall(controller, label);
-      }
-      if (state === 'banner up') await controller.getByRole('button', { name: 'BINGO CALLED' }).click();
-      await controller.getByRole('button', { name: 'Preview' }).click();
-      const presentation = await waitForPresentationWindow(app);
-      const actual = await resizePresentation(app, presentation, size.width, size.height);
-      await presentation.waitForTimeout(300);
+// One Electron launch per game state: the same Preview window is resized through every resolution, which
+// keeps the full suite fast. Each resolution is its own step, so a failure names the size.
+for (const state of ['empty', 'mid-game', 'banner up'] as const) {
+  test(`projector layout at all four resolutions, ${state}`, async () => {
+    const { app, controller } = await launchApp(userDataDir);
+    if (state !== 'empty') {
+      for (const label of ['B-3', 'I-17', 'N-33', 'G-48', 'O-61', 'B-9']) await tapBall(controller, label);
+    }
+    if (state === 'banner up') await controller.getByRole('button', { name: 'BINGO CALLED' }).click();
+    await controller.getByRole('button', { name: 'Preview' }).click();
+    const presentation = await waitForPresentationWindow(app);
 
-      const picture = await presentation.screenshot();
-      const fileName = `projector-${size.width}x${size.height}-${state.replace(' ', '-')}.png`;
-      await test.info().attach(fileName, { body: picture, contentType: 'image/png' });
-      // Passing tests do not retain attachments, so BINGO_SCREENSHOT_DIR keeps the pictures.
-      const keepIn = process.env['BINGO_SCREENSHOT_DIR'];
-      if (keepIn) await writeFile(path.join(keepIn, fileName), picture);
+    for (const size of PROJECTOR_SIZES) {
+      await test.step(`${size.width}x${size.height}`, async () => {
+        const actual = await resizePresentation(app, presentation, size.width, size.height);
+        await presentation.waitForTimeout(300);
 
-      await measure(presentation, actual, state);
-      await app.close();
-    });
-  }
+        const picture = await presentation.screenshot();
+        const fileName = `projector-${size.width}x${size.height}-${state.replace(' ', '-')}.png`;
+        await test.info().attach(fileName, { body: picture, contentType: 'image/png' });
+        // Passing tests do not retain attachments, so BINGO_SCREENSHOT_DIR keeps the pictures.
+        const keepIn = process.env['BINGO_SCREENSHOT_DIR'];
+        if (keepIn) await writeFile(path.join(keepIn, fileName), picture);
+
+        await measure(presentation, actual, state);
+      });
+    }
+    await app.close();
+  });
 }

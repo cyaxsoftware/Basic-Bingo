@@ -16,7 +16,7 @@ export function relativeLuminance(hex: string): number {
 
 /** Contrast ratio between two colours, from 1 (identical) to 21 (black on white). Order does not matter. */
 export function contrastRatio(a: string, b: string): number {
-  const [lighter, darker] = [relativeLuminance(a), relativeLuminance(b)].sort((x, y) => y - x) as [
+  const [lighter, darker] = [relativeLuminance(a), relativeLuminance(b)].toSorted((x, y) => y - x) as [
     number,
     number,
   ];
