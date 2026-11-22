@@ -10,7 +10,7 @@
  */
 .grid {
   --col-gap: 6px;
-  --row-gap: 8px;
+  --row-gap: 6px;
   --ball-floor: 44px;
   --ball-cap: 76px;
   --cell: clamp(
@@ -27,7 +27,7 @@
   align-items: center;
   justify-content: safe center;
   gap: var(--row-gap);
-  padding: var(--space-3);
+  padding: var(--space-2);
   background: var(--panel);
   border: 1px solid var(--border);
   border-radius: var(--radius-md);

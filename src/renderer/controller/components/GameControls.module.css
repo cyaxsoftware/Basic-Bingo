@@ -3,12 +3,14 @@
   gap: var(--space-2);
 }
 
+/* Size comes from the layout (ControllerApp.module.css): a tall button in the side column, a row-sized one when stacked. */
 .bingoCalled,
 .dismiss {
-  min-height: 84px;
+  min-height: var(--bingo-min-height, 84px);
+  min-width: var(--bingo-min-width, 0);
   padding: 0 var(--space-4);
   border-radius: var(--radius-md);
-  font-size: 1.4rem;
+  font-size: var(--bingo-font-size, 1.4rem);
   font-weight: 800;
   letter-spacing: 0.04em;
 }
@@ -26,7 +28,17 @@
   color: var(--text);
 }
 
+/*
+ * Where the button must fit in a single row, the layout hides this line visually
+ * (--bingo-status-* make it a 1px clipped box). It stays in the accessibility tree,
+ * so screen readers still hear "BINGO banner enabled"; display: none would silence it.
+ */
 .bannerStatus {
+  position: var(--bingo-status-position, static);
+  width: var(--bingo-status-size, auto);
+  height: var(--bingo-status-size, auto);
+  overflow: var(--bingo-status-overflow, visible);
+  clip-path: var(--bingo-status-clip, none);
   margin: 0;
   font-weight: 600;
   text-align: center;

@@ -38,7 +38,7 @@ export function ControllerApp({ api, store }: ControllerAppProps) {
   const { calledNumbers, bingoBannerVisible } = snapshot.game;
   const mode = snapshot.presentationMode;
   return (
-    <div className={styles.layout}>
+    <main className={styles.layout}>
       <header className={styles.header}>
         <h1 className={styles.title}>Offline Bingo</h1>
         <PresentationControls
@@ -57,34 +57,41 @@ export function ControllerApp({ api, store }: ControllerAppProps) {
         />
       </header>
 
-      <ModeTabs mode={mode} onSelect={actions.setPresentationMode} panelId={panelId} />
+      <div className={styles.tabs}>
+        <ModeTabs mode={mode} onSelect={actions.setPresentationMode} panelId={panelId} />
+      </div>
 
-      <NoticeArea
-        notices={snapshot.notices}
-        persistence={snapshot.persistence}
-        actionError={actions.lastError}
-        onDismissNotice={actions.dismissNotice}
-        onDismissActionError={actions.clearError}
-      />
+      {/* Empty (and hidden by CSS) unless there is something to tell the operator. */}
+      <div className={styles.notices}>
+        <NoticeArea
+          notices={snapshot.notices}
+          persistence={snapshot.persistence}
+          actionError={actions.lastError}
+          onDismissNotice={actions.dismissNotice}
+          onDismissActionError={actions.clearError}
+        />
+      </div>
 
-      <main className={styles.main}>
-        <div className={styles.panel} role="tabpanel" id={panelId} aria-labelledby={modeTabId(mode)}>
-          {mode === 'gameBoard' ? (
-            <BallGrid calledNumbers={calledNumbers} onToggle={actions.toggleBall} />
-          ) : (
-            <ModePlaceholder mode={mode} />
-          )}
-        </div>
-        {/* Milestone 3's pattern panel goes in this column, between the summary and the BINGO control. */}
-        <div className={styles.side}>
-          <CallSummaryPanel calledNumbers={calledNumbers} />
-          <BingoBannerControl
-            bannerVisible={bingoBannerVisible}
-            onShow={actions.showBingoBanner}
-            onDismiss={actions.dismissBingoBanner}
-          />
-        </div>
-      </main>
-    </div>
+      <div className={styles.panel} role="tabpanel" id={panelId} aria-labelledby={modeTabId(mode)}>
+        {mode === 'gameBoard' ? (
+          <BallGrid calledNumbers={calledNumbers} onToggle={actions.toggleBall} />
+        ) : (
+          <ModePlaceholder mode={mode} />
+        )}
+      </div>
+
+      {/* Milestone 3's pattern panel goes in the right-hand column, between summary and BINGO control. */}
+      <div className={styles.summary}>
+        <CallSummaryPanel calledNumbers={calledNumbers} />
+      </div>
+
+      <div className={styles.bingo}>
+        <BingoBannerControl
+          bannerVisible={bingoBannerVisible}
+          onShow={actions.showBingoBanner}
+          onDismiss={actions.dismissBingoBanner}
+        />
+      </div>
+    </main>
   );
 }

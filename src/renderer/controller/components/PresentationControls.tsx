@@ -46,7 +46,13 @@ export function PresentationControls({
 
   return (
     <div className={styles.controls}>
-      <span className={styles.status} data-kind={presentation.kind} role="status" aria-live="polite">
+      <span
+        className={styles.status}
+        data-kind={presentation.kind}
+        title={describePresentation(presentation)}
+        role="status"
+        aria-live="polite"
+      >
         {describePresentation(presentation)}
       </span>
 

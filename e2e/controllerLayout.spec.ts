@@ -8,6 +8,10 @@
  *   1366x768   1366x768 at 100%
  *   1536x864   1920x1080 at 125% scaling
  *
+ * Plus the cases that broke earlier layouts (PR #55 review):
+ *   910x480    1366x768 at 150% with Windows chrome: a short window, so every row above the grid counts
+ *   1101..1160 x 700   either side of the one-/two-column breakpoint (the two-column layout needs 1120 px)
+ *
  * Set BINGO_SCREENSHOT_DIR to a folder to keep a screenshot of every case for review.
  */
 import { writeFile } from 'node:fs/promises';
@@ -29,6 +33,13 @@ export const LAYOUT_SIZES = [
   { width: 1280, height: 800 },
   { width: 1366, height: 768 },
   { width: 1536, height: 864 },
+  { width: 910, height: 480 },
+  { width: 1101, height: 700 },
+  { width: 1120, height: 700 },
+  { width: 1128, height: 700 },
+  { width: 1140, height: 700 },
+  { width: 1141, height: 700 },
+  { width: 1160, height: 700 },
 ] as const;
 
 /** Design doc: 48 CSS px targets, never below 44; 48 from 1280 wide upwards. */
@@ -117,6 +128,9 @@ for (const { width, height } of LAYOUT_SIZES) {
         expect(control.right, `control ${index} right edge`).toBeLessThanOrEqual(width);
         expect(control.bottom, `control ${index} bottom edge`).toBeLessThanOrEqual(height);
       }
+      // Where the layout hides "BINGO banner enabled" to save a row, it must stay readable to a screen reader.
+      if (state === 'banner up') await expect(controller.getByText('BINGO banner enabled')).toHaveCount(1);
+
       // The four mode tabs are all on screen.
       await expect(controller.getByRole('tab')).toHaveCount(4);
 
