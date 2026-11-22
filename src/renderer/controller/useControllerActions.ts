@@ -3,6 +3,10 @@ import type { CommandResult, ControllerApi } from '../../shared/ipc/contract';
 
 export interface ControllerActions {
   toggleBall(ball: number): void;
+  showBingoBanner(): void;
+  dismissBingoBanner(): void;
+  /** Clears the game. Callers must have confirmed with the operator first. */
+  newGame(): void;
   openPresentation(displayId: number): void;
   openPreview(): void;
   closePresentation(): void;
@@ -32,6 +36,9 @@ export function useControllerActions(api: ControllerApi): ControllerActions {
   return useMemo(
     () => ({
       toggleBall: (ball: number) => run(() => api.toggleBall(ball)),
+      showBingoBanner: () => run(() => api.showBingoBanner()),
+      dismissBingoBanner: () => run(() => api.dismissBingoBanner()),
+      newGame: () => run(() => api.newGame()),
       openPresentation: (displayId: number) => run(() => api.openPresentation(displayId)),
       openPreview: () => run(() => api.openPreview()),
       closePresentation: () => run(() => api.closePresentation()),

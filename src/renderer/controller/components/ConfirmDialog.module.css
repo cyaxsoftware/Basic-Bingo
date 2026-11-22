@@ -1,0 +1,69 @@
+/* The backdrop also swallows pointer events, so nothing behind the dialog can be touched. */
+.backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: grid;
+  place-items: center;
+  padding: var(--space-4);
+  background: rgb(17 24 39 / 55%);
+}
+
+.dialog {
+  width: min(520px, 100%);
+  padding: var(--space-6);
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  box-shadow: 0 12px 40px rgb(0 0 0 / 35%);
+}
+
+.title {
+  margin: 0 0 var(--space-3);
+  font-size: 1.4rem;
+}
+
+.body {
+  display: grid;
+  gap: var(--space-2);
+  font-size: 1.05rem;
+  line-height: 1.4;
+}
+
+.body p {
+  margin: 0;
+}
+
+.actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--space-3);
+  margin-top: var(--space-6);
+}
+
+.cancel,
+.confirm {
+  min-height: var(--touch-min);
+  padding: 0 var(--space-6);
+  border-radius: var(--radius-sm);
+  font-size: 1.05rem;
+  font-weight: 600;
+}
+
+.cancel {
+  border: 1px solid var(--border);
+  background: var(--panel);
+  color: var(--text);
+}
+
+.confirm {
+  border: none;
+  background: var(--danger);
+  color: var(--accent-text);
+}
+
+.cancel:focus-visible,
+.confirm:focus-visible {
+  outline: 3px solid var(--accent);
+  outline-offset: 2px;
+}

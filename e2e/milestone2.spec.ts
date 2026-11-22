@@ -6,6 +6,7 @@ import {
   ballLabels,
   createUserDataDir,
   findPresentationWindow,
+  focusIsWithin,
   launchApp,
   removeUserDataDir,
   tapBall,
@@ -66,4 +67,44 @@ test('the presentation mode switches the audience view without touching the game
   expect(await setMode(second.controller, 'gameBoard')).toEqual({ ok: true });
   await expect(page.getByRole('img', { name: 'I-17' })).toBeVisible();
   await second.app.close();
+});
+
+test('BINGO banner and New Game work in the real app, and the confirmation traps and restores focus', async () => {
+  const { app, controller } = await launchApp(userDataDir);
+  await tapBall(controller, 'B-3');
+  await tapBall(controller, 'I-17');
+
+  await controller.getByRole('button', { name: 'BINGO CALLED' }).click();
+  await expect(controller.getByRole('button', { name: 'Dismiss BINGO Banner' })).toBeVisible();
+  await controller.getByRole('button', { name: 'Dismiss BINGO Banner' }).click();
+  await expect(controller.getByRole('button', { name: 'BINGO CALLED' })).toBeVisible();
+  await expect(controller.getByTestId('called-count')).toHaveText('Called: 2 of 75');
+
+  // Cancel leaves the game alone and puts focus back on the button that opened the dialog.
+  const newGame = controller.getByRole('button', { name: 'New Game' });
+  await newGame.click();
+  const dialog = controller.getByRole('dialog', { name: 'Start a new game?' });
+  await expect(dialog.getByRole('button', { name: 'Cancel' })).toBeFocused();
+
+  // Tab never leaves the dialog, in either direction.
+  for (let i = 0; i < 4; i += 1) {
+    await controller.keyboard.press('Tab');
+    expect(await focusIsWithin(dialog)).toBe(true);
+  }
+  await controller.keyboard.press('Shift+Tab');
+  expect(await focusIsWithin(dialog)).toBe(true);
+
+  await controller.keyboard.press('Escape');
+  await expect(dialog).toBeHidden();
+  await expect(newGame).toBeFocused();
+  await expect(controller.getByTestId('called-count')).toHaveText('Called: 2 of 75');
+
+  // Confirm clears the calls and the banner.
+  await controller.getByRole('button', { name: 'BINGO CALLED' }).click();
+  await newGame.click();
+  await dialog.getByRole('button', { name: 'Start New Game' }).click();
+  await expect(controller.getByTestId('called-count')).toHaveText('Called: 0 of 75');
+  await expect(controller.getByRole('button', { name: 'BINGO CALLED' })).toBeVisible();
+
+  await app.close();
 });

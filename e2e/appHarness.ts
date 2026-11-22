@@ -61,6 +61,14 @@ export function ballLabels(container: Locator): Promise<(string | null)[]> {
   return container.getByRole('img').evaluateAll((els) => els.map((el) => el.getAttribute('aria-label')));
 }
 
+/** Whether keyboard focus is currently on, or inside, the given element. */
+export function focusIsWithin(container: Locator): Promise<boolean> {
+  return container.evaluate((el) => {
+    const { document } = globalThis as unknown as { document: { activeElement: unknown } };
+    return el.contains(document.activeElement as Parameters<typeof el.contains>[0]);
+  });
+}
+
 /** Function names exposed on the window's preload bridge. */
 export function bridgeKeys(page: Page): Promise<string[]> {
   return page.evaluate(() => Object.keys((globalThis as unknown as { bingo: object }).bingo).toSorted());

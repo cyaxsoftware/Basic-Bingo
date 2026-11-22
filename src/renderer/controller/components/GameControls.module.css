@@ -1,0 +1,53 @@
+.bingo {
+  display: grid;
+  gap: var(--space-2);
+}
+
+.bingoCalled,
+.dismiss {
+  min-height: 84px;
+  padding: 0 var(--space-4);
+  border-radius: var(--radius-md);
+  font-size: 1.4rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+}
+
+.bingoCalled {
+  border: none;
+  background: var(--accent);
+  color: var(--accent-text);
+}
+
+/* Visibly different from the idle state, so the operator can tell at a glance the banner is up. */
+.dismiss {
+  border: 3px solid var(--warning-border);
+  background: var(--warning-bg);
+  color: var(--text);
+}
+
+.bannerStatus {
+  margin: 0;
+  font-weight: 600;
+  text-align: center;
+  color: var(--text);
+}
+
+/* Secondary on purpose: smaller, outlined, and kept in the header away from the ball grid. */
+.newGame {
+  min-height: var(--touch-min);
+  padding: 0 var(--space-4);
+  border: 1px solid var(--danger);
+  border-radius: var(--radius-sm);
+  background: var(--panel);
+  color: var(--danger);
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+.bingoCalled:focus-visible,
+.dismiss:focus-visible,
+.newGame:focus-visible {
+  outline: 3px solid var(--accent);
+  outline-offset: 2px;
+}
