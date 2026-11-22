@@ -1,46 +1,69 @@
+/*
+ * The grid is a size container and takes whatever the layout leaves it. Balls are
+ * sized from BOTH the width and the height available (like the projector's board),
+ * so adding a panel above or beside it makes the balls a little smaller instead of
+ * pushing the grid into scrolling. The floor keeps every ball a usable touch target;
+ * only below that floor does the grid fall back to scrolling.
+ *
+ * 16 columns (letter + 15 balls) and 5 rows. --cell is used only by descendants,
+ * because container query units resolve against the nearest ancestor container.
+ */
 .grid {
+  --col-gap: 6px;
+  --row-gap: 6px;
+  --ball-floor: 44px;
+  --ball-cap: 76px;
+  --cell: clamp(
+    var(--ball-floor),
+    min(calc((100cqw - 15 * var(--col-gap)) / 16), calc((100cqh - 4 * var(--row-gap)) / 5)),
+    var(--ball-cap)
+  );
+
+  container-type: size;
+  flex: 1;
+  min-height: 0;
   display: flex;
   flex-direction: column;
-  gap: var(--space-2);
-  padding: var(--space-3);
+  align-items: center;
+  justify-content: safe center;
+  gap: var(--row-gap);
+  padding: var(--space-2);
   background: var(--panel);
   border: 1px solid var(--border);
   border-radius: var(--radius-md);
-  overflow-y: auto;
+  overflow: auto;
 }
 
-/* Letter column + 15 balls. Balls never shrink below the touch minimum. */
 .row {
   display: grid;
-  grid-template-columns: var(--touch-min) repeat(15, minmax(var(--touch-min), 1fr));
-  gap: 6px;
+  grid-template-columns: repeat(16, var(--cell));
+  grid-auto-rows: var(--cell);
+  gap: var(--col-gap);
   align-items: center;
 }
 
 .letter {
   display: grid;
   place-items: center;
-  aspect-ratio: 1;
+  width: var(--cell);
+  height: var(--cell);
   border-radius: var(--radius-sm);
   background: var(--ball-color);
   color: var(--ball-ink);
   border: 2px solid var(--ball-ring);
-  font-size: 1.5rem;
+  font-size: calc(var(--cell) * 0.5);
   font-weight: 800;
 }
 
 .ball {
-  /* Width drives size; aspect-ratio keeps it circular. Capped so wide screens don't get huge balls. */
-  width: 100%;
-  max-width: 72px;
-  justify-self: center;
-  aspect-ratio: 1;
+  width: var(--cell);
+  height: var(--cell);
   padding: 0;
   border-radius: 50%;
   border: 3px solid var(--uncalled-border);
   background: var(--uncalled-bg);
   color: var(--uncalled-text);
-  font-size: 1.25rem;
+  font-size: calc(var(--cell) * 0.38);
   font-weight: 600;
   cursor: pointer;
   transition: transform 80ms ease-out;

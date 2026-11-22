@@ -1,11 +1,29 @@
+/*
+ * Takes the room between the title and New Game and NEVER wraps: a second row would push the
+ * ball grid out of a short window. Instead the parts that can give way do so, in this order:
+ * the status text is truncated (to a floor of 6em), the display selector narrows (to 120 px),
+ * and the single-display hint takes whatever is left (and clamps to two lines). The buttons
+ * never shrink. At the narrowest supported window (about 853 px) this needs roughly 555 px of
+ * the 560 px available; e2e/controllerLayout.spec.ts checks long labels and the hint at 910 px.
+ */
 .controls {
+  flex: 1 1 0;
+  min-width: 0;
   display: flex;
   align-items: center;
+  justify-content: center;
   gap: var(--space-2);
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
 }
 
+/* "Projecting on <long display name>" is truncated (full text in the tooltip), never allowed to widen the bar. */
 .status {
+  flex: 0 1 auto;
+  min-width: 6em;
+  max-width: 24em;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
   padding: var(--space-2) var(--space-3);
   border-radius: 999px;
   background: #e5e7eb;
@@ -22,16 +40,24 @@
   color: var(--accent);
 }
 
+.primary,
+.secondary {
+  flex: none;
+}
+
 .select,
 .primary,
 .secondary {
   min-height: var(--touch-min);
-  padding: 0 var(--space-4);
+  padding: 0 var(--space-3);
   border-radius: var(--radius-sm);
   font-size: 1rem;
 }
 
+/* Grows into spare width; its floor is above the status text's, so the selector keeps more of the room. */
 .select {
+  flex: 1 1 120px;
+  min-width: 120px;
   max-width: 320px;
   border: 1px solid var(--border);
   background: var(--panel);
@@ -55,8 +81,18 @@
   opacity: 0.45;
 }
 
+/* Compact: two small lines fit the 48 px row, and the whole instruction stays readable. */
 .hint {
+  flex: 1 1 0;
+  min-width: 0;
   color: var(--text-muted);
+  font-size: 0.8rem;
+  line-height: 1.15;
+  text-align: left;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
 }
 
 .visuallyHidden {

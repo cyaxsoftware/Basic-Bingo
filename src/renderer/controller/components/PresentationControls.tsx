@@ -13,6 +13,8 @@ export interface PresentationControlsProps {
   readonly onRefreshDisplays: () => void;
 }
 
+const NO_SECOND_DISPLAY_HINT = 'No second display. Press Win+P → Extend, or use Preview.';
+
 export function describePresentation(status: PresentationStatus): string {
   switch (status.kind) {
     case 'closed':
@@ -46,7 +48,13 @@ export function PresentationControls({
 
   return (
     <div className={styles.controls}>
-      <span className={styles.status} data-kind={presentation.kind} role="status" aria-live="polite">
+      <span
+        className={styles.status}
+        data-kind={presentation.kind}
+        title={describePresentation(presentation)}
+        role="status"
+        aria-live="polite"
+      >
         {describePresentation(presentation)}
       </span>
 
@@ -77,11 +85,19 @@ export function PresentationControls({
           </button>
         </>
       ) : (
-        <span className={styles.hint}>No second display. Press Win+P → Extend, or use Preview.</span>
+        <span className={styles.hint} title={NO_SECOND_DISPLAY_HINT}>
+          {NO_SECOND_DISPLAY_HINT}
+        </span>
       )}
 
-      <button type="button" className={styles.secondary} onClick={onRefreshDisplays}>
-        Refresh displays
+      {/* The accessible name keeps the full words; the short visible label saves top-bar width. */}
+      <button
+        type="button"
+        className={styles.secondary}
+        aria-label="Refresh displays"
+        onClick={onRefreshDisplays}
+      >
+        Refresh
       </button>
       <button type="button" className={styles.secondary} onClick={onPreview}>
         Preview

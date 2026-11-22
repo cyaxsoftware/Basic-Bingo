@@ -1,9 +1,12 @@
+import { useId } from 'react';
 import type { ControllerApi } from '../../shared/ipc/contract';
 import type { SnapshotStore } from '../shared/snapshotStore';
 import { useSnapshotState } from '../shared/useSnapshotState';
 import { BallGrid } from './components/BallGrid';
 import { CallSummaryPanel } from './components/CallSummaryPanel';
 import { BingoBannerControl, NewGameControl } from './components/GameControls';
+import { ModePlaceholder } from './components/ModePlaceholder';
+import { modeTabId, ModeTabs } from './components/ModeTabs';
 import { NoticeArea } from './components/NoticeArea';
 import { PresentationControls } from './components/PresentationControls';
 import styles from './ControllerApp.module.css';
@@ -18,6 +21,7 @@ export interface ControllerAppProps {
 export function ControllerApp({ api, store }: ControllerAppProps) {
   const state = useSnapshotState(store);
   const actions = useControllerActions(api);
+  const panelId = useId();
 
   if (state.status === 'loading') {
     return <div className={styles.message}>Loading game…</div>;
@@ -32,8 +36,9 @@ export function ControllerApp({ api, store }: ControllerAppProps) {
 
   const { snapshot } = state;
   const { calledNumbers, bingoBannerVisible } = snapshot.game;
+  const mode = snapshot.presentationMode;
   return (
-    <div className={styles.layout}>
+    <main className={styles.layout}>
       <header className={styles.header}>
         <h1 className={styles.title}>Offline Bingo</h1>
         <PresentationControls
@@ -52,25 +57,41 @@ export function ControllerApp({ api, store }: ControllerAppProps) {
         />
       </header>
 
-      <NoticeArea
-        notices={snapshot.notices}
-        persistence={snapshot.persistence}
-        actionError={actions.lastError}
-        onDismissNotice={actions.dismissNotice}
-        onDismissActionError={actions.clearError}
-      />
+      <div className={styles.tabs}>
+        <ModeTabs mode={mode} onSelect={actions.setPresentationMode} panelId={panelId} />
+      </div>
 
-      <main className={styles.main}>
-        <BallGrid calledNumbers={calledNumbers} onToggle={actions.toggleBall} />
-        <div className={styles.side}>
-          <CallSummaryPanel calledNumbers={calledNumbers} />
-          <BingoBannerControl
-            bannerVisible={bingoBannerVisible}
-            onShow={actions.showBingoBanner}
-            onDismiss={actions.dismissBingoBanner}
-          />
-        </div>
-      </main>
-    </div>
+      {/* Empty (and hidden by CSS) unless there is something to tell the operator. */}
+      <div className={styles.notices}>
+        <NoticeArea
+          notices={snapshot.notices}
+          persistence={snapshot.persistence}
+          actionError={actions.lastError}
+          onDismissNotice={actions.dismissNotice}
+          onDismissActionError={actions.clearError}
+        />
+      </div>
+
+      <div className={styles.panel} role="tabpanel" id={panelId} aria-labelledby={modeTabId(mode)}>
+        {mode === 'gameBoard' ? (
+          <BallGrid calledNumbers={calledNumbers} onToggle={actions.toggleBall} />
+        ) : (
+          <ModePlaceholder mode={mode} />
+        )}
+      </div>
+
+      {/* Milestone 3's pattern panel goes in the right-hand column, between summary and BINGO control. */}
+      <div className={styles.summary}>
+        <CallSummaryPanel calledNumbers={calledNumbers} />
+      </div>
+
+      <div className={styles.bingo}>
+        <BingoBannerControl
+          bannerVisible={bingoBannerVisible}
+          onShow={actions.showBingoBanner}
+          onDismiss={actions.dismissBingoBanner}
+        />
+      </div>
+    </main>
   );
 }

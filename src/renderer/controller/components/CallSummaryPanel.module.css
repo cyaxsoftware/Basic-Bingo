@@ -50,8 +50,12 @@
   font-size: 1.1rem;
 }
 
-/* Narrow windows: a compact horizontal strip above the grid, so the grid keeps its height. */
-@media (max-width: 1100px) {
+/*
+ * Wide enough (the stacked layout): a compact horizontal strip, so the ball grid keeps its height.
+ * Decided by the width the parent gives this panel (a container query), not by the window size,
+ * so it needs no breakpoint of its own. The 260 px side column stays a tall card.
+ */
+@container (min-width: 520px) {
   .panel {
     flex-direction: row;
     align-items: center;
@@ -71,12 +75,34 @@
     min-height: 0;
   }
   .currentChip {
-    font-size: 1.6rem;
+    font-size: 1.3rem;
+  }
+  .previous {
+    gap: 4px;
   }
   .previousChip {
-    font-size: 1.1rem;
+    font-size: 0.95rem;
   }
   .count {
     margin: 0 0 0 auto;
+    white-space: nowrap;
+  }
+}
+
+/*
+ * Not enough width for the captions as well (about 900 px and below): show only the balls and the
+ * count. The captions stay in the accessibility tree as visually hidden text, and each section keeps
+ * its aria-label via the headings.
+ */
+@container (min-width: 520px) and (max-width: 779px) {
+  .heading {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+  }
+  .panel {
+    gap: var(--space-4);
   }
 }

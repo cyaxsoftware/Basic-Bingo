@@ -1,67 +1,133 @@
+/*
+ * The Controller is one CSS grid with named areas, so the same pieces can be
+ * rearranged between two layouts without touching the markup:
+ *
+ *  - Stacked (default, narrower windows): a slim top bar; the mode tabs and the
+ *    BINGO button share one row; the call summary is a thin strip; the ball grid
+ *    gets everything left. This is also the short-window layout: it keeps all 75
+ *    balls at 44 px or more down to about 910 x 480 CSS px.
+ *  - Two columns (wide windows): the grid on the left, call summary and BINGO
+ *    control in a side column.
+ *
+ * The two-column breakpoint is not arbitrary. The ball grid needs, at the 44 px
+ * touch floor, 16 columns x 44 + 15 gaps x 6 + its padding (2 x 8) and border (2 x 1)
+ * = 812 px. Two columns add page padding (2 x 16), a column gap (16) and the 260 px
+ * side column: 812 + 32 + 16 + 260 = 1120 px. 1141 px leaves a little slack.
+ * e2e/controllerLayout.spec.ts checks widths either side of it.
+ */
 .layout {
-  display: flex;
-  flex-direction: column;
+  --layout-gap: var(--space-2);
+  /* Read by the BINGO control (GameControls.module.css). Stacked: a row-sized button. */
+  --bingo-min-height: var(--touch-min);
+  --bingo-min-width: 240px;
+  --bingo-font-size: 1.1rem;
+  /* The "banner enabled" line is visually hidden here (still announced); see GameControls.module.css. */
+  --bingo-status-position: absolute;
+  --bingo-status-size: 1px;
+  --bingo-status-overflow: hidden;
+  --bingo-status-clip: inset(50%);
+
+  display: grid;
   height: 100%;
-  padding: var(--space-3) var(--space-4);
-  gap: var(--space-3);
+  padding: var(--space-2) var(--space-3);
+  column-gap: var(--space-3);
+  row-gap: 0;
+  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-rows: auto auto auto auto minmax(0, 1fr);
+  grid-template-areas:
+    'header header'
+    'tabs bingo'
+    'notices notices'
+    'summary summary'
+    'panel panel';
+}
+
+/* Spacing is a top margin rather than a grid gap, so an empty area (no notices) costs nothing. */
+.layout > * {
+  min-width: 0;
+  min-height: 0;
+}
+
+.layout > :not(:first-child) {
+  margin-top: var(--layout-gap);
 }
 
 .header {
+  grid-area: header;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: var(--space-4);
+  gap: var(--space-3);
   flex-wrap: wrap;
 }
 
 .title {
   margin: 0;
-  font-size: 1.4rem;
+  font-size: 1.3rem;
   font-weight: 700;
+  white-space: nowrap;
 }
 
-.main {
-  flex: 1;
-  min-height: 0;
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) 260px;
-  gap: var(--space-4);
+.tabs {
+  grid-area: tabs;
 }
 
-.side {
+.notices {
+  grid-area: notices;
+}
+
+.notices:empty {
+  display: none;
+}
+
+.summary {
+  grid-area: summary;
+  /* The summary draws itself as a strip or a tall card depending on the width it is given. */
+  container-type: inline-size;
   display: flex;
   flex-direction: column;
-  gap: var(--space-4);
-  min-height: 0;
 }
 
-.side > :first-child {
+.summary > * {
   flex: 1;
 }
 
-/* Narrow windows (e.g. 150% scaling): summary moves above the grid rather than shrinking balls. */
-@media (max-width: 1100px) {
-  .main {
-    grid-template-columns: minmax(0, 1fr);
-    grid-template-rows: auto 1fr;
+.bingo {
+  grid-area: bingo;
+}
+
+/* Holds the mode's content (the ball grid, or a placeholder) and gives it all the height left. */
+.panel {
+  grid-area: panel;
+  display: flex;
+  flex-direction: column;
+}
+
+@media (min-width: 1141px) {
+  .layout {
+    --bingo-min-height: 84px;
+    --bingo-min-width: 0px;
+    --bingo-font-size: 1.4rem;
+    --bingo-status-position: static;
+    --bingo-status-size: auto;
+    --bingo-status-overflow: visible;
+    --bingo-status-clip: none;
+
+    padding: var(--space-3) var(--space-4);
+    column-gap: var(--space-4);
+    grid-template-columns: minmax(0, 1fr) 260px;
+    grid-template-rows: auto auto auto minmax(0, 1fr) auto;
+    grid-template-areas:
+      'header header'
+      'tabs tabs'
+      'notices notices'
+      'panel summary'
+      'panel bingo';
+    --layout-gap: var(--space-3);
   }
-  .main > :last-child {
-    order: -1;
-  }
-  /* Summary strip and BINGO control share one row above the grid, and wrap
-     rather than overflow when the strip needs the width (full history at 150%). */
-  .side {
-    flex-direction: row;
-    flex-wrap: wrap;
-    align-items: stretch;
-  }
-  .side > :first-child {
-    flex: 1 1 auto;
-    min-width: 0;
-  }
-  .side > :last-child {
-    flex: 1 1 240px;
-    min-width: 0;
+
+  .title {
+    font-size: 1.4rem;
   }
 }
 

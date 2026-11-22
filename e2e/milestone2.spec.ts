@@ -10,10 +10,10 @@ import {
   horizontalOverflow,
   launchApp,
   removeUserDataDir,
+  resizeController,
   resizePresentation,
   tapBall,
   verticalOverflow,
-  viewportWidth,
   waitForPresentationWindow,
 } from './appHarness';
 
@@ -133,20 +133,7 @@ test('BINGO banner and New Game work in the real app, and the confirmation traps
 test('the BINGO control never forces horizontal scrolling at 150% laptop scaling with a full history', async () => {
   const { app, controller } = await launchApp(userDataDir);
   // 150% scaling on a 1366-wide laptop leaves roughly 910 CSS pixels.
-  // On that laptop the work area itself is ~910 wide, so the window's minimum width shrinks to match;
-  // here the screen is larger, so unmaximize and lower the minimum to get the same viewport.
-  // The app maximizes the window once it is ready to show, which can land after the UI appears; wait
-  // for it, or that late maximize would undo the resize below.
-  const isMaximized = () =>
-    app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0]?.isMaximized() ?? false);
-  await expect.poll(isMaximized).toBe(true);
-  await app.evaluate(({ BrowserWindow }) => {
-    const window = BrowserWindow.getAllWindows()[0];
-    window?.unmaximize();
-    window?.setMinimumSize(900, 600);
-    window?.setContentSize(910, 700);
-  });
-  await expect.poll(() => viewportWidth(controller)).toBe(910);
+  await resizeController(app, controller, 910, 700);
 
   for (const label of ['B-3', 'I-17', 'N-33', 'G-48', 'O-61', 'B-9']) await tapBall(controller, label);
   await expect(controller.getByTestId('previous-calls').getByRole('img')).toHaveCount(5);
@@ -263,3 +250,46 @@ for (const [name, width, height] of [
     await app.close();
   });
 }
+
+test('the mode tabs drive the real projector window and mirror the current mode', async () => {
+  const { app, controller } = await launchApp(userDataDir);
+  await tapBall(controller, 'B-3');
+  await controller.getByRole('button', { name: 'Preview' }).click();
+  const presentation = await waitForPresentationWindow(app);
+
+  const tab = (name: string) => controller.getByRole('tab', { name });
+  await expect(tab('Game Board')).toHaveAttribute('aria-selected', 'true');
+
+  await tab('Break Slideshow').click();
+  await expect(tab('Break Slideshow')).toHaveAttribute('aria-selected', 'true');
+  await expect(tab('Game Board')).toHaveAttribute('aria-selected', 'false');
+  await expect(presentation.getByRole('heading', { name: 'Break Slideshow' })).toBeVisible();
+  await expect(controller.getByRole('tabpanel', { name: 'Break Slideshow' })).toBeVisible();
+  await expect(controller.getByLabel('Bingo balls')).toHaveCount(0);
+
+  // Arrow keys only move focus; the projector changes on Enter.
+  await tab('Break Slideshow').focus();
+  await controller.keyboard.press('ArrowRight');
+  await expect(tab('Single Image')).toBeFocused();
+  await expect(tab('Break Slideshow')).toHaveAttribute('aria-selected', 'true');
+  await expect(presentation.getByRole('heading', { name: 'Break Slideshow' })).toBeVisible();
+  await controller.keyboard.press('Enter');
+  await expect(tab('Single Image')).toHaveAttribute('aria-selected', 'true');
+  await expect(presentation.getByRole('heading', { name: 'Single Image' })).toBeVisible();
+
+  // Back to the board: the same game, untouched.
+  await tab('Game Board').click();
+  await expect(presentation.getByRole('img', { name: 'B-3' })).toBeVisible();
+  await expect(controller.getByTestId('called-count')).toHaveText('Called: 1 of 75');
+  await expect(controller.getByRole('button', { name: /^B-3, current call/ })).toBeVisible();
+
+  // The chosen mode survives a restart, and the tab reflects it.
+  await tab('Countdown').click();
+  await app.close();
+  const second = await launchApp(userDataDir);
+  await expect(second.controller.getByRole('tab', { name: 'Countdown' })).toHaveAttribute(
+    'aria-selected',
+    'true',
+  );
+  await second.app.close();
+});
