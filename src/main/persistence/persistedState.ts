@@ -1,39 +1,50 @@
 /**
- * On-disk state format and migrations.
+ * On-disk state format, migrations, and conversion to and from app data.
  *
- * The file is versioned by `schemaVersion`. To change the format:
- *   1. Define the new shape and bump CURRENT_SCHEMA_VERSION.
- *   2. Add a migration from the previous version to MIGRATIONS.
- *   3. Add tests in persistedState.test.ts that load a fixture of the old version.
- * Never edit an existing migration after release.
+ * Two kinds of type live here, and they must stay separate:
+ *  - On-disk documents (PersistedStateV1, ...): frozen once released. A V1 file
+ *    means exactly what PersistedStateV1 says, forever. They never reference
+ *    live domain types such as GameState.
+ *  - AppData: the durable state the running app works with. It grows freely.
+ * `toPersistedState` / `fromPersistedState` convert between the current
+ * document and AppData field by field, so adding a field to GameState cannot
+ * silently change or leak into an existing file format.
+ *
+ * To change the format (e.g. M2 adds the BINGO banner to the game):
+ *   1. Add PersistedStateV2 (with its own PersistedGameV2) and a zod schema.
+ *      Point `PersistedState` at it and bump CURRENT_SCHEMA_VERSION.
+ *   2. Add MIGRATIONS[1]: a V1 document -> a V2 document (fill new fields with defaults).
+ *   3. Update toPersistedState / fromPersistedState. The compiler flags them
+ *      when GameState gains a required field.
+ *   4. Add a fixtures/state-v2.json and keep the state-v1.json test passing:
+ *      old files must still load.
+ * Never edit a released document type, schema, or migration.
  *
  * Only data that must survive a restart belongs here. Runtime state
  * (presentation window, displays, notices) is intentionally excluded.
  */
 import { z } from 'zod';
 import { normalizeCalledNumbers } from '../../shared/game/calledNumbers';
-import { INITIAL_GAME_STATE, type GameState } from '../../shared/game/gameState';
+import type { GameState } from '../../shared/game/gameState';
 
 export const CURRENT_SCHEMA_VERSION = 1;
+
+// ---------------------------------------------------------------------------
+// Version 1 document (released in milestone 1; frozen)
+// ---------------------------------------------------------------------------
+
+export interface PersistedGameV1 {
+  /** Ordered, unique balls 1..75; last element is the current call. */
+  readonly calledNumbers: readonly number[];
+}
 
 export interface PersistedStateV1 {
   readonly schemaVersion: 1;
   /** ISO timestamp of the save. Informational only. */
   readonly savedAt: string;
-  readonly game: GameState;
+  readonly game: PersistedGameV1;
   readonly settings: {
     readonly preferredDisplayId: number | null;
-  };
-}
-
-export type PersistedState = PersistedStateV1;
-
-export function createDefaultPersistedState(now: Date = new Date()): PersistedState {
-  return {
-    schemaVersion: 1,
-    savedAt: now.toISOString(),
-    game: INITIAL_GAME_STATE,
-    settings: { preferredDisplayId: null },
   };
 }
 
@@ -52,6 +63,58 @@ const PersistedStateV1Schema = z.object({
     })
     .catch({ preferredDisplayId: null }),
 });
+
+// ---------------------------------------------------------------------------
+// Current document and app data
+// ---------------------------------------------------------------------------
+
+/** The document version this build writes. */
+export type PersistedState = PersistedStateV1;
+
+/** Durable state as the running app uses it (independent of the file format). */
+export interface AppData {
+  readonly game: GameState;
+  readonly settings: {
+    readonly preferredDisplayId: number | null;
+  };
+}
+
+export function createDefaultPersistedState(now: Date = new Date()): PersistedState {
+  return {
+    schemaVersion: 1,
+    savedAt: now.toISOString(),
+    game: { calledNumbers: [] },
+    settings: { preferredDisplayId: null },
+  };
+}
+
+/** App data for a brand-new installation. */
+export function createDefaultAppData(): AppData {
+  return fromPersistedState(createDefaultPersistedState());
+}
+
+/** Convert app data to the current on-disk document. Copies fields explicitly. */
+export function toPersistedState(data: AppData, now: Date = new Date()): PersistedState {
+  return {
+    schemaVersion: 1,
+    savedAt: now.toISOString(),
+    game: { calledNumbers: [...data.game.calledNumbers] },
+    settings: { preferredDisplayId: data.settings.preferredDisplayId },
+  };
+}
+
+/** Convert a validated current document to app data. */
+export function fromPersistedState(document: PersistedState): AppData {
+  const game: GameState = { calledNumbers: [...document.game.calledNumbers] };
+  return {
+    game,
+    settings: { preferredDisplayId: document.settings.preferredDisplayId },
+  };
+}
+
+// ---------------------------------------------------------------------------
+// Parsing and migration
+// ---------------------------------------------------------------------------
 
 /** Migrations keyed by the version they upgrade FROM. Empty until v2 exists. */
 const MIGRATIONS: Record<number, (raw: Record<string, unknown>) => Record<string, unknown>> = {};

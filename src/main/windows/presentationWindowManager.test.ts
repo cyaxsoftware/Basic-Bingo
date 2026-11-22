@@ -1,7 +1,7 @@
 import { EventEmitter } from 'node:events';
 import type { BrowserWindow, Display, Rectangle } from 'electron';
 import { beforeEach, describe, expect, it } from 'vitest';
-import { createDefaultPersistedState } from '../persistence/persistedState';
+import { createDefaultAppData } from '../persistence/persistedState';
 import { AppStore } from '../state/appStore';
 import { DisplayManager, type ScreenLike } from './displayManager';
 import {
@@ -78,7 +78,7 @@ function setup() {
   let controllerBounds: Rectangle = { x: 100, y: 100, width: 1280, height: 800 }; // on the laptop
   const displays = new DisplayManager(screen as unknown as ScreenLike, () => controllerBounds);
   const store = new AppStore({
-    initialState: createDefaultPersistedState(),
+    initialData: createDefaultAppData(),
     persister: { save: async () => undefined },
   });
   const registry = new WindowRegistry();

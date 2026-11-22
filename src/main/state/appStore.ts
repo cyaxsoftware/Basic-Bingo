@@ -21,7 +21,7 @@ import {
   type PersistenceStatus,
   type PresentationStatus,
 } from '../../shared/ipc/contract';
-import type { PersistedState } from '../persistence/persistedState';
+import { toPersistedState, type AppData } from '../persistence/persistedState';
 import type { StatePersister } from '../persistence/stateRepository';
 
 export type SnapshotListener = (snapshot: AppSnapshot) => void;
@@ -33,7 +33,8 @@ export type SaveStatus = 'saved' | 'failed' | 'pending';
 export type SaveOutcome = 'saved' | 'failed' | 'timeout';
 
 export interface AppStoreOptions {
-  readonly initialState: PersistedState;
+  /** Durable state loaded at startup (see fromPersistedState). */
+  readonly initialData: AppData;
   readonly persister: StatePersister;
   readonly initialNotices?: readonly Notice[];
   readonly now?: () => Date;
@@ -46,7 +47,6 @@ export class AppStore {
   private readonly listeners = new Set<SnapshotListener>();
   private readonly persister: StatePersister;
   private readonly now: () => Date;
-  private readonly baseState: PersistedState;
   private requestedSaveId = 0;
   private completedSaveId = 0;
   private failedSaveId = 0;
@@ -55,13 +55,12 @@ export class AppStore {
   constructor(options: AppStoreOptions) {
     this.persister = options.persister;
     this.now = options.now ?? (() => new Date());
-    this.baseState = options.initialState;
     this.snapshot = Object.freeze<AppSnapshot>({
       revision: 1,
-      game: options.initialState.game,
+      game: options.initialData.game,
       presentation: { kind: 'closed' },
       displays: [],
-      preferredDisplayId: options.initialState.settings.preferredDisplayId,
+      preferredDisplayId: options.initialData.settings.preferredDisplayId,
       persistence: { kind: 'ok' },
       notices: options.initialNotices ?? [],
     });
@@ -158,11 +157,9 @@ export class AppStore {
     if (this.saveStatus() !== 'saved') this.persist();
   }
 
-  /** The durable subset of state, in its on-disk shape. */
-  toPersistedState(): PersistedState {
+  /** The durable subset of the current state, as app data (not a file format). */
+  getAppData(): AppData {
     return {
-      ...this.baseState,
-      savedAt: this.now().toISOString(),
       game: this.snapshot.game,
       settings: { preferredDisplayId: this.snapshot.preferredDisplayId },
     };
@@ -172,7 +169,7 @@ export class AppStore {
     // Save requests are numbered; the repository settles them in order, so
     // "completed >= requested" means the newest state is on disk.
     const saveId = ++this.requestedSaveId;
-    this.persister.save(this.toPersistedState()).then(
+    this.persister.save(toPersistedState(this.getAppData(), this.now())).then(
       () => {
         this.completedSaveId = Math.max(this.completedSaveId, saveId);
         this.setPersistence({ kind: 'ok' });
