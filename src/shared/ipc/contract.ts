@@ -1,0 +1,124 @@
+/**
+ * The IPC contract between the main process and the renderer windows.
+ *
+ * This file is the single source of truth for channel names and payload types.
+ * Main (src/main/ipc), the preload bridges (src/preload) and the renderers
+ * (src/renderer/shared/bingoApi.ts) all import from here, so TypeScript catches
+ * any drift between them.
+ *
+ * Rules:
+ *  - Renderers never mutate state. They send commands; main validates, applies,
+ *    persists and broadcasts a new {@link AppSnapshot}.
+ *  - Every snapshot has a strictly increasing `revision`. Renderers ignore any
+ *    snapshot whose revision is not newer than the one they already show.
+ *  - Command handlers return {@link CommandResult}; they never throw across IPC.
+ */
+import type { BallNumber } from '../game/balls';
+import type { GameState } from '../game/gameState';
+
+// ---------------------------------------------------------------------------
+// Snapshot (main -> renderers)
+// ---------------------------------------------------------------------------
+
+export interface Rect {
+  readonly x: number;
+  readonly y: number;
+  readonly width: number;
+  readonly height: number;
+}
+
+/** A Windows display as seen by Electron's `screen` module. */
+export interface DisplayInfo {
+  /** Electron display id. Not stable across reboots or reconnects; always re-verify. */
+  readonly id: number;
+  /** Human-readable label for the operator, e.g. "Display 2 (1920×1080)". */
+  readonly label: string;
+  readonly isPrimary: boolean;
+  readonly isInternal: boolean;
+  /** True when the Controller window is currently on this display. */
+  readonly hostsController: boolean;
+  /** Bounds in device-independent pixels. */
+  readonly bounds: Rect;
+  readonly scaleFactor: number;
+}
+
+export type PresentationStatus =
+  | { readonly kind: 'closed' }
+  | { readonly kind: 'preview' }
+  | { readonly kind: 'projecting'; readonly displayId: number; readonly displayLabel: string };
+
+export type PersistenceStatus =
+  | { readonly kind: 'ok' }
+  | { readonly kind: 'error'; readonly message: string; readonly failedAt: string };
+
+export type NoticeLevel = 'info' | 'warning' | 'error';
+
+/** Operator-facing message shown in the Controller until dismissed. */
+export interface Notice {
+  /** Stable id; adding a notice with an existing id replaces it. */
+  readonly id: string;
+  readonly level: NoticeLevel;
+  readonly message: string;
+}
+
+export interface AppSnapshot {
+  /** Strictly increasing for the lifetime of the main process. */
+  readonly revision: number;
+  /** Canonical game state. Persisted. */
+  readonly game: GameState;
+  /** Runtime-only: what the Presentation window is doing. Never persisted. */
+  readonly presentation: PresentationStatus;
+  /** Runtime-only: currently connected displays. */
+  readonly displays: readonly DisplayInfo[];
+  /** Last display the operator projected to. Persisted as a convenience only. */
+  readonly preferredDisplayId: number | null;
+  readonly persistence: PersistenceStatus;
+  readonly notices: readonly Notice[];
+}
+
+// ---------------------------------------------------------------------------
+// Commands (renderer -> main)
+// ---------------------------------------------------------------------------
+
+export type CommandResult = { readonly ok: true } | { readonly ok: false; readonly error: string };
+
+export const IpcChannel = {
+  // Queries (any app window)
+  getSnapshot: 'bingo:get-snapshot',
+  // Commands (Controller window only)
+  toggleBall: 'bingo:toggle-ball',
+  listDisplays: 'bingo:list-displays',
+  openPresentation: 'bingo:open-presentation',
+  openPreview: 'bingo:open-preview',
+  closePresentation: 'bingo:close-presentation',
+  dismissNotice: 'bingo:dismiss-notice',
+  // Events (main -> renderers)
+  snapshotUpdated: 'bingo:snapshot-updated',
+} as const;
+
+export type IpcChannelName = (typeof IpcChannel)[keyof typeof IpcChannel];
+
+export type Unsubscribe = () => void;
+
+/** API exposed to the read-only Presentation window as `window.bingo`. */
+export interface PresentationApi {
+  getSnapshot(): Promise<AppSnapshot>;
+  onSnapshot(listener: (snapshot: AppSnapshot) => void): Unsubscribe;
+}
+
+/** API exposed to the Controller window as `window.bingo`. */
+export interface ControllerApi extends PresentationApi {
+  toggleBall(ball: BallNumber): Promise<CommandResult>;
+  /** Re-reads displays from Windows and returns them (the snapshot updates too). */
+  listDisplays(): Promise<readonly DisplayInfo[]>;
+  openPresentation(displayId: number): Promise<CommandResult>;
+  openPreview(): Promise<CommandResult>;
+  closePresentation(): Promise<CommandResult>;
+  dismissNotice(noticeId: string): Promise<CommandResult>;
+}
+
+export const ok: CommandResult = Object.freeze({ ok: true });
+
+export function fail(error: string): CommandResult {
+  return { ok: false, error };
+}
