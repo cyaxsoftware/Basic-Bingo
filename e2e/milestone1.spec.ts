@@ -27,7 +27,7 @@ test.afterEach(async () => {
   await removeUserDataDir(userDataDir);
 });
 
-test('calls sync to Preview and the ordered game survives a restart', async () => {
+test('calls sync to Preview and the ordered game survives a restart', { tag: '@smoke' }, async () => {
   const first = await launchApp(userDataDir);
   const { controller } = first;
 
@@ -72,7 +72,7 @@ test('calls sync to Preview and the ordered game survives a restart', async () =
   await second.app.close();
 });
 
-test('renderers are sandboxed and the Presentation bridge is read-only', async () => {
+test('renderers are sandboxed and the Presentation bridge is read-only', { tag: '@smoke' }, async () => {
   const { app, controller } = await launchApp(userDataDir);
 
   const nodeGlobals = await controller.evaluate(() => ({
