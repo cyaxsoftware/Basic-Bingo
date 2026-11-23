@@ -48,6 +48,29 @@ async function setup(library: readonly MediaItem[] = [], pickedImages: readonly 
 }
 
 describe('Break Slideshow collection management', () => {
+  it('starts playback, holds a tapped thumbnail, continues, and stops on the held selection', async () => {
+    const { api, view, create, user } = await setup([], [image(A, 'Logo.png'), image(B, 'Menu.png')]);
+    await create('Sponsors');
+    const start = view.getByRole('button', { name: 'Start slideshow' });
+    const stop = view.getByRole('button', { name: 'Stop slideshow' });
+    const next = view.getByRole('button', { name: 'Continue slideshow' });
+    expect(start).toBeDisabled();
+    await user.click(view.getByRole('button', { name: 'Add images…' }));
+    await user.click(start);
+    expect(view.getByRole('status')).toHaveTextContent('Playing');
+    expect(view.getByRole('button', { name: 'Show Logo.png' })).toHaveAttribute('aria-current', 'true');
+    await user.click(view.getByRole('button', { name: 'Show Menu.png' }));
+    expect(view.getByRole('status')).toHaveTextContent('Slide held');
+    expect(view.getByRole('button', { name: 'Show Menu.png' })).toHaveAttribute('aria-current', 'true');
+    await user.click(next);
+    expect(api.current().slideshowPlayback).toMatchObject({ status: 'playing', mediaId: B });
+    await user.click(stop);
+    expect(api.current().slideshowPlayback).toEqual({ status: 'stopped', mediaId: B });
+    expect(next).toBeDisabled();
+    expect(stop).toBeDisabled();
+    expect(start).toBeEnabled();
+  });
+
   it('separates creating a collection from choosing one and puts Add images inside the selected collection', async () => {
     const { api, create, view, user } = await setup();
     expect(view.getByText('Create a collection to start adding images.')).toBeInTheDocument();

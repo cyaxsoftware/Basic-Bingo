@@ -20,7 +20,16 @@ import {
   reduceSlideshow,
   removeImageFromSlideshows,
   type SlideshowCommand,
+  type SlideshowState,
 } from '../../shared/media/slideshow';
+import {
+  activeSlideshow,
+  reconcileSlideshowPlayback,
+  reduceSlideshowPlayback,
+  STOPPED_SLIDESHOW,
+  stopSlideshow,
+  type SlideshowPlaybackCommand,
+} from '../../shared/media/slideshowPlayback';
 import {
   fail,
   ok,
@@ -62,6 +71,7 @@ export function makeSnapshot(overrides: Partial<AppSnapshot> = {}): AppSnapshot 
     singleImage: { imageId: null },
     timer: DEFAULT_TIMER,
     slideshow: EMPTY_SLIDESHOW,
+    slideshowPlayback: STOPPED_SLIDESHOW,
     presentation: { kind: 'closed' },
     displays: [LAPTOP, PROJECTOR],
     preferredDisplayId: null,
@@ -106,19 +116,25 @@ export function createFakeBingoApi(initial: AppSnapshot = makeSnapshot()): FakeB
     }
   };
 
+  const playbackFor = (slideshow: SlideshowState) =>
+    reconcileSlideshowPlayback(snapshot.slideshowPlayback, snapshot.slideshow, slideshow, Date.now());
+
   const dispatchMedia = (command: MediaCommand): CommandResult => {
     try {
       const current = { library: snapshot.mediaLibrary, singleImage: snapshot.singleImage };
       const next = reduceMedia(current, command);
-      if (next !== current)
+      if (next !== current) {
+        const slideshow =
+          command.type === 'removeMedia'
+            ? removeImageFromSlideshows(snapshot.slideshow, command.mediaId)
+            : snapshot.slideshow;
         publish({
           mediaLibrary: next.library,
           singleImage: next.singleImage,
-          slideshow:
-            command.type === 'removeMedia'
-              ? removeImageFromSlideshows(snapshot.slideshow, command.mediaId)
-              : snapshot.slideshow,
+          slideshow,
+          slideshowPlayback: playbackFor(slideshow),
         });
+      }
       return ok;
     } catch (error) {
       return fail((error as Error).message);
@@ -135,7 +151,23 @@ export function createFakeBingoApi(initial: AppSnapshot = makeSnapshot()): FakeB
         command,
         () => `00000000-0000-4000-8000-${String(++collectionIds).padStart(12, '0')}`,
       );
-      if (slideshow !== snapshot.slideshow) publish({ slideshow });
+      if (slideshow !== snapshot.slideshow) publish({ slideshow, slideshowPlayback: playbackFor(slideshow) });
+      return ok;
+    } catch (error) {
+      return fail((error as Error).message);
+    }
+  };
+
+  const controlSlideshow = (command: SlideshowPlaybackCommand): CommandResult => {
+    if (snapshot.presentationMode !== 'slideshow') return fail('Open Break Slideshow to control playback.');
+    try {
+      const next = reduceSlideshowPlayback(
+        snapshot.slideshowPlayback,
+        activeSlideshow(snapshot.slideshow),
+        command,
+        Date.now(),
+      );
+      if (next !== snapshot.slideshowPlayback) publish({ slideshowPlayback: next });
       return ok;
     } catch (error) {
       return fail((error as Error).message);
@@ -182,7 +214,11 @@ export function createFakeBingoApi(initial: AppSnapshot = makeSnapshot()): FakeB
     newGame: vi.fn(async () => dispatchGame({ type: 'newGame' })),
     setPresentationMode: vi.fn(async (mode: PresentationMode) => {
       if (!isPresentationMode(mode)) return fail('Choose a valid presentation mode.');
-      if (mode !== snapshot.presentationMode) publish({ presentationMode: mode });
+      if (mode !== snapshot.presentationMode)
+        publish({
+          presentationMode: mode,
+          slideshowPlayback: stopSlideshow(snapshot.slideshowPlayback),
+        });
       return ok;
     }),
     selectPattern: vi.fn(async (patternId: string) => dispatchPattern({ type: 'selectPattern', patternId })),
@@ -229,6 +265,7 @@ export function createFakeBingoApi(initial: AppSnapshot = makeSnapshot()): FakeB
     resumeTimer: vi.fn(async () => dispatchTimer({ type: 'resume' })),
     resetTimer: vi.fn(async () => dispatchTimer({ type: 'reset' })),
     editSlideshow: vi.fn(async (command: SlideshowCommand) => dispatchSlideshow(command)),
+    controlSlideshow: vi.fn(async (command: SlideshowPlaybackCommand) => controlSlideshow(command)),
     listDisplays: vi.fn(async () => snapshot.displays),
     openPresentation: vi.fn(async (displayId: number) => {
       const display = snapshot.displays.find((d) => d.id === displayId);

@@ -108,6 +108,13 @@ Images the operator imports (PNG, JPEG, WebP, GIF, up to 20 MB each) are copied 
   references, which still load and show thumbnails. Earlier files start with no collections.
   Recovery skips damaged collections and invalid slide references while preserving the order of the
   surviving entries. A lost active collection clears the selection.
+- `src/shared/media/slideshowPlayback.ts` owns the runtime playback rules. The Controller's
+  `controlSlideshow` bridge sends Start, Stop, Hold or Continue to the store. The store publishes the
+  current slide and, while playing, the next advance deadline. The main-process deadline service
+  advances and loops the ordered slides. Playback status starts stopped on each launch.
+- Presentation resolves the current slide by image ID and applies its fit override or the
+  collection default. Both media modes use the same image stage. The slideshow also renders the
+  shared countdown from `snapshot.timer`. Playback deadlines and countdown expiry are independent.
 
 ## Countdown timer
 

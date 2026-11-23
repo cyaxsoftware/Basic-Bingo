@@ -27,7 +27,7 @@ No internet connection, cloud database, user account, local HTTP server, or sepa
 3. **BINGO CALLED** displays a conspicuous red notice on the game projector, and the notice persists until the operator explicitly dismisses it (false BINGO) or resets the game. It is never automatically dismissed.
 4. **Winning patterns** live in a saved, editable library. The active pattern's name and all 25 cells can be edited in place during the game. The projector shows the pattern the operator last **pushed** with the Show on projector button (a snapshot of the title and cells); edits wait for the next push, so a stray tap never changes what the audience sees. **Never assume that the center cell is highlighted.** Patterns only highlight cells explicitly selected by the operator.
 5. **Slideshow** supports multiple named collections. Different organizations can maintain their own collections on the same installed laptop.
-6. When a break countdown reaches zero, show **“Time to Play!”**, but continue the slideshow until the operator manually chooses another presentation mode.
+6. When a break countdown reaches zero, show **“Time to Play!”**. Slideshow rotation continues under the operator’s control.
 7. **Still-image mode** uses a reusable local image library; support fit and crop presentation options.
 8. Target **Windows 11**. Laptop model is approximately a 15-inch HP touchscreen; exact resolution is unknown. Design and test for multiple logical resolutions and Windows scaling settings.
 9. Backup/export/import of settings, patterns, or media is **out of MVP scope**.
@@ -99,11 +99,15 @@ No internet connection, cloud database, user account, local HTTP server, or sepa
 - Numbered thumbnails show playback order. Move each slide earlier or later, remove it, or set its
   fit to **Original**, **Fit**, **Fill**, or **Use collection fit**. Each collection defaults to Fit
   with 10 seconds per slide and supports intervals of 1–300 seconds.
-- Images will display in sequence and loop until the operator chooses another presentation mode.
-- A conspicuous break countdown is visible to the audience, with remaining minutes/seconds. Operator can set duration, start, pause/resume, and reset it. Countdown must be derived from an absolute timestamp while running to avoid drift.
-- At zero, replace the timer copy with **Time to Play!** and continue rotating slides. Do **not** automatically switch to the game board.
-- The countdown continues across mode changes and New Game. The timer controls are on the Countdown tab.
-  Break Slideshow uses the Coming soon projector placeholder until playback and the corner countdown are built.
+- **Start** loops from the first slide. **Stop** ends rotation and leaves the current slide visible.
+  Select a thumbnail to show that slide immediately and hold it. **Continue** gives the held slide a
+  full interval, then advances through the collection from there.
+- Choosing a different collection, leaving Break Slideshow, or removing the current slide stops
+  rotation. The first slide of a newly selected collection appears as a still. Changing the interval
+  during playback gives the current slide a fresh interval.
+- The shared break countdown appears in the corner. Its controls are on the Countdown tab. It
+  continues across slide holds, mode changes and New Game. At zero, the overlay shows
+  **Time to Play!** and any playing slideshow keeps rotating.
 - Handle empty collections gracefully with an operator-facing explanation and a clean presentation placeholder, never a broken image icon.
 
 ### 4.4 Single Image

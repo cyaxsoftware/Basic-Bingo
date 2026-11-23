@@ -23,7 +23,7 @@ import { fromPersistedState } from './persistence/persistedState';
 import { JsonStateRepository, type LoadResult } from './persistence/stateRepository';
 import { installOfflinePolicy } from './security/offlinePolicy';
 import { AppStore } from './state/appStore';
-import { startTimerService } from './timer/timerService';
+import { startSlideshowService, startTimerService } from './timer/timerService';
 import { createAppWindow } from './windows/createAppWindow';
 import { createControllerWindow } from './windows/controllerWindow';
 import { DisplayManager } from './windows/displayManager';
@@ -128,6 +128,7 @@ async function startApplication(registry: WindowRegistry): Promise<void> {
   registerIpcHandlers(ipcMain, { store, media, presentation, displays, senders: registry });
   store.subscribe((snapshot) => registry.broadcast(snapshot));
   const stopTimerService = startTimerService(store);
+  const stopSlideshowService = startSlideshowService(store);
 
   displays.start((list) => {
     store.setDisplays(list);
@@ -143,7 +144,10 @@ async function startApplication(registry: WindowRegistry): Promise<void> {
     app.quit();
   });
 
-  installShutdown(store, presentation, displays, stopTimerService);
+  installShutdown(store, presentation, displays, () => {
+    stopTimerService();
+    stopSlideshowService();
+  });
 }
 
 /** The native "Add images" dialog, over the Controller. An empty list means the operator cancelled. */
@@ -209,7 +213,7 @@ function installShutdown(
   store: AppStore,
   presentation: PresentationWindowManager,
   displays: DisplayManager,
-  stopTimerService: () => void,
+  stopDeadlines: () => void,
 ) {
   let readyToQuit = false;
   let shuttingDown = false;
@@ -220,7 +224,7 @@ function installShutdown(
     if (shuttingDown) return;
     shuttingDown = true;
 
-    stopTimerService();
+    stopDeadlines();
     displays.stop();
     presentation.close();
     store

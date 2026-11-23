@@ -21,6 +21,7 @@ import type { ActivePattern, Pattern, PatternCells, ShownPattern } from '../patt
 import type { PresentationMode } from '../presentation/presentationMode';
 import type { TimerState } from '../timer/timerState';
 import type { SlideshowCommand, SlideshowState } from '../media/slideshow';
+import type { SlideshowPlayback, SlideshowPlaybackCommand } from '../media/slideshowPlayback';
 
 // ---------------------------------------------------------------------------
 // Snapshot (main -> renderers)
@@ -88,6 +89,7 @@ export interface AppSnapshot {
   readonly singleImage: SingleImageState;
   readonly timer: TimerState;
   readonly slideshow: SlideshowState;
+  readonly slideshowPlayback: SlideshowPlayback;
   /** Runtime-only: what the Presentation window is doing. Never persisted. */
   readonly presentation: PresentationStatus;
   /** Runtime-only: currently connected displays. */
@@ -137,6 +139,7 @@ export const IpcChannel = {
   resumeTimer: 'bingo:resume-timer',
   resetTimer: 'bingo:reset-timer',
   editSlideshow: 'bingo:edit-slideshow',
+  controlSlideshow: 'bingo:control-slideshow',
   listDisplays: 'bingo:list-displays',
   openPresentation: 'bingo:open-presentation',
   openPreview: 'bingo:open-preview',
@@ -204,6 +207,7 @@ export interface ControllerApi extends PresentationApi {
   resumeTimer(): Promise<CommandResult>;
   resetTimer(): Promise<CommandResult>;
   editSlideshow(command: SlideshowCommand): Promise<CommandResult>;
+  controlSlideshow(command: SlideshowPlaybackCommand): Promise<CommandResult>;
   /** Re-reads displays from Windows and returns them (the snapshot updates too). */
   listDisplays(): Promise<readonly DisplayInfo[]>;
   openPresentation(displayId: number): Promise<CommandResult>;

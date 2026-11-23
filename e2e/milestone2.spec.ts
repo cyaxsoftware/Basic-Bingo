@@ -50,25 +50,25 @@ test('the presentation mode switches the audience view without touching the game
 
   // A non-board mode shows a placeholder (never a blank screen) and the game is intact.
   expect(await setMode(controller, 'slideshow')).toEqual({ ok: true });
-  await expect(presentation.getByRole('heading', { name: 'Break Slideshow' })).toBeVisible();
-  await expect(presentation.getByText('Coming soon')).toBeVisible();
-  await expect(controller.getByTestId('called-count')).toHaveText('Called: 2 of 75');
+  await expect(presentation.getByRole('region', { name: 'Break Slideshow' })).toBeVisible();
+  await expect(presentation.getByText('No slideshow selected')).toBeVisible();
 
   // An invalid mode is rejected and changes nothing.
   expect(await setMode(controller, 'photos')).toMatchObject({ ok: false });
-  await expect(presentation.getByRole('heading', { name: 'Break Slideshow' })).toBeVisible();
+  await expect(presentation.getByRole('region', { name: 'Break Slideshow' })).toBeVisible();
 
   await first.app.close();
 
   // Relaunch: the mode and the ordered calls are both restored.
   const second = await launchApp(userDataDir);
-  expect(await ballLabels(second.controller.getByTestId('previous-calls'))).toEqual(['B-3']);
   await second.controller.getByRole('button', { name: 'Preview' }).click();
   const page = await findPresentationWindow(second.app);
-  await expect(page.getByRole('heading', { name: 'Break Slideshow' })).toBeVisible();
+  await expect(page.getByRole('region', { name: 'Break Slideshow' })).toBeVisible();
 
   // Back to the board: the same game is shown.
   expect(await setMode(second.controller, 'gameBoard')).toEqual({ ok: true });
+  await expect(second.controller.getByTestId('called-count')).toHaveText('Called: 2 of 75');
+  expect(await ballLabels(second.controller.getByTestId('previous-calls'))).toEqual(['B-3']);
   await expect(page.getByRole('img', { name: 'I-17' })).toBeVisible();
   await second.app.close();
 });
@@ -180,7 +180,7 @@ test('BINGO CALLED shows the banner on Preview until Dismiss', { tag: '@smoke' }
       globalThis as unknown as { bingo: { setPresentationMode(m: string): Promise<unknown> } }
     ).bingo.setPresentationMode('slideshow'),
   );
-  await expect(presentation.getByRole('heading', { name: 'Break Slideshow' })).toBeVisible();
+  await expect(presentation.getByRole('region', { name: 'Break Slideshow' })).toBeVisible();
   await expect(banner).toBeHidden();
   await controller.evaluate(() =>
     (
@@ -263,7 +263,7 @@ test('the mode tabs drive the projector and mirror the current mode', { tag: '@s
   await tab('Break Slideshow').click();
   await expect(tab('Break Slideshow')).toHaveAttribute('aria-selected', 'true');
   await expect(tab('Game Board')).toHaveAttribute('aria-selected', 'false');
-  await expect(presentation.getByRole('heading', { name: 'Break Slideshow' })).toBeVisible();
+  await expect(presentation.getByRole('region', { name: 'Break Slideshow' })).toBeVisible();
   await expect(controller.getByRole('tabpanel', { name: 'Break Slideshow' })).toBeVisible();
   await expect(controller.getByLabel('Bingo balls')).toHaveCount(0);
 
@@ -272,7 +272,7 @@ test('the mode tabs drive the projector and mirror the current mode', { tag: '@s
   await controller.keyboard.press('ArrowRight');
   await expect(tab('Single Image')).toBeFocused();
   await expect(tab('Break Slideshow')).toHaveAttribute('aria-selected', 'true');
-  await expect(presentation.getByRole('heading', { name: 'Break Slideshow' })).toBeVisible();
+  await expect(presentation.getByRole('region', { name: 'Break Slideshow' })).toBeVisible();
   await controller.keyboard.press('Enter');
   await expect(tab('Single Image')).toHaveAttribute('aria-selected', 'true');
   await expect(presentation.getByRole('heading', { name: 'Single Image' })).toBeVisible();

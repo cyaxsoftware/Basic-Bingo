@@ -32,6 +32,14 @@ import {
   type SlideshowState,
 } from '../../shared/media/slideshow';
 import { reducePatterns, type PatternCommand } from '../../shared/patterns';
+import {
+  activeSlideshow,
+  advanceSlideshow,
+  reconcileSlideshowPlayback,
+  reduceSlideshowPlayback,
+  stopSlideshow,
+  STOPPED_SLIDESHOW,
+} from '../../shared/media/slideshowPlayback';
 import { reduceTimer, type TimerCommand, type TimerState } from '../../shared/timer/timerState';
 import type { StatePersister } from '../persistence/stateRepository';
 
@@ -81,6 +89,7 @@ export class AppStore {
       singleImage: options.initialData.media.singleImage,
       timer: options.initialData.timer,
       slideshow: options.initialData.slideshow,
+      slideshowPlayback: STOPPED_SLIDESHOW,
       presentation: { kind: 'closed' },
       displays: [],
       preferredDisplayId: options.initialData.settings.preferredDisplayId,
@@ -154,7 +163,12 @@ export class AppStore {
         command.type === 'removeMedia'
           ? removeImageFromSlideshows(this.snapshot.slideshow, command.mediaId)
           : this.snapshot.slideshow;
-      this.update({ mediaLibrary: next.library, singleImage: next.singleImage, slideshow });
+      this.update({
+        mediaLibrary: next.library,
+        singleImage: next.singleImage,
+        slideshow,
+        slideshowPlayback: this.reconcileSlideshow(slideshow),
+      });
       this.persist();
     }
     return ok;
@@ -178,10 +192,49 @@ export class AppStore {
       return fail(error instanceof Error ? error.message : String(error));
     }
     if (slideshow !== this.snapshot.slideshow) {
-      this.update({ slideshow });
+      this.update({ slideshow, slideshowPlayback: this.reconcileSlideshow(slideshow) });
       this.persist();
     }
     return ok;
+  }
+
+  private reconcileSlideshow(slideshow: SlideshowState) {
+    if (slideshow === this.snapshot.slideshow) return this.snapshot.slideshowPlayback;
+    return reconcileSlideshowPlayback(
+      this.snapshot.slideshowPlayback,
+      this.snapshot.slideshow,
+      slideshow,
+      this.now().getTime(),
+    );
+  }
+
+  dispatchSlideshowPlayback(command: unknown): CommandResult {
+    if (this.snapshot.presentationMode !== 'slideshow')
+      return fail('Open Break Slideshow to control playback.');
+    const { slideshow, slideshowPlayback } = this.snapshot;
+    try {
+      const next = reduceSlideshowPlayback(
+        slideshowPlayback,
+        activeSlideshow(slideshow),
+        command,
+        this.now().getTime(),
+      );
+      if (next !== slideshowPlayback) this.update({ slideshowPlayback: next });
+      return ok;
+    } catch (error) {
+      return fail(error instanceof Error ? error.message : String(error));
+    }
+  }
+
+  advanceSlideshow(deadline: number): void {
+    const { slideshow, slideshowPlayback } = this.snapshot;
+    const next = advanceSlideshow(
+      slideshowPlayback,
+      activeSlideshow(slideshow),
+      deadline,
+      this.now().getTime(),
+    );
+    if (next !== slideshowPlayback) this.update({ slideshowPlayback: next });
   }
 
   dispatchTimer(command: TimerCommand): CommandResult {
@@ -201,7 +254,11 @@ export class AppStore {
   /** Switch what the audience display shows. Touches no game state. */
   setPresentationMode(mode: PresentationMode): CommandResult {
     if (mode !== this.snapshot.presentationMode) {
-      this.update({ presentationMode: mode });
+      const { slideshowPlayback } = this.snapshot;
+      this.update({
+        presentationMode: mode,
+        slideshowPlayback: stopSlideshow(slideshowPlayback),
+      });
       this.persist();
     }
     return ok;

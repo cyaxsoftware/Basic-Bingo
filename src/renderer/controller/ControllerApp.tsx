@@ -150,8 +150,10 @@ export function ControllerApp({ api, store }: ControllerAppProps) {
           ) : (
             <SlideshowPanel
               slideshow={snapshot.slideshow}
+              playback={snapshot.slideshowPlayback}
               library={snapshot.mediaLibrary}
               onEdit={actions.editSlideshow}
+              onPlayback={actions.controlSlideshow}
               onImport={actions.importSlideshowImages}
             />
           )}

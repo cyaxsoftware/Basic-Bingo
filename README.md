@@ -71,8 +71,10 @@ banner, and **New Game** leaves the mode alone.
 Game Board contains the ball grid and game controls. Single Image displays a chosen library image,
 and Countdown shows the shared timer. The Break Slideshow tab manages named collections and their
 ordered slides. Choose a collection and use **Add images…** to append files directly to it. The
-thumbnails show slide order and let you set Original, Fit, or Fill for each image. The projector shows
-"Coming soon" for Break Slideshow while playback is in development.
+thumbnails show slide order and let you set Original, Fit, or Fill for each image. **Start** loops
+from the first slide. Tap a thumbnail to hold it on screen, then press **Continue** to resume after a
+full interval. **Stop** leaves the current slide on screen. The shared break countdown stays visible
+in the corner, and slides keep rotating when it reaches **Time to Play!**.
 
 ### BINGO called and starting a new game
 

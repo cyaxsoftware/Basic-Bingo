@@ -1,0 +1,33 @@
+.stage {
+  flex: 1;
+  min-height: 0;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  container-type: size;
+}
+
+.overlay {
+  position: absolute;
+  inset-inline-end: min(3cqw, 4cqh);
+  inset-block-end: min(3cqw, 4cqh);
+  padding: min(2cqw, 2cqh) min(3cqw, 3cqh);
+  border-radius: var(--radius-md);
+  background: var(--stage);
+  color: var(--stage-text);
+  font-size: min(6cqw, 8cqh);
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+  text-align: center;
+}
+
+.overlay p {
+  margin: 0;
+}
+
+.overlay .paused {
+  margin-block-start: 1cqh;
+  color: var(--stage-muted);
+  font-size: 0.46em;
+}

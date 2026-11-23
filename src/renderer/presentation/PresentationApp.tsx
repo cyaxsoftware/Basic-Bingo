@@ -4,10 +4,10 @@ import { AudienceBoard } from './components/AudienceBoard';
 import { BingoBanner } from './components/BingoBanner';
 import { CallDisplay } from './components/CallDisplay';
 import { findMedia } from '../../shared/media';
-import { ComingSoon } from './components/ComingSoon';
 import { CountdownView } from './components/CountdownView';
 import { ShownPattern } from './components/ShownPattern';
 import { SingleImageView } from './components/SingleImageView';
+import { SlideshowView } from './components/SlideshowView';
 import styles from './PresentationApp.module.css';
 
 export interface PresentationAppProps {
@@ -62,7 +62,12 @@ export function PresentationApp({ store }: PresentationAppProps) {
         ) : snapshot.presentationMode === 'countdown' ? (
           <CountdownView timer={snapshot.timer} />
         ) : (
-          <ComingSoon mode={snapshot.presentationMode} />
+          <SlideshowView
+            slideshow={snapshot.slideshow}
+            playback={snapshot.slideshowPlayback}
+            library={snapshot.mediaLibrary}
+            timer={snapshot.timer}
+          />
         )}
       </div>
     </div>

@@ -11,14 +11,22 @@ import {
   type SlideshowCommand,
   type SlideshowState,
 } from '../../../shared/media/slideshow';
+import {
+  activeSlideshow,
+  presentedSlide,
+  type SlideshowPlayback,
+  type SlideshowPlaybackCommand,
+} from '../../../shared/media/slideshowPlayback';
 import { ConfirmDialog } from './ConfirmDialog';
 import styles from './SlideshowPanel.module.css';
 
 interface SlideshowPanelProps {
   readonly slideshow: SlideshowState;
+  readonly playback: SlideshowPlayback;
   readonly library: readonly MediaItem[];
   readonly onEdit: (command: SlideshowCommand) => void;
   readonly onImport: (collectionId: string) => void;
+  readonly onPlayback: (command: SlideshowPlaybackCommand) => void;
 }
 
 function readField(event: FormEvent<HTMLFormElement>, field: string): string {
@@ -36,7 +44,7 @@ function Thumbnail({
 }) {
   const [failed, setFailed] = useState(false);
   return (
-    <div className={styles.thumbnail}>
+    <span className={styles.thumbnail}>
       {image && !failed ? (
         <img src={mediaUrl(image.id)} alt={image.name} loading="lazy" onError={() => setFailed(true)} />
       ) : (
@@ -45,7 +53,7 @@ function Thumbnail({
       <span className={styles.position} aria-hidden="true">
         {slideNumber}
       </span>
-    </div>
+    </span>
   );
 }
 
@@ -54,6 +62,8 @@ function CollectionEditor({
   library,
   onEdit,
   onImport,
+  playback,
+  onPlayback,
 }: Omit<SlideshowPanelProps, 'slideshow'> & { readonly collection: SlideshowCollection }) {
   const { id: collectionId, slides } = collection;
   const [confirmDelete, setConfirmDelete] = useState(false);
@@ -61,6 +71,7 @@ function CollectionEditor({
   const [nameDraft, setNameDraft] = useState<string | null>(null);
   const [secondsDraft, setSecondsDraft] = useState<string | null>(null);
   const legacyImages = new Map(library.map((image) => [image.id, image]));
+  const current = presentedSlide(collection, playback);
 
   return (
     <div className={styles.editor}>
@@ -73,6 +84,36 @@ function CollectionEditor({
           {slides.length} {slides.length === 1 ? 'slide' : 'slides'}
         </span>
       </div>
+      <div className={styles.playback} role="group" aria-label="Slideshow playback">
+        <button
+          className={styles.primary}
+          type="button"
+          aria-label="Start slideshow"
+          disabled={!current || playback.status !== 'stopped'}
+          onClick={() => onPlayback({ type: 'start' })}
+        >
+          Start
+        </button>
+        <button
+          type="button"
+          aria-label="Stop slideshow"
+          disabled={playback.status === 'stopped'}
+          onClick={() => onPlayback({ type: 'stop' })}
+        >
+          Stop
+        </button>
+        <button
+          type="button"
+          aria-label="Continue slideshow"
+          disabled={playback.status !== 'held'}
+          onClick={() => onPlayback({ type: 'continue' })}
+        >
+          Continue
+        </button>
+        <p role="status">
+          {playback.status === 'held' ? 'Slide held' : playback.status === 'playing' ? 'Playing' : 'Stopped'}
+        </p>
+      </div>
       {slides.length === 0 ? (
         <p className={styles.empty}>This collection is empty. Add images to create its first slides.</p>
       ) : (
@@ -82,7 +123,15 @@ function CollectionEditor({
             const name = image?.name ?? 'Unavailable image';
             return (
               <li key={mediaId} className={styles.slide}>
-                <Thumbnail image={image} slideNumber={index + 1} />
+                <button
+                  type="button"
+                  className={styles.showSlide}
+                  aria-label={`Show ${name}`}
+                  aria-current={current?.mediaId === mediaId ? 'true' : undefined}
+                  onClick={() => onPlayback({ type: 'hold', mediaId })}
+                >
+                  <Thumbnail image={image} slideNumber={index + 1} />
+                </button>
                 <span className={styles.imageName} title={name}>
                   {name}
                 </span>
@@ -204,9 +253,16 @@ function CollectionEditor({
   );
 }
 
-export function SlideshowPanel({ slideshow, library, onEdit, onImport }: SlideshowPanelProps) {
+export function SlideshowPanel({
+  slideshow,
+  playback,
+  library,
+  onEdit,
+  onImport,
+  onPlayback,
+}: SlideshowPanelProps) {
   const [creating, setCreating] = useState(false);
-  const active = slideshow.collections.find((entry) => entry.id === slideshow.activeId);
+  const active = activeSlideshow(slideshow);
   return (
     <section className={styles.panel} aria-label="Slideshow collections">
       <aside className={styles.sidebar} aria-label="Collections">
@@ -260,6 +316,8 @@ export function SlideshowPanel({ slideshow, library, onEdit, onImport }: Slidesh
           library={library}
           onEdit={onEdit}
           onImport={onImport}
+          playback={playback}
+          onPlayback={onPlayback}
         />
       ) : (
         <div className={styles.editor}>

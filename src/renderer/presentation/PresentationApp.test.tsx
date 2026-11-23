@@ -48,11 +48,89 @@ describe('PresentationApp', () => {
     expect(screen.queryByText('Ready for first call')).not.toBeInTheDocument();
   });
 
-  it('shows the Break Slideshow placeholder', async () => {
+  it('shows the Break Slideshow placeholder and countdown when no collection is selected', async () => {
     renderPresentation(makeSnapshot({ presentationMode: 'slideshow' }));
-    expect(await screen.findByRole('heading', { name: 'Break Slideshow' })).toBeInTheDocument();
-    expect(screen.getByText('Coming soon')).toBeInTheDocument();
+    expect(await screen.findByRole('region', { name: 'Break Slideshow' })).toBeInTheDocument();
+    expect(screen.getByText('No slideshow selected')).toBeInTheDocument();
+    expect(screen.getByRole('timer')).toHaveTextContent('05:00');
     expect(screen.queryByLabelText('Bingo board')).not.toBeInTheDocument();
+  });
+
+  it('follows the slideshow slide and fit through expiry, with a read-only corner countdown', async () => {
+    const legacy = {
+      id: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
+      name: 'Sponsor.png',
+      format: 'png',
+      bytes: 100,
+      width: 400,
+      height: 200,
+      addedAt: '',
+      fit: 'original',
+    } as const;
+    const owned = { ...legacy, id: 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb', name: 'Menu.png' };
+    const snapshot = makeSnapshot({
+      presentationMode: 'slideshow',
+      mediaLibrary: [legacy],
+      timer: { ...DEFAULT_TIMER, status: 'paused', remainingMs: 2150 },
+      slideshow: {
+        activeId: 'sponsors',
+        collections: [
+          {
+            id: 'sponsors',
+            name: 'Sponsors',
+            fit: 'fill',
+            secondsPerSlide: 3,
+            slides: [
+              { mediaId: legacy.id, fit: null },
+              { mediaId: owned.id, image: owned, fit: 'original' },
+            ],
+          },
+        ],
+      },
+    });
+    const { api } = renderPresentation(snapshot);
+    const image = await screen.findByRole('region', { name: 'Slideshow image' });
+    expect(within(image).getByRole('img')).toHaveAccessibleName('Sponsor.png');
+    expect(image).toHaveAttribute('data-fit', 'fill');
+    const overlay = within(screen.getByRole('group', { name: 'Break countdown' }));
+    expect(overlay.getByRole('timer')).toHaveTextContent('00:03');
+    expect(overlay.getByText('Paused')).toBeInTheDocument();
+
+    act(() =>
+      api.push({
+        ...snapshot,
+        revision: 2,
+        slideshowPlayback: { status: 'held', mediaId: owned.id },
+        timer: { ...DEFAULT_TIMER, status: 'expired' },
+      }),
+    );
+    const held = screen.getByRole('region', { name: 'Slideshow image' });
+    expect(held).toHaveAttribute('data-fit', 'original');
+    expect(within(held).getByRole('img')).toHaveAccessibleName('Menu.png');
+    expect(overlay.getByText('Time to Play!')).toBeInTheDocument();
+    act(() =>
+      api.push({
+        ...api.current(),
+        revision: 3,
+        slideshowPlayback: { status: 'playing', mediaId: legacy.id, advanceAt: 1234 },
+      }),
+    );
+    expect(screen.getByRole('img')).toHaveAccessibleName('Sponsor.png');
+    expect(overlay.getByText('Time to Play!')).toBeInTheDocument();
+    expect(screen.queryAllByRole('button')).toHaveLength(0);
+  });
+
+  it('shows the empty collection placeholder', async () => {
+    renderPresentation(
+      makeSnapshot({
+        presentationMode: 'slideshow',
+        slideshow: {
+          activeId: 'empty',
+          collections: [{ id: 'empty', name: 'Empty', slides: [], fit: 'fit', secondsPerSlide: 10 }],
+        },
+      }),
+    );
+    expect(await screen.findByText('No slides in this collection')).toBeInTheDocument();
   });
 
   describe('Countdown', () => {
@@ -78,7 +156,7 @@ describe('PresentationApp', () => {
       expect(screen.getByText('Next round')).toBeInTheDocument();
       expect(screen.getByText('Paused')).toBeInTheDocument();
 
-      for (const mode of ['gameBoard', 'singleImage', 'slideshow'] as const) {
+      for (const mode of ['gameBoard', 'singleImage'] as const) {
         act(() =>
           api.push({ ...api.current(), revision: api.current().revision + 1, presentationMode: mode }),
         );
@@ -120,7 +198,7 @@ describe('PresentationApp', () => {
   it('returns to the board with the game intact after a mode change', async () => {
     const calls = { calledNumbers: [3, 17, 9], bingoBannerVisible: false, disabledRows: [] };
     const { api } = renderPresentation(makeSnapshot({ game: calls, presentationMode: 'slideshow' }));
-    await screen.findByRole('heading', { name: 'Break Slideshow' });
+    await screen.findByRole('region', { name: 'Break Slideshow' });
 
     act(() => api.push(makeSnapshot({ revision: 2, game: calls, presentationMode: 'gameBoard' })));
     expect(screen.getByRole('img', { name: 'B-9' })).toBeInTheDocument();
@@ -185,7 +263,7 @@ describe('PresentationApp', () => {
 
       act(() => api.push(makeSnapshot({ revision: 2, game: game(true), presentationMode: 'slideshow' })));
       expect(screen.queryByRole('alert')).not.toBeInTheDocument();
-      expect(screen.getByRole('heading', { name: 'Break Slideshow' })).toBeInTheDocument();
+      expect(screen.getByRole('region', { name: 'Break Slideshow' })).toBeInTheDocument();
 
       act(() => api.push(makeSnapshot({ revision: 3, game: game(true), presentationMode: 'gameBoard' })));
       expect(screen.getByRole('alert')).toHaveTextContent(BANNER);

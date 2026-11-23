@@ -70,8 +70,9 @@
   grid-area: calls;
 }
 
-/* Single Image is the whole screen: no margin around the picture. */
-.root[data-view='singleImage'] {
+/* Images occupy the whole stage in both media views. */
+.root[data-view='singleImage'],
+.root[data-view='slideshow'] {
   padding: 0;
   gap: 0;
 }

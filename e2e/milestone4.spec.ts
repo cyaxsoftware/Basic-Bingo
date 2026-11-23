@@ -9,7 +9,7 @@ import { mkdir, rm, writeFile } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import { expect, test, type ElectronApplication, type Locator, type Page } from '@playwright/test';
-import type { PresentationApi } from '../src/shared/ipc/contract';
+import type { ControllerApi, PresentationApi } from '../src/shared/ipc/contract';
 import {
   createUserDataDir,
   findPresentationWindow,
@@ -176,7 +176,7 @@ test('an imported image is kept: it shows on the projector after the original is
 
   // The projector shows it, full screen, with no controls.
   await first.controller.getByRole('button', { name: 'Preview' }).click();
-  const projector = await waitForPresentationWindow(first.app);
+  const projector = await findPresentationWindow(first.app);
   const shown = projector.getByRole('img', { name: 'Legion Sponsors.png' });
   await expect(shown).toBeVisible();
   expect(await loadedWidth(shown)).toBe(64);
@@ -192,7 +192,7 @@ test('an imported image is kept: it shows on the projector after the original is
   await expect(restored).toBeVisible();
   expect(await loadedWidth(restored)).toBe(64);
   await second.controller.getByRole('button', { name: 'Preview' }).click();
-  const secondProjector = await waitForPresentationWindow(second.app);
+  const secondProjector = await findPresentationWindow(second.app);
   const secondShown = secondProjector.getByRole('img', { name: 'Legion Sponsors.png' });
   await expect(secondShown).toBeVisible();
   expect(await loadedWidth(secondShown)).toBe(64);
@@ -276,7 +276,7 @@ test('the offline policy still blocks every remote address and unknown images, w
   const panel = await openSingleImageTab(controller);
   await panel.getByRole('button', { name: 'Add images…' }).click();
   await controller.getByRole('button', { name: 'Preview' }).click();
-  const projector = await waitForPresentationWindow(app);
+  const projector = await findPresentationWindow(app);
   await expect(projector.getByRole('img', { name: 'Logo.png' })).toBeVisible();
 
   // Try to load pictures from inside the projector page: a remote one, and a library id that does not exist.
@@ -307,4 +307,78 @@ test('the offline policy still blocks every remote address and unknown images, w
   );
   expect(remote).toBe('blocked');
   await app.close();
+});
+
+test('slideshow holds a chosen slide, continues from it, and loops after the countdown expires', async () => {
+  const files = ['Red.png', 'Green.png', 'Blue.png'].map((name) => path.join(usbDir, name));
+  for (const [index, file] of files.entries()) {
+    const rgb: [number, number, number] = [35, 35, 35];
+    rgb[index] = 225;
+    await writeFile(file, solidPng(48, 36, rgb));
+  }
+  const { app, controller } = await launchApp(userDataDir);
+  try {
+    await controller.getByRole('button', { name: 'B-3, not called' }).click();
+    await controller.getByRole('button', { name: 'BINGO CALLED', exact: true }).click();
+    expect(
+      await controller.evaluate(() => {
+        const { bingo } = globalThis as unknown as { bingo: ControllerApi };
+        return bingo.showPatternOnProjector();
+      }),
+    ).toEqual({ ok: true });
+    await controller.getByRole('button', { name: 'Preview' }).click();
+    const projector = await findPresentationWindow(app);
+    await controller.getByRole('tab', { name: 'Break Slideshow' }).click();
+    const panel = controller.getByRole('region', { name: 'Slideshow collections' });
+    const stage = projector.getByRole('region', { name: 'Break Slideshow' });
+    await expect(stage.getByText('No slideshow selected')).toBeVisible();
+    await panel.getByRole('button', { name: 'New collection' }).click();
+    const create = panel.getByRole('form', { name: 'New collection' });
+    await create.getByRole('textbox', { name: 'Collection name' }).fill('Sponsors');
+    await create.getByRole('button', { name: 'Create' }).click();
+    await expect(stage.getByText('No slides in this collection')).toBeVisible();
+    await chooseFilesInDialog(app, files);
+    await panel.getByRole('button', { name: 'Add images…' }).click();
+    await expect(stage.getByRole('img', { name: 'Red.png' })).toBeVisible();
+    await panel.getByText('Collection settings').click();
+    await panel.getByRole('spinbutton', { name: 'Seconds per slide' }).fill('2');
+    await panel.getByRole('combobox', { name: 'Image fit for Green.png' }).selectOption('original');
+
+    const countdown = await openCountdownTab(controller);
+    await countdown.getByRole('spinbutton', { name: 'Minutes' }).fill('0');
+    await countdown.getByRole('spinbutton', { name: 'Seconds' }).fill('4');
+    await countdown.getByRole('button', { name: 'Set duration' }).click();
+    await countdown.getByRole('button', { name: 'Start' }).click();
+    await controller.getByRole('tab', { name: 'Break Slideshow' }).click();
+    await panel.getByRole('button', { name: 'Start slideshow' }).click();
+    await panel.getByRole('button', { name: 'Show Green.png' }).click();
+    await expect(panel.getByRole('status')).toHaveText('Slide held');
+    await expect(stage.getByRole('img', { name: 'Green.png' })).toBeVisible();
+    await expect(stage.getByRole('region', { name: 'Slideshow image' })).toHaveAttribute(
+      'data-fit',
+      'original',
+    );
+    await expect(stage.getByText('Time to Play!')).toBeVisible();
+    await expect(stage.getByRole('img', { name: 'Green.png' })).toBeVisible();
+
+    await panel.getByRole('button', { name: 'Continue slideshow' }).click();
+    await expect(stage.getByRole('img', { name: 'Green.png' })).toBeVisible();
+    await expect(stage.getByRole('img', { name: 'Blue.png' })).toBeVisible();
+    await expect(stage.getByRole('img', { name: 'Red.png' })).toBeVisible();
+    await expect(stage.getByText('Time to Play!')).toBeVisible();
+    await panel.getByRole('button', { name: 'Stop slideshow' }).click();
+    await expect(panel.getByRole('status')).toHaveText('Stopped');
+    await expect(stage.getByRole('img', { name: 'Red.png' })).toBeVisible();
+    await expect(projector.getByRole('button')).toHaveCount(0);
+
+    await openSingleImageTab(controller);
+    await expect(projector.getByText('No image selected')).toBeVisible();
+    await expect(projector.getByRole('group', { name: 'Break countdown' })).toHaveCount(0);
+    await controller.getByRole('tab', { name: 'Game Board' }).click();
+    await expect(controller.getByTestId('called-count')).toHaveText('Called: 1 of 75');
+    await expect(projector.getByText(/BINGO CALLED/)).toBeVisible();
+    await expect(projector.getByRole('region', { name: 'Winning pattern' })).toBeVisible();
+  } finally {
+    await app.close();
+  }
 });

@@ -91,6 +91,7 @@
 }
 
 .slideBar,
+.playback,
 .slideActions,
 .settings {
   display: flex;
@@ -100,8 +101,24 @@
 }
 
 .slideBar span,
+.playback p,
 .empty {
   color: var(--text-muted);
+}
+
+.playback p {
+  margin: 0 var(--space-2);
+}
+
+.panel button.showSlide {
+  display: block;
+  width: 100%;
+  padding: 2px;
+  border: 2px solid transparent;
+}
+
+.panel button.showSlide[aria-current='true'] {
+  border-color: var(--accent);
 }
 
 .empty {

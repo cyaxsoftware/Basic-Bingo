@@ -524,6 +524,33 @@ describe('image commands over IPC', () => {
     });
   });
 
+  it('restricts playback to the Controller and validates slide ids and commands', () => {
+    const send = (command: unknown) => invoke(IpcChannel.controlSlideshow, command);
+    expect(invoke(IpcChannel.editSlideshow, { type: 'create', name: 'Sponsors' })).toEqual(ok);
+    const collectionId = ctx.store.getSnapshot().slideshow.activeId;
+    if (!collectionId) throw new Error('No collection was created.');
+    const image = entry('cccccccc-cccc-4ccc-8ccc-cccccccccccc');
+    expect(ctx.store.addSlideshowImages(collectionId, [image])).toEqual(ok);
+    expect(send({ type: 'start' }).ok).toBe(false);
+    ctx.store.setPresentationMode('slideshow');
+    const before = ctx.store.getSnapshot();
+    expect(ctx.ipc.invoke(PRESENTATION_ID, IpcChannel.controlSlideshow, { type: 'start' })).toMatchObject({
+      ok: false,
+    });
+    expect(invoke(IpcChannel.controlSlideshow, { type: 'start' }, null).ok).toBe(false);
+    expect(send({ type: 'advance' }).ok).toBe(false);
+    expect(send({ type: 'hold', mediaId: 'unknown' }).ok).toBe(false);
+    expect(send({ type: 'hold', mediaId: ID_A }).ok).toBe(false);
+    expect(ctx.store.getSnapshot()).toBe(before);
+    expect(send({ type: 'start' })).toEqual(ok);
+    expect(send({ type: 'hold', mediaId: image.id })).toEqual(ok);
+    expect(ctx.store.getSnapshot().slideshowPlayback).toEqual({ status: 'held', mediaId: image.id });
+    expect(send({ type: 'continue' })).toEqual(ok);
+    expect(ctx.store.getSnapshot().slideshowPlayback).toMatchObject({ status: 'playing', mediaId: image.id });
+    expect(send({ type: 'stop' })).toEqual(ok);
+    expect(ctx.store.getSnapshot().slideshowPlayback).toEqual({ status: 'stopped', mediaId: image.id });
+  });
+
   it('opens the picker for the specified collection only after validating the sender and ID', async () => {
     expect(invoke(IpcChannel.editSlideshow, { type: 'create', name: 'Sponsors' })).toEqual(ok);
     const collectionId = ctx.store.getSnapshot().slideshow.activeId;

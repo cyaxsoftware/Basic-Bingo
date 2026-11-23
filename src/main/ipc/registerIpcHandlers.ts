@@ -259,6 +259,10 @@ export function registerIpcHandlers(ipc: IpcMainLike, deps: IpcDependencies): vo
     );
   }
 
+  command(IpcChannel.controlSlideshow, (...args) =>
+    args.length === 1 ? store.dispatchSlideshowPlayback(args[0]) : fail('Expected one playback command.'),
+  );
+
   command(IpcChannel.editSlideshow, (...args) => {
     if (args.length !== 1) return fail('Expected one slideshow command.');
     const before = store.getSnapshot().slideshow;

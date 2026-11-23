@@ -82,6 +82,7 @@ test('renderers are sandboxed and the Presentation bridge is read-only', { tag: 
   expect(nodeGlobals).toEqual({ require: 'undefined', process: 'undefined' });
   expect(await bridgeKeys(controller)).toEqual([
     'closePresentation',
+    'controlSlideshow',
     'createPattern',
     'deletePattern',
     'dismissBingoBanner',
