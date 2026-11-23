@@ -168,7 +168,7 @@ test('files that are not images are refused with the reason, and the library is 
   await app.close();
 });
 
-test('the offline policy still blocks every remote address, while library images load', async () => {
+test('the offline policy still blocks every remote address and unknown images, while library images load', async () => {
   const source = path.join(usbDir, 'Logo.png');
   await writeFile(source, solidPng(16, 9, [10, 120, 10]));
 
@@ -180,20 +180,27 @@ test('the offline policy still blocks every remote address, while library images
   const projector = await waitForPresentationWindow(app);
   await expect(projector.getByRole('img', { name: 'Logo.png' })).toBeVisible();
 
+  // Try to load pictures from inside the projector page: a remote one, and a library id that does not exist.
+  const loads = (url: string) =>
+    projector.evaluate(
+      (address) =>
+        new Promise<string>((resolve) => {
+          const picture = new Image();
+          picture.onload = () => resolve('loaded');
+          picture.onerror = () => resolve('failed');
+          picture.src = address;
+        }),
+      url,
+    );
+  expect(await loads('https://example.com/logo.png')).toBe('failed');
+  expect(await loads('bingo-media://00000000-0000-4000-8000-000000000000')).toBe('failed');
+  // Remote network calls are refused too (the production CSP allows no connections at all).
   const remote = await projector.evaluate(() =>
-    fetch('https://example.com/logo.png').then(
+    fetch('https://example.com/data.json').then(
       () => 'loaded',
       () => 'blocked',
     ),
   );
   expect(remote).toBe('blocked');
-  const other = await projector.evaluate(() =>
-    fetch('bingo-media://00000000-0000-4000-8000-000000000000').then(
-      (r) => String(r.status),
-      () => 'blocked',
-    ),
-  );
-  // An id that is not in the library is a 404, not a way to read anything else.
-  expect(other).toBe('404');
   await app.close();
 });
