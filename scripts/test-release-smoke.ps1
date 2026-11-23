@@ -78,6 +78,45 @@ function Invoke-Control($element) {
     }
 }
 
+function Save-PreviewDiagnostics($preview) {
+    try {
+        $entries = $preview.FindAll(
+            [System.Windows.Automation.TreeScope]::Descendants,
+            [System.Windows.Automation.Condition]::TrueCondition
+        )
+        Write-Host 'Presentation UI Automation descendants (type, name, off-screen):'
+        foreach ($entry in $entries) {
+            $info = $entry.Current
+            if ($info.Name -and $info.Name -notmatch '^\d+$') {
+                Write-Host ('  {0}, {1}, {2}' -f $info.ControlType.ProgrammaticName, $info.Name, $info.IsOffscreen)
+            }
+        }
+    } catch {
+        Write-Warning "Could not read Presentation accessibility diagnostics: $_"
+    }
+
+    try {
+        Add-Type -AssemblyName System.Drawing
+        $bounds = $preview.Current.BoundingRectangle
+        $image = [Drawing.Bitmap]::new([int]$bounds.Width, [int]$bounds.Height)
+        try {
+            $graphics = [Drawing.Graphics]::FromImage($image)
+            try {
+                $graphics.CopyFromScreen([int]$bounds.X, [int]$bounds.Y, 0, 0, $image.Size)
+                $results = Join-Path $root 'test-results'
+                $null = New-Item -ItemType Directory -Path $results -Force
+                $image.Save((Join-Path $results 'packaged-preview.png'), [Drawing.Imaging.ImageFormat]::Png)
+            } finally {
+                $graphics.Dispose()
+            }
+        } finally {
+            $image.Dispose()
+        }
+    } catch {
+        Write-Warning "Could not capture the Presentation window: $_"
+    }
+}
+
 # UI Automation uses the production renderer's accessible names. Enable Chromium's UIA provider
 # and accessibility tree while keeping the production fuses and normal storage path.
 $accessibilityArgs = @('--enable-features=UiaProvider', '--force-renderer-accessibility=complete')
@@ -92,7 +131,22 @@ try {
     $ball = Wait-ForElement $process 'the uncalled B-3 button' { Find-Control $controller 'B-3, not called' }
     Invoke-Control $ball
     $null = Wait-ForElement $process 'B-3 as the current Controller call' { Find-Control $controller 'B-3, current call' }
-    $null = Wait-ForElement $process 'B-3 in Presentation' { Find-Control $preview 'B-3' }
+
+    # Invoking a Controller button can activate its maximized window and cover Preview. Bring Preview
+    # forward like an operator switching windows, so Chromium presents its visible accessibility tree.
+    $desktop = New-Object -ComObject WScript.Shell
+    if (-not $desktop.AppActivate($preview.Current.Name)) {
+        Write-Warning 'Windows did not activate the Presentation Preview window.'
+    }
+    try {
+        $null = Wait-ForElement $process 'B-3 in Presentation' {
+            $livePreview = Find-AppWindow $process.Id 'Basic Bingo *Presentation*'
+            if ($null -ne $livePreview) { Find-Control $livePreview 'B-3' }
+        }
+    } catch {
+        Save-PreviewDiagnostics $preview
+        throw
+    }
     Write-Host 'The packaged Controller called B-3 and the separate Presentation showed it.'
 
     $close = $controller.GetCurrentPattern([System.Windows.Automation.WindowPattern]::Pattern)
