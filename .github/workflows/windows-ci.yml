@@ -27,8 +27,10 @@ jobs:
           Set-DisplayResolution -Width 1920 -Height 1080 -Force
           Get-DisplayResolution
       - name: Electron end-to-end tests
+        id: e2e
         run: npm run test:e2e
       - name: Smoke test the packaged Windows executable
+        if: ${{ !cancelled() && (steps.e2e.outcome == 'success' || steps.e2e.outcome == 'failure') }}
         run: npm run test:release-smoke
       - name: Keep Playwright failure evidence
         if: failure()
