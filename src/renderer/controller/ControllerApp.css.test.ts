@@ -10,3 +10,7 @@ it('gives notices and the pattern strip their own space before the scrollable ba
     /var\(--strip-track\) minmax\(\s*var\(--board-min\),\s*var\(--board-track\)\s*\)/,
   );
 });
+
+it('keeps the BINGO status and call summary from sizing the pattern strip track', () => {
+  expect(layoutCss).toMatch(/\.side\s*\{[^}]*contain:\s*size/);
+});

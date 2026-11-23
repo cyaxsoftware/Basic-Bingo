@@ -16,7 +16,7 @@
  */
 import { writeFile } from 'node:fs/promises';
 import path from 'node:path';
-import { expect, test, type Locator, type Page } from '@playwright/test';
+import { expect, test, type ElectronApplication, type Locator, type Page } from '@playwright/test';
 import {
   createUserDataDir,
   horizontalOverflow,
@@ -51,14 +51,26 @@ export function minimumBallSize(width: number): number {
 }
 
 let userDataDir: string;
+let layoutApp: ElectronApplication | undefined;
 
 test.beforeEach(async () => {
   userDataDir = await createUserDataDir();
 });
 
 test.afterEach(async () => {
-  await removeUserDataDir(userDataDir);
+  try {
+    await layoutApp?.close();
+  } finally {
+    layoutApp = undefined;
+    await removeUserDataDir(userDataDir);
+  }
 });
+
+async function launchLayoutApp(): ReturnType<typeof launchApp> {
+  const launched = await launchApp(userDataDir);
+  layoutApp = launched.app;
+  return launched;
+}
 
 interface Rect {
   readonly width: number;
@@ -263,7 +275,7 @@ async function raiseBannerIf(controller: Page, state: BannerState): Promise<void
 // keeps the full suite under a minute. Each size is its own step, so a failure names the size.
 for (const state of STATES) {
   test(`Controller layout at every size, BINGO banner ${state}`, async () => {
-    const { app, controller } = await launchApp(userDataDir);
+    const { app, controller } = await launchLayoutApp();
     await fillHistory(controller);
     await raiseBannerIf(controller, state);
 
@@ -273,7 +285,6 @@ for (const state of STATES) {
         await expectLayoutFits(controller, size, state, `controller-${size.width}x${size.height}`);
       });
     }
-    await app.close();
   });
 }
 
@@ -281,7 +292,7 @@ for (const state of STATES) {
 // every size, and everything on it (and the controls that stay) is touchable. The game screen, with the
 // Pattern card on it, is covered by every test above.
 test('Controller Patterns screen at every size', async () => {
-  const { app, controller } = await launchApp(userDataDir);
+  const { app, controller } = await launchLayoutApp();
   await fillHistory(controller);
   await controller.getByRole('button', { name: /^(Edit patterns…|Pattern)/ }).click();
   const view = controller.getByRole('region', { name: 'Patterns' });
@@ -334,14 +345,13 @@ test('Controller Patterns screen at every size', async () => {
   // And back: the game is exactly as it was left.
   await controller.getByRole('button', { name: /Back to game/ }).click();
   await expect(controller.getByTestId('called-count')).toHaveText('Called: 6 of 75');
-  await app.close();
 });
 
 // The top bar changes with what the operator is doing. These two states wrapped it onto a second row
 // and pushed the grid out of a 910x480 window (PR #55 review), so they are checked at several sizes.
 for (const state of STATES) {
   test(`projecting on a display with a long name at the tight sizes, banner ${state}`, async () => {
-    const { app, controller } = await launchApp(userDataDir);
+    const { app, controller } = await launchLayoutApp();
     await fillHistory(controller);
 
     // Projecting needs a real second monitor, which a test machine may not have, and would put a
@@ -382,11 +392,10 @@ for (const state of STATES) {
         );
       });
     }
-    await app.close();
   });
 
   test(`single-display setup at the tight sizes, banner ${state}`, async () => {
-    const { app, controller } = await launchApp(userDataDir);
+    const { app, controller } = await launchLayoutApp();
     await fillHistory(controller);
 
     // Report only the display the Controller is on, as a laptop with nothing plugged in would, then refresh.
@@ -416,6 +425,5 @@ for (const state of STATES) {
         );
       });
     }
-    await app.close();
   });
 }

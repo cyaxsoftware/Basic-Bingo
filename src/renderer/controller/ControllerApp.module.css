@@ -263,6 +263,8 @@
 
   .side {
     grid-area: side;
+    /* BINGO status and the call summary share the height set by the board and pattern strip. */
+    contain: size;
     display: flex;
     flex-direction: column;
     gap: var(--space-3);
