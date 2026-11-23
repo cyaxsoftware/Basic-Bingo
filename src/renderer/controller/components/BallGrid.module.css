@@ -87,6 +87,11 @@
   cursor: not-allowed;
 }
 
+/* BINGO CALLED is up: the whole grid is inert, and looks it, without turning into the blacked-out discs. */
+.grid[data-locked='true'] .ball {
+  opacity: 0.55;
+}
+
 .ball:disabled:active .chip {
   transform: none;
 }

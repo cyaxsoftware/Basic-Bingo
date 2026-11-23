@@ -1,0 +1,46 @@
+/*
+ * It takes whatever room is left in the top bar beside the tabs and centres itself in it, so it sits at the top
+ * centre where there is room (a wide window) and just after the tabs where there is less. Its container is the
+ * item itself: when the room gets too small the face is hidden rather than squeezing the tabs or the projector
+ * controls.
+ */
+.clock {
+  flex: 1 1 0;
+  min-width: 0;
+  display: flex;
+  justify-content: center;
+  container-type: inline-size;
+}
+
+.face {
+  display: grid;
+  justify-items: center;
+  line-height: 1.05;
+  white-space: nowrap;
+}
+
+.label {
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.time {
+  font-size: 1.6rem;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  color: var(--text);
+}
+
+/* Held at BINGO CALLED: still, and tinted, so it does not look like it is merely slow. */
+.time[data-held='true'] {
+  color: var(--accent-fg);
+}
+
+@container (max-width: 95px) {
+  .face {
+    display: none;
+  }
+}

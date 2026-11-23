@@ -15,8 +15,8 @@ export interface GamesPlayedProps {
 /** The night's games: number, when the first ball was called, the pattern and how long it took. */
 export function GamesPlayed({ records, onClear, now }: GamesPlayedProps) {
   const [confirming, setConfirming] = useState(false);
-  // Newest first, but numbered in the order they were played.
-  const rows = records.map((record, index) => ({ record, number: index + 1 })).reverse();
+  // Newest first; each game keeps the number it was played as.
+  const rows = records.toReversed();
 
   return (
     <section className={styles.panel} aria-label="Games played">
@@ -52,9 +52,9 @@ export function GamesPlayed({ records, onClear, now }: GamesPlayedProps) {
               </tr>
             </thead>
             <tbody>
-              {rows.map(({ record, number }) => (
+              {rows.map((record) => (
                 <tr key={record.id}>
-                  <td className={styles.number}>{number}</td>
+                  <td className={styles.number}>{record.number}</td>
                   <td>{formatGameStart(record.startedAt, now)}</td>
                   <td className={styles.name} title={record.title}>
                     {record.title}

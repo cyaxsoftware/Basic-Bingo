@@ -174,7 +174,10 @@ describe('V1 save format is frozen (audit finding 5, #22)', () => {
           media: createDefaultPersistedState().media,
           timer: DEFAULT_TIMER,
           slideshow: EMPTY_SLIDESHOW,
-          gameLog: { records: [], current: { firstBallAt: null, lastBingoAt: null } },
+          gameLog: {
+            records: [],
+            current: { firstBallAt: null, lastBingoAt: null, resumedAt: null, pausedMs: 0 },
+          },
           settings: { preferredDisplayId: null, controllerTheme: 'light' },
         },
       });
@@ -313,7 +316,10 @@ describe('V3 save format is frozen (released in milestone 3)', () => {
       schemaVersion: 4,
       // A file from before the theme switch existed opens in the light theme.
       settings: { ...stateV3Fixture.settings, controllerTheme: 'light' },
-      gameLog: { records: [], current: { firstBallAt: null, lastBingoAt: null } },
+      gameLog: {
+        records: [],
+        current: { firstBallAt: null, lastBingoAt: null, resumedAt: null, pausedMs: 0 },
+      },
       media: { library: [], singleImage: { imageId: null } },
       timer: DEFAULT_TIMER,
       slideshow: EMPTY_SLIDESHOW,
@@ -623,14 +629,17 @@ describe('parsePersistedState', () => {
         media: createDefaultPersistedState().media,
         timer: DEFAULT_TIMER,
         slideshow: EMPTY_SLIDESHOW,
-        gameLog: { records: [], current: { firstBallAt: null, lastBingoAt: null } },
+        gameLog: {
+          records: [],
+          current: { firstBallAt: null, lastBingoAt: null, resumedAt: null, pausedMs: 0 },
+        },
         settings: { preferredDisplayId: 12, controllerTheme: 'light' },
       },
     });
   });
 
   describe('the games-played log', () => {
-    const entry = { id: 'g1', startedAt: 1_700_000_000_000, title: 'Big L', durationSeconds: 754 };
+    const entry = { id: 'g1', number: 1, startedAt: 1_700_000_000_000, title: 'Big L', durationSeconds: 754 };
     const withLog = (gameLog: unknown) => ({ ...createDefaultPersistedState(), gameLog });
     const load = (raw: unknown) => {
       const result = parsePersistedState(raw);
@@ -645,15 +654,20 @@ describe('parsePersistedState', () => {
       expect(result.warnings).toEqual([]);
       expect(fromPersistedState(result.state).gameLog).toEqual({
         records: [],
-        current: { firstBallAt: null, lastBingoAt: null },
+        current: { firstBallAt: null, lastBingoAt: null, resumedAt: null, pausedMs: 0 },
       });
     });
 
     it('keeps the history and the game in progress through save and load', () => {
       const data = fromPersistedState(createDefaultPersistedState());
       const log = {
-        records: [entry, { ...entry, id: 'g2', durationSeconds: 0 }],
-        current: { firstBallAt: 1_700_000_100_000, lastBingoAt: 1_700_000_160_000 },
+        records: [entry, { ...entry, id: 'g2', number: 2, durationSeconds: 0 }],
+        current: {
+          firstBallAt: 1_700_000_100_000,
+          lastBingoAt: 1_700_000_160_000,
+          resumedAt: 1_700_000_190_000,
+          pausedMs: 12_000,
+        },
       };
       const saved = toPersistedState({ ...data, gameLog: log });
       const reloaded = load(JSON.parse(JSON.stringify(saved)));
@@ -864,7 +878,10 @@ describe('V4 save format (milestone 4: the media library)', () => {
     expect({ ...written, savedAt: stateV4Fixture.savedAt }).toEqual({
       ...stateV4Fixture,
       settings: { ...stateV4Fixture.settings, controllerTheme: 'light' },
-      gameLog: { records: [], current: { firstBallAt: null, lastBingoAt: null } },
+      gameLog: {
+        records: [],
+        current: { firstBallAt: null, lastBingoAt: null, resumedAt: null, pausedMs: 0 },
+      },
       timer: DEFAULT_TIMER,
       slideshow: EMPTY_SLIDESHOW,
     });

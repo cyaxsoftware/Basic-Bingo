@@ -24,7 +24,8 @@ export interface GameState {
   readonly calledNumbers: readonly BallNumber[];
   /**
    * True while the "BINGO CALLED" verification banner is up. Only an explicit
-   * dismiss or a new game clears it; nothing hides it automatically.
+   * dismiss or a new game clears it; nothing hides it automatically. While it is up the balls cannot be
+   * tapped (a call or a correction), so the calls cannot change under the card that is being checked.
    */
   readonly bingoBannerVisible: boolean;
   /**
@@ -58,6 +59,9 @@ export function reduceGame(state: GameState, command: GameCommand): GameState {
   switch (command.type) {
     case 'toggleBall': {
       assertValidBall(command.ball);
+      if (state.bingoBannerVisible) {
+        throw new RangeError('BINGO CALLED is up. Dismiss it before calling or removing numbers.');
+      }
       const letter = letterForBall(command.ball);
       if (state.disabledRows.includes(letter)) {
         throw new RangeError(`The ${letter} row is blacked out. Tap its letter to bring it back first.`);

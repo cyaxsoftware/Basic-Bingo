@@ -8,6 +8,8 @@ export interface BallGridProps {
   readonly calledNumbers: CalledNumbers;
   /** Rows the operator has blacked out: their balls cannot be tapped. */
   readonly disabledRows: readonly BingoLetter[];
+  /** True while BINGO CALLED is up: no ball can be tapped until it is dismissed (the game rules refuse it too). */
+  readonly locked?: boolean;
   readonly onToggle: (ball: number) => void;
   readonly onToggleRow: (letter: BingoLetter) => void;
 }
@@ -17,10 +19,21 @@ export interface BallGridProps {
  * and no separate undo (tapping again removes it). Tapping a row's letter blacks the row out (or brings it
  * back), because this game does not use it. The balls in a blacked-out row cannot be tapped.
  */
-export function BallGrid({ calledNumbers, disabledRows, onToggle, onToggleRow }: BallGridProps) {
+export function BallGrid({
+  calledNumbers,
+  disabledRows,
+  locked = false,
+  onToggle,
+  onToggleRow,
+}: BallGridProps) {
   const rows = buildBoardRows(calledNumbers, disabledRows);
   return (
-    <section className={styles.grid} aria-label="Bingo balls">
+    <section
+      className={styles.grid}
+      aria-label="Bingo balls"
+      data-locked={locked}
+      aria-description={locked ? 'Locked while BINGO CALLED is up. Dismiss it to call numbers.' : undefined}
+    >
       {rows.map((row) => (
         <div
           key={row.letter}
@@ -40,7 +53,7 @@ export function BallGrid({ calledNumbers, disabledRows, onToggle, onToggleRow }:
             {row.letter}
           </button>
           {row.cells.map((cell) => (
-            <BallButton key={cell.ball} cell={cell} disabled={row.disabled} onToggle={onToggle} />
+            <BallButton key={cell.ball} cell={cell} disabled={row.disabled || locked} onToggle={onToggle} />
           ))}
         </div>
       ))}

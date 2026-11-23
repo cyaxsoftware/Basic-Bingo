@@ -210,6 +210,7 @@ export interface PersistedStateV4 extends Omit<PersistedStateV3, 'schemaVersion'
 interface PersistedGameLogV4 {
   readonly records: readonly {
     readonly id: string;
+    readonly number: number;
     readonly startedAt: number;
     readonly title: string;
     readonly durationSeconds: number;
@@ -217,6 +218,8 @@ interface PersistedGameLogV4 {
   readonly current: {
     readonly firstBallAt: number | null;
     readonly lastBingoAt: number | null;
+    readonly resumedAt: number | null;
+    readonly pausedMs: number;
   };
 }
 

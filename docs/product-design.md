@@ -198,6 +198,7 @@ Some games do not use every row. Tapping a row's letter (B, I, N, G or O) on the
 - `DISMISS_BINGO_BANNER` sets visibility false, independent of game reset.
 - Banner dismissal does not change calls, current call, pattern, mode, or saved data.
 - `NEW_GAME` also sets banner false.
+- **While the banner is up the balls are locked:** no ball can be tapped (to call it or take it back) until the banner is dismissed, so the calls cannot change under the card that is being checked. The Controller shows the grid dimmed and inert, and the game rules refuse the call too. Blacking a row out is not a call and still works. Pressing the same button again (it reads Dismiss while the banner is up) unlocks the balls and carries on the game clock (5.2b).
 
 ### 5.4 Pattern data
 

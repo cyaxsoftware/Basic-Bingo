@@ -262,6 +262,25 @@ describe('registerIpcHandlers', () => {
     });
   });
 
+  describe('balls while BINGO CALLED is up', () => {
+    const invoke = (channel: string, ...args: unknown[]) =>
+      ctx.ipc.invoke(CONTROLLER_ID, channel, ...args) as CommandResult;
+
+    it('refuses to call or remove a ball until the banner is dismissed', () => {
+      expect(invoke(IpcChannel.toggleBall, 3)).toEqual(ok);
+      expect(invoke(IpcChannel.showBingoBanner)).toEqual(ok);
+      const before = ctx.store.getSnapshot();
+
+      expect(invoke(IpcChannel.toggleBall, 17).ok).toBe(false);
+      expect(invoke(IpcChannel.toggleBall, 3).ok).toBe(false);
+      expect(ctx.store.getSnapshot().game).toBe(before.game);
+
+      expect(invoke(IpcChannel.dismissBingoBanner)).toEqual(ok);
+      expect(invoke(IpcChannel.toggleBall, 17)).toEqual(ok);
+      expect(ctx.store.getSnapshot().game.calledNumbers).toEqual([3, 17]);
+    });
+  });
+
   describe('Controller theme', () => {
     const invoke = (sender: number, ...args: unknown[]) =>
       ctx.ipc.invoke(sender, IpcChannel.setControllerTheme, ...args) as CommandResult;

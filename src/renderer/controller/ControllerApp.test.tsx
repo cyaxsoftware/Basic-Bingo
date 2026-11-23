@@ -93,6 +93,47 @@ describe('ControllerApp', () => {
     expect(api.current().presentationMode).toBe(presentationMode);
   });
 
+  describe('game clock', () => {
+    it('appears with the first ball as Game 1 and goes away with New Game', async () => {
+      renderController();
+      await screen.findByRole('group', { name: 'B row' });
+      expect(screen.queryByRole('timer')).not.toBeInTheDocument();
+
+      await tap(/^B-3,/);
+      expect(await screen.findByRole('timer', { name: 'Game 1 time' })).toHaveTextContent('Game 1');
+
+      await userEvent.click(screen.getByRole('button', { name: 'New Game' }));
+      await userEvent.click(screen.getByRole('button', { name: 'Start New Game' }));
+      expect(screen.queryByRole('timer')).not.toBeInTheDocument();
+
+      await tap(/^B-3,/);
+      expect(await screen.findByRole('timer', { name: 'Game 2 time' })).toBeInTheDocument();
+    });
+
+    it('goes away if every call is taken back', async () => {
+      renderController();
+      await screen.findByRole('group', { name: 'B row' });
+      await tap(/^B-3,/);
+      await screen.findByRole('timer');
+      await tap(/^B-3,/);
+      expect(screen.queryByRole('timer')).not.toBeInTheDocument();
+    });
+
+    it('is held while BINGO CALLED is up and runs again when it is dismissed', async () => {
+      renderController();
+      await screen.findByRole('group', { name: 'B row' });
+      await tap(/^B-3,/);
+      const face = await screen.findByRole('timer');
+      expect(face).toHaveAttribute('title', 'Time since the first ball');
+
+      await userEvent.click(screen.getByRole('button', { name: 'BINGO CALLED' }));
+      expect(await screen.findByRole('timer')).toHaveAttribute('title', expect.stringContaining('Held'));
+
+      await userEvent.click(screen.getByRole('button', { name: /^Dismiss/ }));
+      expect(await screen.findByRole('timer')).toHaveAttribute('title', 'Time since the first ball');
+    });
+  });
+
   describe('games played', () => {
     function setWindowSize(width: number, height = 900) {
       window.matchMedia = ((query: string) => {

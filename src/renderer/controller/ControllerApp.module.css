@@ -99,6 +99,10 @@
 
 .tabs {
   grid-area: tabs;
+  /* Tabs (or Back to game), then the game clock in the room that is left. */
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
 }
 
 /*

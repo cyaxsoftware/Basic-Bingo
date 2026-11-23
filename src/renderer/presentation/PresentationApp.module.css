@@ -64,6 +64,8 @@
 
 .board {
   grid-area: board;
+  /* The game number is pinned to its top-left corner. */
+  position: relative;
 }
 
 .calls {

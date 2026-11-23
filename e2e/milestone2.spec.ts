@@ -170,8 +170,8 @@ test('BINGO CALLED shows the banner on Preview until Dismiss', { tag: '@smoke' }
   // The audience window gained no controls.
   await expect(presentation.getByRole('button')).toHaveCount(0);
 
-  // More calls while it is up: the banner stays.
-  await tapBall(controller, 'N-33');
+  // The balls are locked while it is up, so the calls cannot change under the card being checked.
+  await expect(controller.getByRole('button', { name: 'N-33, not called' })).toBeDisabled();
   await expect(banner).toHaveText(BANNER_TEXT);
 
   // Away from the board and back: the flag was never touched, so the banner returns.
@@ -199,9 +199,11 @@ test('BINGO CALLED shows the banner on Preview until Dismiss', { tag: '@smoke' }
   // Dismiss removes it and leaves every call exactly as it was.
   await controller.getByRole('button', { name: 'Dismiss BINGO Banner' }).click();
   await expect(reopened.getByRole('alert')).toBeHidden();
-  expect(await ballLabels(controller.getByTestId('previous-calls'))).toEqual(['I-17', 'B-3']);
-  await expect(controller.getByTestId('current-call').getByRole('img')).toHaveAccessibleName('N-33');
-  await expect(controller.getByTestId('called-count')).toHaveText('Called: 3 of 75');
+  expect(await ballLabels(controller.getByTestId('previous-calls'))).toEqual(['B-3']);
+  await expect(controller.getByTestId('current-call').getByRole('img')).toHaveAccessibleName('I-17');
+  await expect(controller.getByTestId('called-count')).toHaveText('Called: 2 of 75');
+  // ...and Dismiss unlocks them again.
+  await expect(controller.getByRole('button', { name: 'N-33, not called' })).toBeEnabled();
 
   await app.close();
 });

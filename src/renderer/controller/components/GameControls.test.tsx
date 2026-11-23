@@ -65,12 +65,27 @@ describe('BINGO banner controls', () => {
     expect(within(screen.getByTestId('current-call')).getByRole('img')).toHaveAccessibleName('B-9');
   });
 
-  it('keeps the banner up while balls are tapped; only Dismiss hides it', async () => {
+  it('locks every ball while the banner is up, and unlocks them when it is dismissed', async () => {
     const api = renderController({ calledNumbers: [3], bingoBannerVisible: true, disabledRows: [] });
-    await userEvent.click(await button(/^I-17,/));
+    const ball = await button(/^I-17,/);
+    expect(ball).toBeDisabled();
+    expect(screen.getByRole('region', { name: 'Bingo balls' })).toHaveAttribute('data-locked', 'true');
+    await userEvent.click(ball);
     await userEvent.click(await button(/^B-3,/));
-    expect(api.current().game).toEqual({ calledNumbers: [17], bingoBannerVisible: true, disabledRows: [] });
-    expect(screen.getByRole('button', { name: 'Dismiss BINGO Banner' })).toBeInTheDocument();
+    expect(api.current().game).toEqual({ calledNumbers: [3], bingoBannerVisible: true, disabledRows: [] });
+
+    await userEvent.click(screen.getByRole('button', { name: 'Dismiss BINGO Banner' }));
+    expect(await button(/^I-17,/)).toBeEnabled();
+    expect(screen.getByRole('region', { name: 'Bingo balls' })).toHaveAttribute('data-locked', 'false');
+    await userEvent.click(await button(/^I-17,/));
+    expect(api.current().game.calledNumbers).toEqual([3, 17]);
+  });
+
+  it('refuses a ball tap that still reaches the game while the banner is up', async () => {
+    const api = renderController({ calledNumbers: [3], bingoBannerVisible: true, disabledRows: [] });
+    await button('Dismiss BINGO Banner');
+    expect(await api.toggleBall(17)).toMatchObject({ ok: false });
+    expect(api.current().game.calledNumbers).toEqual([3]);
   });
 
   it('reflects a banner raised elsewhere (snapshot is the source of truth)', async () => {

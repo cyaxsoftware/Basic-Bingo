@@ -5,6 +5,8 @@ import { BingoBanner } from './components/BingoBanner';
 import { CallDisplay } from './components/CallDisplay';
 import { findMedia } from '../../shared/media';
 import { CountdownView } from './components/CountdownView';
+import { GameNumber } from './components/GameNumber';
+import { nextGameNumber } from '../../shared/games/gameLog';
 import { ShownPattern } from './components/ShownPattern';
 import { SingleImageView } from './components/SingleImageView';
 import { SlideshowView } from './components/SlideshowView';
@@ -42,6 +44,7 @@ export function PresentationApp({ store }: PresentationAppProps) {
               </div>
             ) : null}
             <div className={styles.board}>
+              <GameNumber number={nextGameNumber(snapshot.gameLog)} />
               <AudienceBoard
                 calledNumbers={snapshot.game.calledNumbers}
                 disabledRows={snapshot.game.disabledRows}

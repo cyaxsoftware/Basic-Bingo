@@ -12,6 +12,46 @@ function renderPresentation(snapshot = makeSnapshot()) {
   return { api, view };
 }
 
+const played = (number: number, title = 'Four Corners') => ({
+  id: `g${number}`,
+  number,
+  startedAt: 1_700_000_000_000 + number,
+  title,
+  durationSeconds: 600,
+});
+const NO_CLOCK = { firstBallAt: null, lastBingoAt: null, resumedAt: null, pausedMs: 0 };
+
+describe('PresentationApp game number', () => {
+  it('shows Game 1 on the board before anything is played', async () => {
+    renderPresentation();
+    expect(await screen.findByLabelText('Game 1')).toBeInTheDocument();
+  });
+
+  it('shows the number of the game being played: one more than the last game logged', async () => {
+    renderPresentation(
+      makeSnapshot({ gameLog: { records: [played(1), played(2), played(3)], current: NO_CLOCK } }),
+    );
+    expect(await screen.findByLabelText('Game 4')).toBeInTheDocument();
+  });
+
+  it('keeps counting from the last logged number when old games have aged out of the list', async () => {
+    renderPresentation(makeSnapshot({ gameLog: { records: [played(41), played(42)], current: NO_CLOCK } }));
+    expect(await screen.findByLabelText('Game 43')).toBeInTheDocument();
+  });
+
+  it('is not shown on the other presentation modes', async () => {
+    renderPresentation(makeSnapshot({ presentationMode: 'countdown' }));
+    await screen.findByRole('region', { name: /countdown/i }).catch(() => undefined);
+    expect(screen.queryByLabelText(/^Game \d+$/)).not.toBeInTheDocument();
+  });
+
+  it('is plain text with no controls', async () => {
+    renderPresentation();
+    const label = await screen.findByLabelText('Game 1');
+    expect(label.querySelector('button, a, input')).toBeNull();
+  });
+});
+
 describe('PresentationApp', () => {
   it('shows a calm empty state before the first call', async () => {
     renderPresentation();

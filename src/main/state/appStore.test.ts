@@ -225,12 +225,17 @@ describe('AppStore', () => {
       await flushPromises();
 
       const log = store.getSnapshot().gameLog;
-      expect(log.records).toEqual([{ id: 'game-1', startedAt, title, durationSeconds: 120 }]);
-      expect(log.current).toEqual({ firstBallAt: null, lastBingoAt: null });
+      expect(log.records).toEqual([{ id: 'game-1', number: 1, startedAt, title, durationSeconds: 120 }]);
+      expect(log.current).toEqual({
+        firstBallAt: null,
+        lastBingoAt: null,
+        resumedAt: null,
+        pausedMs: 0,
+      });
       expect(persister.saved.at(-1)?.gameLog.records).toHaveLength(1);
     });
 
-    it('keeps a false bingo out of the duration', () => {
+    it('leaves the checking time of a false bingo out of the duration', () => {
       const { store, wait } = createTimedStore();
       store.dispatch({ type: 'toggleBall', ball: 5 });
       wait(60);
@@ -241,7 +246,8 @@ describe('AppStore', () => {
       wait(50);
       store.dispatch({ type: 'showBingoBanner' });
       store.dispatch({ type: 'newGame' });
-      expect(store.getSnapshot().gameLog.records[0]?.durationSeconds).toBe(120);
+      // 120 s of wall time, minus the 10 s the false bingo was up.
+      expect(store.getSnapshot().gameLog.records[0]?.durationSeconds).toBe(110);
     });
 
     it('ends the game when New Game is confirmed if BINGO CALLED was never pressed', () => {

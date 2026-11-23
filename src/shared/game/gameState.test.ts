@@ -48,12 +48,23 @@ describe('BINGO banner and new game', () => {
     expect(reduceGame(played, { type: 'dismissBingoBanner' })).toBe(played);
   });
 
-  it('the banner stays up through further calls until it is dismissed', () => {
-    let state = reduceGame(played, { type: 'showBingoBanner' });
-    state = reduceGame(state, { type: 'toggleBall', ball: 40 });
-    state = reduceGame(state, { type: 'toggleBall', ball: 3 });
-    expect(state.bingoBannerVisible).toBe(true);
-    expect(state.calledNumbers).toEqual([17, 9, 40]);
+  it('refuses to call or remove a ball while the banner is up, and leaves everything as it was', () => {
+    const shown = reduceGame(played, { type: 'showBingoBanner' });
+    expect(() => reduceGame(shown, { type: 'toggleBall', ball: 40 })).toThrow(/Dismiss it/);
+    expect(() => reduceGame(shown, { type: 'toggleBall', ball: 3 })).toThrow(/Dismiss it/);
+    expect(shown.calledNumbers).toEqual([3, 17, 9]);
+    expect(shown.bingoBannerVisible).toBe(true);
+  });
+
+  it('lets balls be called again once the banner is dismissed', () => {
+    const shown = reduceGame(played, { type: 'showBingoBanner' });
+    const dismissed = reduceGame(shown, { type: 'dismissBingoBanner' });
+    expect(reduceGame(dismissed, { type: 'toggleBall', ball: 40 }).calledNumbers).toEqual([3, 17, 9, 40]);
+  });
+
+  it('still lets the rows be blacked out and brought back while the banner is up (those are not calls)', () => {
+    const shown = reduceGame(played, { type: 'showBingoBanner' });
+    expect(reduceGame(shown, { type: 'toggleRowDisabled', letter: 'N' }).disabledRows).toEqual(['N']);
   });
 
   it('newGame clears the calls and the banner', () => {

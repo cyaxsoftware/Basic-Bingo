@@ -8,6 +8,8 @@ import { CallSummaryPanel } from './components/CallSummaryPanel';
 import { CountdownPanel } from './components/CountdownPanel';
 import { BingoBannerControl, NewGameControl } from './components/GameControls';
 import { CopyrightFooter } from './components/CopyrightFooter';
+import { nextGameNumber } from '../../shared/games/gameLog';
+import { GameClock } from './components/GameClock';
 import { GamesPlayed } from './components/GamesPlayed';
 import { modeTabId, ModeTabs } from './components/ModeTabs';
 import { NoticeArea } from './components/NoticeArea';
@@ -79,6 +81,11 @@ export function ControllerApp({ api, store }: ControllerAppProps) {
       onNewGame={actions.newGame}
     />
   );
+  // The game clock appears with the first ball and goes with New Game. It holds at BINGO CALLED (see GameClock).
+  const clock =
+    snapshot.gameLog.current.firstBallAt === null ? null : (
+      <GameClock gameNumber={nextGameNumber(snapshot.gameLog)} clock={snapshot.gameLog.current} />
+    );
   const tabs = (
     <div className={styles.tabs}>
       {view === 'game' ? (
@@ -88,6 +95,8 @@ export function ControllerApp({ api, store }: ControllerAppProps) {
           <span aria-hidden="true">‹</span> Back to game
         </button>
       )}
+      {/* Narrower than the merged top bar: the clock takes the room to the right of the tabs. */}
+      {topRow ? null : clock}
     </div>
   );
   const widget = (variant: 'rail' | 'strip') => (
@@ -119,6 +128,7 @@ export function ControllerApp({ api, store }: ControllerAppProps) {
         <header className={styles.header}>
           <h1 className={styles.title}>Basic Bingo</h1>
           {topRow ? tabs : null}
+          {topRow ? clock : null}
           <div className={styles.projector}>
             <PresentationControls
               displays={snapshot.displays}
@@ -152,6 +162,7 @@ export function ControllerApp({ api, store }: ControllerAppProps) {
               <BallGrid
                 calledNumbers={calledNumbers}
                 disabledRows={snapshot.game.disabledRows}
+                locked={bingoBannerVisible}
                 onToggle={actions.toggleBall}
                 onToggleRow={actions.toggleRow}
               />

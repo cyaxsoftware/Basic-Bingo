@@ -137,8 +137,11 @@ test('Projector recovery: closing and reopening Preview mid-game shows the curre
 
   await controller.getByRole('button', { name: 'Stop' }).click();
   await expect(controller.getByRole('status')).toHaveText('Not projecting');
-  // Calling while no projector is open must still be reflected when one opens again.
+  // Calling while no projector is open must still be reflected when one opens again. The balls are locked while
+  // BINGO CALLED is up, so dismiss it, call, and raise it again: the banner must still be there on reopening.
+  await controller.getByRole('button', { name: 'Dismiss BINGO Banner' }).click();
   await tapBall(controller, 'G-48');
+  await controller.getByRole('button', { name: 'BINGO CALLED' }).click();
 
   await controller.getByRole('button', { name: 'Preview' }).click();
   const after = await waitForPresentationWindow(app);

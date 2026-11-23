@@ -5,17 +5,24 @@ import type { GameRecord } from '../../../shared/games/gameLog';
 import { GamesPlayed } from './GamesPlayed';
 
 const NOW = Date.now();
-const record = (id: string, minutesAgo: number, title: string, durationSeconds: number): GameRecord => ({
+const record = (
+  id: string,
+  number: number,
+  minutesAgo: number,
+  title: string,
+  durationSeconds: number,
+): GameRecord => ({
   id,
+  number,
   startedAt: NOW - minutesAgo * 60_000,
   title,
   durationSeconds,
 });
 
 const RECORDS = [
-  record('a', 90, 'Four Corners', 754),
-  record('b', 60, 'Big L', 95),
-  record('c', 30, 'Blackout', 3730),
+  record('a', 1, 90, 'Four Corners', 754),
+  record('b', 2, 60, 'Big L', 95),
+  record('c', 3, 30, 'Blackout', 3730),
 ];
 
 function renderLog(records: readonly GameRecord[] = RECORDS, onClear = vi.fn()) {
@@ -42,6 +49,11 @@ describe('GamesPlayed', () => {
     ]);
   });
 
+  it('shows the number each game was played as, even when the oldest have aged out', () => {
+    renderLog([record('x', 41, 20, 'Blackout', 600), record('y', 42, 5, 'Big L', 700)]);
+    expect(dataRows().map((row) => within(row).getAllByRole('cell')[0]?.textContent)).toEqual(['42', '41']);
+  });
+
   it('labels its columns', () => {
     renderLog();
     expect(screen.getAllByRole('columnheader').map((h) => h.textContent)).toEqual([
@@ -53,7 +65,7 @@ describe('GamesPlayed', () => {
   });
 
   it('shows the time of the first ball', () => {
-    renderLog([record('a', 0, 'Four Corners', 60)]);
+    renderLog([record('a', 1, 0, 'Four Corners', 60)]);
     const time = new Date(NOW).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
     expect(dataRows()[0]).toHaveTextContent(time);
   });
@@ -83,7 +95,7 @@ describe('GamesPlayed', () => {
   });
 
   it('puts a long pattern name in the tooltip', () => {
-    renderLog([record('a', 5, 'Postage Stamp (corner, two by two squares)', 100)]);
+    renderLog([record('a', 1, 5, 'Postage Stamp (corner, two by two squares)', 100)]);
     expect(screen.getByText('Postage Stamp (corner, two by two squares)')).toHaveAttribute(
       'title',
       'Postage Stamp (corner, two by two squares)',

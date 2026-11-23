@@ -62,6 +62,9 @@ count. The current call has a dark ring around it on the grid.
 
 ### Games played
 
+While **BINGO CALLED** is up the balls are locked; press the same button again (it reads Dismiss) to carry on
+calling. The game clock in the top bar holds while the banner is up and resumes when you dismiss it.
+
 Under the ball board (when the window has room) a grid lists each finished game: its number, the time the first
 ball was called, the pattern, and how long it took (first ball to the last BINGO CALLED press; if that button
 was not pressed, to the moment New Game is confirmed). A game is added when you confirm **New Game** after
