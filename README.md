@@ -218,18 +218,31 @@ Deliberately **not** in milestone 1 (see [docs/product-design.md §8](docs/produ
   controls and the projector banner are in.
 - Winning patterns and the pattern library (M3)
 - Image import, slideshows, single image, countdown timer (M4)
-- Installer polish (icon, signing), accessibility pass, extended recovery testing (M5)
+- Installer polish, accessibility pass, and extended recovery testing (M5)
 
 ## Packaging notes
 
-`npm run make` builds a per-user Squirrel installer (no admin rights) and a portable ZIP. The installer
-is unsigned, so Windows SmartScreen will warn on first run; code signing is planned for M5.
+`npm run make` builds a per-user Squirrel installer (no admin rights) and a portable ZIP.
+The release is **unsigned**. Windows may warn about an unrecognized download or block it
+under local security policy. The Controller title bar shows the build version.
+[Microsoft SmartScreen guidance](https://learn.microsoft.com/windows/apps/package-and-deploy/smartscreen-reputation)
 
 The Windows packages ship only Electron’s US and UK English locale packs. The packaging hook
 keeps the US English fallback available on Windows systems configured for other languages.
 
 The app icon lives in `build/` (`icon.ico` for the .exe and installer, `icon.png` for reference, plus the
 SVG sources). To change it, edit the drawing in `scripts/make-icon.mjs` and run `node scripts/make-icon.mjs`.
+
+Uninstall Basic Bingo from **Settings → Apps → Installed apps**. Uninstall removes the installed
+program and shortcuts. Saved games, settings, patterns, and imported images stay in
+`%APPDATA%\Basic Bingo\bingo-data` and are available if you reinstall under the same Windows account.
+To remove that data too, close Basic Bingo and remove that folder separately after making any
+backup you want. For an old installation that was migrated, also check
+`%APPDATA%\Offline Bingo Display\bingo-data`, which the migration keeps as a backup and can restore
+on the next launch when the current folder is absent.
+
+See the [installer acceptance checklist](docs/manual-acceptance-installer.md) for the Windows
+install and reinstall check and the build notes for future signing.
 
 ## Copyright
 

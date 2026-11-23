@@ -14,6 +14,7 @@ import { mkdir } from 'node:fs/promises';
 import path from 'node:path';
 import { app, BrowserWindow, dialog, ipcMain, Menu, protocol, screen, session, shell } from 'electron';
 import started from 'electron-squirrel-startup';
+import { WINDOWS_APP_USER_MODEL_ID } from '../shared/appInfo';
 import { fail, ok, type CommandResult } from '../shared/ipc/contract';
 import { MEDIA_PROTOCOL } from '../shared/media';
 import { confirmClose, describeUnsavedGame, type CloseChoice } from './app/closeGuard';
@@ -39,8 +40,6 @@ import { DisplayManager } from './windows/displayManager';
 import { PresentationWindowManager } from './windows/presentationWindowManager';
 import { devServerOrigins } from './windows/rendererEntry';
 import { WindowRegistry } from './windows/windowRegistry';
-
-const APP_USER_MODEL_ID = 'com.cyaxsoftware.basicbingo';
 
 // The windows show library images through bingo-media://<id>. A custom scheme has to be declared before the app is
 // ready; "standard" gives it normal URL handling (the id is the host) and "secure" lets pages use it like https.
@@ -72,7 +71,7 @@ function main(): void {
     return;
   }
 
-  app.setAppUserModelId(APP_USER_MODEL_ID);
+  if (process.platform === 'win32') app.setAppUserModelId(WINDOWS_APP_USER_MODEL_ID);
   const registry = new WindowRegistry();
 
   app.on('second-instance', () => {
