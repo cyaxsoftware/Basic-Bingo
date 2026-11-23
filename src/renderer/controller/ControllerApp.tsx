@@ -137,6 +137,10 @@ export function ControllerApp({ api, store }: ControllerAppProps) {
             onRename={actions.renameActivePattern}
             onUpdateSaved={actions.updateSavedPattern}
             onSaveAsNew={actions.saveActivePatternAsNew}
+            onNewPattern={actions.createBlankPattern}
+            onRenamePattern={actions.renameSavedPattern}
+            onDuplicatePattern={actions.duplicatePattern}
+            onDeletePattern={actions.deletePattern}
           />
         </div>
       )}
