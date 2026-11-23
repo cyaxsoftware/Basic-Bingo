@@ -37,6 +37,8 @@ export function createControllerApi(): ControllerApi {
     setPresentationMode: (mode) => ipcRenderer.invoke(IpcChannel.setPresentationMode, mode),
     setControllerTheme: (theme) => ipcRenderer.invoke(IpcChannel.setControllerTheme, theme),
     clearGameLog: () => ipcRenderer.invoke(IpcChannel.clearGameLog),
+    retrySave: () => ipcRenderer.invoke(IpcChannel.retrySave),
+    showDataFolder: () => ipcRenderer.invoke(IpcChannel.showDataFolder),
     selectPattern: (patternId) => ipcRenderer.invoke(IpcChannel.selectPattern, patternId),
     setActivePatternCell: (index, on) => ipcRenderer.invoke(IpcChannel.setActivePatternCell, index, on),
     renameActivePattern: (title) => ipcRenderer.invoke(IpcChannel.renameActivePattern, title),

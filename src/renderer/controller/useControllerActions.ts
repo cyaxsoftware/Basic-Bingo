@@ -27,6 +27,10 @@ export interface ControllerActions {
   setControllerTheme(theme: ControllerTheme): void;
   /** Empties the games-played history. Callers must have confirmed with the operator first. */
   clearGameLog(): void;
+  /** Tries to save the game again after a failed save. */
+  retrySave(): void;
+  /** Opens the data folder in Windows Explorer. */
+  showDataFolder(): void;
   /** What to do with unsaved edits to the working pattern before switching to another one. */
   switchPattern(patternId: string, unsavedEdits: UnsavedEdits): void;
   setPatternCell(index: number, on: boolean): void;
@@ -95,6 +99,8 @@ export function useControllerActions(api: ControllerApi): ControllerActions {
       setPresentationMode: (mode: PresentationMode) => run(() => api.setPresentationMode(mode)),
       setControllerTheme: (theme: ControllerTheme) => run(() => api.setControllerTheme(theme)),
       clearGameLog: () => run(() => api.clearGameLog()),
+      retrySave: () => run(() => api.retrySave()),
+      showDataFolder: () => run(() => api.showDataFolder()),
       // Save first, then switch; if the save fails the switch does not happen, so no edits are lost.
       switchPattern: (patternId: string, unsavedEdits: UnsavedEdits) =>
         run(async () => {

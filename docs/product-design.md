@@ -233,6 +233,7 @@ Patterns are visual instructions only. **Automated detection or validation of wi
 - The app should handle malformed state files and missing images with a clear recovery path rather than a blank window. Keep an internal recovery copy or last-known-good state.
 - State restoration includes called order, active pattern, banner visibility, named collections, image metadata, and timer configuration. A running timer's target timestamp may expire while app is closed; restore it as expired, not as an arbitrary stale number.
 - Serially handle rapid calls to avoid races and persist updates without blocking touch feedback for noticeable intervals.
+- **Storage problems are told in plain words** (a volunteer runs this, not a technician). A failed save (a full disk, a locked or read-only folder, a file another program has open, a missing folder, a disk error) shows what happened and what to do, never a file path, an internal file name or an error code, and always offers **Try again** and **Show data folder**. The game on screen keeps working and the last good save on disk is untouched. A damaged saved game is told apart from one that could not be opened (locked): a damaged one is restored from the last good copy (or a new game is started and the damaged file kept); a locked one is never treated as lost. A missing picture is named, shows as "unavailable" and can be added again or removed. The raw errors go to the log for support. See [manual-acceptance-storage.md](manual-acceptance-storage.md).
 
 ## 6. Proposed technical architecture
 

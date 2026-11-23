@@ -72,6 +72,12 @@ describe('importing images', () => {
     try {
       const report = await service.importFiles([source]);
       expect(report.added).toEqual([]);
+      // The reason shown to the operator is plain words about the app's folder, never a raw Windows error.
+      expect(report.skipped).toHaveLength(1);
+      expect(report.skipped[0]?.reason).not.toMatch(/E[A-Z]{3,6}|[A-Za-z]:\|\.tmp|\.png/);
+      expect(report.skipped[0]?.reason).toMatch(
+        /Windows would not let the app write|disk|folder|could not be read or copied/,
+      );
     } finally {
       log.mockRestore();
     }
@@ -291,7 +297,8 @@ describe('checking the files at startup', () => {
 
     const notice = store.getSnapshot().notices.find((n) => n.id === NOTICE_MISSING_FILES);
     expect(notice?.level).toBe('warning');
-    expect(notice?.message).toMatch(/1 image\(s\) are missing from the media folder: lost\.png/);
+    expect(notice?.message).toMatch(/1 picture is missing, so it will show as unavailable: lost\.png/);
+    expect(notice?.action).toBe('showDataFolder');
   });
 
   it('says nothing when every file is there', async () => {

@@ -153,6 +153,8 @@ export function ControllerApp({ api, store }: ControllerAppProps) {
             actionError={actions.lastError}
             onDismissNotice={actions.dismissNotice}
             onDismissActionError={actions.clearError}
+            onRetrySave={actions.retrySave}
+            onShowDataFolder={actions.showDataFolder}
           />
         </div>
 

@@ -203,7 +203,13 @@ if someone modified its page.
   damaged pattern is dropped with a warning, and a missing section restores the defaults, never costing the game.
   The media section is checked the same way: a damaged image entry is dropped, and a Single Image choice that no
   longer names a library image falls back to "none". An image entry stores no file path (see Media library below).
-- `stateRepository.ts`: storage under `%APPDATA%\Basic Bingo\bingo-data\`.
+- `stateRepository.ts`: storage under `%APPDATA%\Basic Bingo\bingo-data\`. Its file system is injectable, and
+  `storageFaults.test.ts` runs the real store on it with simulated full disks, locks, permission and folder
+  problems. `LoadResult.blocked` says a saved file existed but could not be opened (locked), as opposed to damaged.
+- `src/shared/storage/storageProblem.ts` sorts an error into a kind (disk full, access denied, file busy, folder
+  missing, disk error, other) and has the plain-language message for each; `AppStore` uses it for a failed save and
+  `mediaService` for a failed copy. `recoveryNotices.ts` words what the operator is told after loading. A `Notice` can
+  carry the action `showDataFolder`; the Controller also has two commands, `retrySave` and `showDataFolder`.
 - `dataDirectory.ts`: the app used to be called "Offline Bingo Display", and Electron names the data folder after the
   app. On startup `migrateLegacyDataDirectory` copies the old `bingo-data` to the new location once (never over
   existing data, and skipped only when `BINGO_USER_DATA_DIR` really redirects userData: that is an unpackaged run,

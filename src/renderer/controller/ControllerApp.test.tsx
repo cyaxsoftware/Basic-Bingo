@@ -202,13 +202,23 @@ describe('ControllerApp', () => {
     const api = renderController(
       makeSnapshot({
         notices: [{ id: 'lost', level: 'warning', message: 'Projector disconnected.' }],
-        persistence: { kind: 'error', message: 'Could not save game state: disk full', failedAt: 'now' },
+        persistence: {
+          kind: 'error',
+          message: "The game could not be saved because the computer's disk is full. Press Try again.",
+          problem: 'disk-full',
+          failedAt: 'now',
+        },
       }),
     );
     expect(await screen.findByText('Projector disconnected.')).toBeInTheDocument();
-    expect(screen.getByText(/disk full/)).toBeInTheDocument();
+    expect(screen.getByText(/disk is full/)).toBeInTheDocument();
     await userEvent.click(screen.getByRole('button', { name: 'Dismiss' }));
     expect(api.dismissNotice).toHaveBeenCalledWith('lost');
+    // A failed save offers a way out right there.
+    await userEvent.click(screen.getByRole('button', { name: 'Try again' }));
+    expect(api.retrySave).toHaveBeenCalledTimes(1);
+    await userEvent.click(screen.getByRole('button', { name: 'Show data folder' }));
+    expect(api.showDataFolder).toHaveBeenCalledTimes(1);
   });
 
   it('blacks out a row from its letter, which disables its balls, and brings it back', async () => {

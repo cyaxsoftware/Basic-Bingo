@@ -30,6 +30,7 @@ import type { MediaService } from '../ipc/registerIpcHandlers';
 import { slideshowImages } from '../../shared/media/slideshow';
 import type { AppStore } from '../state/appStore';
 import { readImageInfo, type ImageInfo } from './imageInfo';
+import { classifyStorageError, describeCopyFailure } from '../../shared/storage/storageProblem';
 import { networkSourceProblem } from './sourceLocation';
 
 export const NOTICE_IMPORT_SKIPPED = 'media-import-skipped';
@@ -192,7 +193,10 @@ export class ImageLibraryService implements MediaService {
       await rm(temporary, { force: true }).catch((cleanupError: unknown) => {
         console.error('[media] could not remove an incomplete copy', cleanupError);
       });
-      throw error;
+      // Not being able to WRITE into the app's own folder is a storage problem the operator can act on (a full
+      // disk, a locked folder), so say which. (Problems READING the picked file are reported by the caller.)
+      console.error(`[media] could not copy ${source} into the media folder`, error);
+      return describeCopyFailure(classifyStorageError(error));
     }
     return item;
   }
@@ -238,7 +242,8 @@ export class ImageLibraryService implements MediaService {
       this.store.addNotice({
         id: NOTICE_MISSING_FILES,
         level: 'warning',
-        message: `${missing.length} image(s) are missing from the media folder: ${missing.join(', ')}. Remove them or add them again.`,
+        message: `${missing.length} picture${missing.length === 1 ? ' is' : 's are'} missing, so ${missing.length === 1 ? 'it' : 'they'} will show as unavailable: ${missing.join(', ')}. Add ${missing.length === 1 ? 'it' : 'them'} again, or remove ${missing.length === 1 ? 'it' : 'them'} from the library. Show data folder opens the folder they were kept in.`,
+        action: 'showDataFolder',
       });
     }
   }

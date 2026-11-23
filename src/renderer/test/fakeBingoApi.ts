@@ -236,6 +236,8 @@ export function createFakeBingoApi(initial: AppSnapshot = makeSnapshot()): FakeB
         });
       return ok;
     }),
+    retrySave: vi.fn(async () => ok),
+    showDataFolder: vi.fn(async () => ok),
     clearGameLog: vi.fn(async () => {
       const gameLog = clearGameRecords(snapshot.gameLog);
       if (gameLog !== snapshot.gameLog) publish({ gameLog });
