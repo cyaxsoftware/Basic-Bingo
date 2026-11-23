@@ -39,13 +39,13 @@
   color: var(--accent);
 }
 
-.primary,
+.toggle,
 .secondary {
   flex: none;
 }
 
 .select,
-.primary,
+.toggle,
 .secondary {
   min-height: var(--touch-min);
   padding: 0 var(--space-3);
@@ -62,11 +62,18 @@
   background: var(--panel);
 }
 
-.primary {
-  border: none;
+/* Project (blue) and Stop (red) share this slot and size, so the button looks like it flips. */
+.toggle {
+  min-width: 5.5rem;
+  border: 1px solid var(--accent);
   background: var(--accent);
   color: var(--accent-text);
   font-weight: 700;
+}
+
+.toggle[data-live='true'] {
+  border-color: var(--danger);
+  background: var(--danger);
 }
 
 .secondary {
@@ -75,15 +82,7 @@
   color: var(--text);
 }
 
-/* Stop turns red while projecting (the border stays so the button does not change size). */
-.secondary[data-live='true'] {
-  border-color: var(--danger);
-  background: var(--danger);
-  color: var(--accent-text);
-  font-weight: 700;
-}
-
-.primary:disabled,
+.toggle:disabled,
 .secondary:disabled {
   opacity: 0.45;
 }

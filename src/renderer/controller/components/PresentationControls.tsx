@@ -37,6 +37,7 @@ export function PresentationControls({
   onStop,
 }: PresentationControlsProps) {
   const selectId = useId();
+  const projecting = presentation.kind === 'projecting';
   const candidates = projectableDisplays(displays);
   const [chosenId, setChosenId] = useState<number | null>(null);
   // Fall back to the default whenever the operator's choice is no longer connected.
@@ -73,14 +74,6 @@ export function PresentationControls({
               </option>
             ))}
           </select>
-          <button
-            type="button"
-            className={styles.primary}
-            disabled={selectedId === null}
-            onClick={() => selectedId !== null && onProject(selectedId)}
-          >
-            Project
-          </button>
         </>
       ) : (
         <span className={styles.hint} title={NO_SECOND_DISPLAY_HINT}>
@@ -88,19 +81,33 @@ export function PresentationControls({
         </span>
       )}
 
+      {/* One button in one place that flips: Project when the projector is dark, a red Stop while it is live. */}
+      {projecting ? (
+        <button type="button" className={styles.toggle} data-live="true" onClick={onStop}>
+          Stop
+        </button>
+      ) : candidates.length > 0 ? (
+        <button
+          type="button"
+          className={styles.toggle}
+          data-live="false"
+          disabled={selectedId === null}
+          onClick={() => selectedId !== null && onProject(selectedId)}
+        >
+          Project
+        </button>
+      ) : null}
+
       <button type="button" className={styles.secondary} onClick={onPreview}>
         Preview
       </button>
-      <button
-        type="button"
-        className={styles.secondary}
-        // Red while the audience is looking at the projector, so it is obvious what Stop will end.
-        data-live={presentation.kind === 'projecting'}
-        disabled={presentation.kind === 'closed'}
-        onClick={onStop}
-      >
-        Stop
-      </button>
+
+      {/* Only for closing the Preview window (or a window still opening); there is nothing to stop otherwise. */}
+      {presentation.kind === 'preview' || presentation.kind === 'opening' ? (
+        <button type="button" className={styles.secondary} onClick={onStop}>
+          Stop
+        </button>
+      ) : null}
     </div>
   );
 }

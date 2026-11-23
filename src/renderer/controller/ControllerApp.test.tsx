@@ -39,6 +39,12 @@ describe('ControllerApp', () => {
     await userEvent.click(await screen.findByRole('button', { name: 'Project' }));
     expect(api.openPresentation).toHaveBeenCalledWith(PROJECTOR.id);
     expect(await screen.findByRole('status')).toHaveTextContent(`Projecting on ${PROJECTOR.label}`);
+    // Project flips into Stop, and Stop flips back.
+    expect(screen.queryByRole('button', { name: 'Project' })).not.toBeInTheDocument();
+    await userEvent.click(screen.getByRole('button', { name: 'Stop' }));
+    expect(api.closePresentation).toHaveBeenCalled();
+    expect(await screen.findByRole('button', { name: 'Project' })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Stop' })).not.toBeInTheDocument();
   });
 
   it('offers Preview only when there is no second display', async () => {
