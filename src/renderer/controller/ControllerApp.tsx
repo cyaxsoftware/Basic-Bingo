@@ -152,7 +152,7 @@ export function ControllerApp({ api, store }: ControllerAppProps) {
               slideshow={snapshot.slideshow}
               library={snapshot.mediaLibrary}
               onEdit={actions.editSlideshow}
-              onImport={actions.importImages}
+              onImport={actions.importSlideshowImages}
             />
           )}
         </div>

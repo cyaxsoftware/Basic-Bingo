@@ -90,13 +90,15 @@ No internet connection, cloud database, user account, local HTTP server, or sepa
 
 ### 4.3 Break Slideshow
 - Create, rename, and delete **multiple collections** (e.g., Legion Sponsors, VFW Announcements, Scout Fundraiser).
-- Import images from local storage; app copies imported files to a managed application media folder so they remain available after the original USB/device is removed.
-- The Break Slideshow tab creates, renames, deletes and selects the active collection. The first collection
-  becomes active automatically. Choose an active collection to edit its slides. Deleting the active
-  collection clears the selection and keeps its images in the library.
-- Add an image once per collection, move it up or down, or remove its slide. Each collection has a
-  configurable 1–300 second interval, defaulting to 10 seconds. Set **Fit** or **Fill/Crop** for the
-  whole collection and override it for individual slides. New collections default to Fit for sponsor logos.
+- The Collections list switches between collections. **New collection** opens a name field and
+  selects the new collection when created. Renaming, deletion, the default fit, and the interval
+  are under **Collection settings**.
+- **Add images…** opens the local file picker for the selected collection and appends each chosen file
+  as a slide. The app keeps its own copies so slides survive removal of the source USB drive.
+  Single Image has a separate gallery.
+- Numbered thumbnails show playback order. Move each slide earlier or later, remove it, or set its
+  fit to **Original**, **Fit**, **Fill**, or **Use collection fit**. Each collection defaults to Fit
+  with 10 seconds per slide and supports intervals of 1–300 seconds.
 - Images will display in sequence and loop until the operator chooses another presentation mode.
 - A conspicuous break countdown is visible to the audience, with remaining minutes/seconds. Operator can set duration, start, pause/resume, and reset it. Countdown must be derived from an absolute timestamp while running to avoid drift.
 - At zero, replace the timer copy with **Time to Play!** and continue rotating slides. Do **not** automatically switch to the game board.

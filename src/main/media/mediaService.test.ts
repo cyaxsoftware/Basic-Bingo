@@ -61,6 +61,40 @@ const usbFile = async (name: string, data: Buffer | string) => {
 };
 
 describe('importing images', () => {
+  it('appends picked files only to the requested collection and serves their thumbnails', async () => {
+    const logo = await usbFile('Logo.png', pngBytes(640, 480));
+    const menu = await usbFile('Menu.jpg', jpegBytes(800, 600));
+    const { store, service } = setup([logo, menu]);
+    store.dispatchSlideshow({ type: 'create', name: 'Sponsors' });
+    const target = store.getSnapshot().slideshow.activeId;
+    if (!target) throw new Error('No collection was created.');
+    store.dispatchSlideshow({ type: 'create', name: 'Events' });
+    const active = store.getSnapshot().slideshow.activeId;
+    expect(await service.importImages(target)).toEqual({ ok: true });
+    const { mediaLibrary, singleImage, slideshow } = store.getSnapshot();
+    expect(mediaLibrary).toEqual([]);
+    expect(singleImage.imageId).toBeNull();
+    expect(slideshow.activeId).toBe(active);
+    expect(slideshow.collections[0]?.slides.map(({ image }) => image?.name)).toEqual([
+      'Logo.png',
+      'Menu.jpg',
+    ]);
+    expect(slideshow.collections[1]?.slides).toEqual([]);
+    expect((await answerMediaRequest(service, `bingo-media://${ID_1}`)).status).toBe(200);
+  });
+
+  it('cleans up copied files when their destination no longer exists', async () => {
+    const logo = await usbFile('Logo.png', pngBytes(640, 480));
+    const { store, service } = setup([logo]);
+    store.dispatchSlideshow({ type: 'create', name: 'Sponsors' });
+    const target = store.getSnapshot().slideshow.activeId;
+    if (!target) throw new Error('No collection was created.');
+    store.dispatchSlideshow({ type: 'delete', collectionId: target });
+    const result = await service.importImages(target);
+    expect(result).toMatchObject({ ok: false, error: expect.stringContaining('no longer exists') });
+    expect(await readdir(mediaDirectory)).toEqual([]);
+    expect(store.getSnapshot().mediaLibrary).toEqual([]);
+  });
   it('copies the file into the media folder and records its metadata', async () => {
     const { store, service } = setup();
     const png = pngBytes(1200, 600);

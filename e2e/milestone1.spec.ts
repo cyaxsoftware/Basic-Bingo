@@ -91,6 +91,7 @@ test('renderers are sandboxed and the Presentation bridge is read-only', { tag: 
     'getSnapshot',
     'hidePatternOnProjector',
     'importImages',
+    'importSlideshowImages',
     'listDisplays',
     'newGame',
     'onSnapshot',

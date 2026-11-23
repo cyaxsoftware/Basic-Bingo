@@ -1,13 +1,16 @@
-import { render, screen, within } from '@testing-library/react';
+import { fireEvent, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { describe, expect, it } from 'vitest';
-import type { MediaItem } from '../../../shared/media';
+import { describe, expect, it, vi } from 'vitest';
+import { mediaUrl, type MediaItem } from '../../../shared/media';
+import { ok } from '../../../shared/ipc/contract';
+import { appendSlideshowImages } from '../../../shared/media/slideshow';
 import { createSnapshotStore } from '../../shared/snapshotStore';
 import { createFakeBingoApi, makeSnapshot } from '../../test/fakeBingoApi';
 import { ControllerApp } from '../ControllerApp';
 
 const A = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
 const B = 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb';
+const GLOBAL = 'cccccccc-cccc-4ccc-8ccc-cccccccccccc';
 const image = (id: string, name: string): MediaItem => ({
   id,
   name,
@@ -16,92 +19,111 @@ const image = (id: string, name: string): MediaItem => ({
   width: 10,
   height: 10,
   addedAt: '',
-  fit: 'original',
+  fit: 'fit',
 });
 
-async function setup(library: readonly MediaItem[] = []) {
+async function setup(library: readonly MediaItem[] = [], pickedImages: readonly MediaItem[] = []) {
   const api = createFakeBingoApi(makeSnapshot({ presentationMode: 'slideshow', mediaLibrary: library }));
+  vi.mocked(api.importSlideshowImages).mockImplementation(async (collectionId) => {
+    const snapshot = api.current();
+    const slideshow = appendSlideshowImages(
+      snapshot.slideshow,
+      collectionId,
+      pickedImages,
+      snapshot.mediaLibrary,
+    );
+    api.push({ ...snapshot, slideshow, revision: snapshot.revision + 1 });
+    return ok;
+  });
   const user = userEvent.setup();
   render(<ControllerApp api={api} store={createSnapshotStore(api)} />);
   const view = within(await screen.findByRole('region', { name: 'Slideshow collections' }));
   const create = async (name: string) => {
-    const field = view.getByRole('textbox', { name: 'New collection name' });
-    await user.type(field, name);
-    await user.click(view.getByRole('button', { name: 'Create collection' }));
-    expect(field).toHaveValue('');
+    await user.click(view.getByRole('button', { name: 'New collection' }));
+    const form = within(view.getByRole('form', { name: 'New collection' }));
+    await user.type(form.getByRole('textbox', { name: 'Collection name' }), name);
+    await user.click(form.getByRole('button', { name: 'Create' }));
   };
   return { api, user, view, create };
 }
 
 describe('Break Slideshow collection management', () => {
-  it('explains empty states, opens the image picker, and lets the operator select and rename a collection', async () => {
+  it('separates creating a collection from choosing one and puts Add images inside the selected collection', async () => {
     const { api, create, view, user } = await setup();
-    expect(view.getByText(/Create a collection to organize/)).toBeInTheDocument();
+    expect(view.getByText('Create a collection to start adding images.')).toBeInTheDocument();
+    expect(view.queryByRole('button', { name: 'Add images…' })).toBeNull();
+    expect(view.queryByRole('textbox')).toBeNull();
     await create('Sponsors');
     expect(view.getByText(/This collection is empty/)).toBeInTheDocument();
-    expect(view.getByText(/Import images to build this collection/)).toBeInTheDocument();
-    await user.click(view.getByRole('button', { name: 'Add images…' }));
-    expect(api.importImages).toHaveBeenCalledOnce();
-
+    const sponsors = api.current().slideshow.activeId;
     await create('Events');
-    const selected = view.getByRole('combobox', { name: 'Active collection' });
-    expect(selected).toHaveDisplayValue('Sponsors');
-    await user.selectOptions(selected, view.getByRole('option', { name: 'Events' }));
+    expect(view.getByRole('button', { name: 'Events' })).toHaveAttribute('aria-pressed', 'true');
+    await user.click(view.getByRole('button', { name: 'Sponsors' }));
+    await user.click(view.getByRole('button', { name: 'Add images…' }));
+    expect(api.importSlideshowImages).toHaveBeenCalledExactlyOnceWith(sponsors);
+    expect(api.importImages).not.toHaveBeenCalled();
+
+    await user.click(view.getByText('Collection settings'));
     const field = view.getByRole('textbox', { name: 'Collection name' });
     await user.clear(field);
     await user.type(field, 'Announcements');
     await user.click(view.getByRole('button', { name: 'Rename' }));
-    expect(selected).toHaveDisplayValue('Announcements');
-    await user.selectOptions(selected, '');
-    expect(view.getByText(/Choose a collection to edit its slides/)).toBeInTheDocument();
+    expect(view.getByRole('button', { name: 'Announcements' })).toHaveAttribute('aria-pressed', 'true');
   });
 
-  it('adds, reorders and removes slides and updates the interval and image fit', async () => {
-    const { api, view, create, user } = await setup([image(A, 'Logo.png'), image(B, 'Menu.png')]);
+  it('appends picked images immediately with thumbnails, and supports Original, Fit, and Fill', async () => {
+    const gallery = image(GLOBAL, 'Single Image.png');
+    const { api, view, create, user } = await setup([gallery], [image(A, 'Logo.png'), image(B, 'Menu.png')]);
     await create('Sponsors');
-    const add = async (id: string) => {
-      await user.selectOptions(view.getByRole('combobox', { name: 'Library image' }), id);
-      await user.click(view.getByRole('button', { name: 'Add slide' }));
-    };
-    await add(A);
-    await add(B);
-    const rows = () => view.getAllByRole('listitem');
-    expect(rows()[0]).toHaveTextContent('Logo.png');
-    expect(view.getByRole('button', { name: 'Move Logo.png up' })).toBeDisabled();
-    await user.click(view.getByRole('button', { name: 'Move Menu.png up' }));
+    expect(view.queryByRole('combobox', { name: 'Library image' })).toBeNull();
+    await user.click(view.getByRole('button', { name: 'Add images…' }));
+    const rows = () => within(view.getByRole('list', { name: 'Slide order' })).getAllByRole('listitem');
+    expect(within(rows()[0]!).getByRole('img', { name: 'Logo.png' })).toHaveAttribute('src', mediaUrl(A));
+    expect(within(rows()[1]!).getByRole('img', { name: 'Menu.png' })).toHaveAttribute('src', mediaUrl(B));
+    expect(view.queryByText(gallery.name)).toBeNull();
+    expect(view.getByRole('button', { name: 'Move Logo.png earlier' })).toBeDisabled();
+    await user.click(view.getByRole('button', { name: 'Move Menu.png earlier' }));
     expect(rows()[0]).toHaveTextContent('Menu.png');
-    expect(rows()[1]).toHaveTextContent('Logo.png');
-    await user.selectOptions(view.getByRole('combobox', { name: 'Collection image fit' }), 'fill');
+    await user.click(view.getByText('Collection settings'));
+    await user.selectOptions(view.getByRole('combobox', { name: 'Default image fit' }), 'fill');
     const override = view.getByRole('combobox', { name: 'Image fit for Menu.png' });
     expect(override).toHaveDisplayValue('Use collection fit');
     await user.selectOptions(override, 'fit');
-    await user.selectOptions(override, '');
-    await user.selectOptions(override, 'fit');
+    await user.selectOptions(override, 'fill');
+    await user.selectOptions(override, 'original');
     const seconds = view.getByRole('spinbutton', { name: 'Seconds per slide' });
     await user.clear(seconds);
     await user.type(seconds, '20');
     await user.click(view.getByRole('button', { name: 'Set interval' }));
+    fireEvent.error(view.getByRole('img', { name: 'Menu.png' }));
+    expect(view.getByText('Image unavailable')).toBeInTheDocument();
     await user.click(view.getByRole('button', { name: 'Remove Logo.png from collection' }));
     expect(rows()).toHaveLength(1);
     expect(api.current().slideshow.collections[0]).toMatchObject({
       secondsPerSlide: 20,
       fit: 'fill',
-      slides: [{ mediaId: B, fit: 'fit' }],
+      slides: [{ mediaId: B, fit: 'original' }],
     });
-    expect(api.current().mediaLibrary).toHaveLength(2);
+    expect(api.current().mediaLibrary).toEqual([gallery]);
+    await user.click(screen.getByRole('tab', { name: 'Single Image' }));
+    expect(screen.getByRole('button', { name: /Single Image\.png/ })).toBeInTheDocument();
+    expect(screen.queryByText('Menu.png')).toBeNull();
   });
 
-  it('confirms collection deletion and keeps the imported images', async () => {
-    const { api, view, create, user } = await setup([image(A, 'Logo.png')]);
+  it('confirms collection deletion and keeps the Single Image gallery', async () => {
+    const gallery = image(GLOBAL, 'Single Image.png');
+    const { api, view, create, user } = await setup([gallery], [image(A, 'Logo.png')]);
     await create('Sponsors');
+    await user.click(view.getByRole('button', { name: 'Add images…' }));
+    await user.click(view.getByText('Collection settings'));
     const remove = view.getByRole('button', { name: 'Delete collection…' });
     await user.click(remove);
     await user.click(screen.getByRole('button', { name: 'Cancel' }));
-    expect(api.current().slideshow.collections).toHaveLength(1);
+    expect(api.current().slideshow.collections[0]?.slides).toHaveLength(1);
     await user.click(remove);
     const dialog = within(screen.getByRole('dialog', { name: 'Delete “Sponsors”?' }));
     await user.click(dialog.getByRole('button', { name: 'Delete collection' }));
     expect(api.current().slideshow).toEqual({ collections: [], activeId: null });
-    expect(api.current().mediaLibrary[0]?.id).toBe(A);
+    expect(api.current().mediaLibrary).toEqual([gallery]);
   });
 });

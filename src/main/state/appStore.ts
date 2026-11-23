@@ -24,8 +24,9 @@ import {
 } from '../../shared/ipc/contract';
 import type { PresentationMode } from '../../shared/presentation/presentationMode';
 import { toPersistedState, type AppData } from '../persistence/persistedState';
-import { reduceMedia, type MediaCommand } from '../../shared/media';
+import { reduceMedia, type MediaCommand, type MediaItem } from '../../shared/media';
 import {
+  appendSlideshowImages,
   reduceSlideshow,
   removeImageFromSlideshows,
   type SlideshowState,
@@ -160,12 +161,19 @@ export class AppStore {
   }
 
   dispatchSlideshow(command: unknown): CommandResult {
+    return this.changeSlideshow((state) => reduceSlideshow(state, command, this.newId));
+  }
+
+  addSlideshowImages(collectionId: string, images: readonly MediaItem[]): CommandResult {
+    return this.changeSlideshow((state) =>
+      appendSlideshowImages(state, collectionId, images, this.snapshot.mediaLibrary),
+    );
+  }
+
+  private changeSlideshow(reduce: (state: SlideshowState) => SlideshowState): CommandResult {
     let slideshow: SlideshowState;
     try {
-      slideshow = reduceSlideshow(this.snapshot.slideshow, command, {
-        library: this.snapshot.mediaLibrary,
-        newId: this.newId,
-      });
+      slideshow = reduce(this.snapshot.slideshow);
     } catch (error) {
       return fail(error instanceof Error ? error.message : String(error));
     }

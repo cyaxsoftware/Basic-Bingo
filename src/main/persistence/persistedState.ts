@@ -45,6 +45,7 @@ import {
   collectionName,
   EMPTY_SLIDESHOW,
   slideshowFit,
+  slideFit,
   slideSeconds,
   type SlideshowState,
 } from '../../shared/media/slideshow';
@@ -204,7 +205,11 @@ interface PersistedSlideshowV4 {
     readonly name: string;
     readonly secondsPerSlide: number;
     readonly fit: 'fit' | 'fill';
-    readonly slides: readonly { readonly mediaId: string; readonly fit: 'fit' | 'fill' | null }[];
+    readonly slides: readonly {
+      readonly mediaId: string;
+      readonly fit: 'original' | 'fit' | 'fill' | null;
+      readonly image?: PersistedMediaItemV4;
+    }[];
   }[];
 }
 
@@ -288,7 +293,11 @@ function toPersistedSlideshow(state: SlideshowState): PersistedSlideshowV4 {
       name,
       secondsPerSlide,
       fit,
-      slides: slides.map(({ mediaId, fit: slideFit }) => ({ mediaId, fit: slideFit })),
+      slides: slides.map(({ mediaId, fit: override, image }) => ({
+        mediaId,
+        fit: override,
+        ...(image ? { image: toPersistedMediaItem(image) } : {}),
+      })),
     })),
   };
 }
@@ -306,18 +315,22 @@ function toPersistedTimer(timer: TimerState): PersistedTimerV4 {
   }
 }
 
+function toPersistedMediaItem(item: PersistedMediaItemV4): PersistedMediaItemV4 {
+  return {
+    id: item.id,
+    name: item.name,
+    format: item.format,
+    bytes: item.bytes,
+    width: item.width,
+    height: item.height,
+    addedAt: item.addedAt,
+    fit: item.fit,
+  };
+}
+
 function toPersistedMedia(media: MediaState): PersistedMediaV4 {
   return {
-    library: media.library.map((item) => ({
-      id: item.id,
-      name: item.name,
-      format: item.format,
-      bytes: item.bytes,
-      width: item.width,
-      height: item.height,
-      addedAt: item.addedAt,
-      fit: item.fit,
-    })),
+    library: media.library.map(toPersistedMediaItem),
     singleImage: { imageId: media.singleImage.imageId },
   };
 }
@@ -612,7 +625,7 @@ const savedCollection = z.object({
   fit: slideshowFit,
   slides: z.array(z.unknown()),
 });
-const savedSlide = z.object({ mediaId: z.string(), fit: slideshowFit.nullable() });
+const savedSlide = z.object({ mediaId: z.string(), fit: slideFit, image: z.unknown().optional() });
 
 function normalizeSlideshow(
   raw: unknown,
@@ -627,6 +640,7 @@ function normalizeSlideshow(
 
   const collections: PersistedSlideshowV4['collections'][number][] = [];
   const libraryIds = new Set(library.map((image) => image.id));
+  const ownedIds = new Set<string>();
   const ids = new Set<string>();
   let damaged = 0;
   for (const entry of raw['collections']) {
@@ -640,12 +654,26 @@ function normalizeSlideshow(
     const slides: PersistedSlideshowV4['collections'][number]['slides'][number][] = [];
     for (const rawSlide of parsed.data.slides) {
       const slide = savedSlide.safeParse(rawSlide);
-      if (!slide.success || !libraryIds.has(slide.data.mediaId) || slideIds.has(slide.data.mediaId)) {
+      if (!slide.success || slideIds.has(slide.data.mediaId)) {
         damaged += 1;
         continue;
       }
-      slideIds.add(slide.data.mediaId);
-      slides.push(slide.data);
+      const { mediaId, fit, image } = slide.data;
+      if (image === undefined && libraryIds.has(mediaId)) {
+        slides.push({ mediaId, fit });
+      } else if (
+        isMediaItem(image) &&
+        image.id === mediaId &&
+        !libraryIds.has(mediaId) &&
+        !ownedIds.has(mediaId)
+      ) {
+        ownedIds.add(mediaId);
+        slides.push({ mediaId, fit, image: toPersistedMediaItem(image) });
+      } else {
+        damaged += 1;
+        continue;
+      }
+      slideIds.add(mediaId);
     }
     collections.push({ ...parsed.data, slides });
   }

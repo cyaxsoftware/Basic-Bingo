@@ -38,6 +38,7 @@ export interface ControllerActions {
   hidePatternOnProjector(): void;
   /** Open the file dialog and add the chosen images to the library. */
   importImages(): void;
+  importSlideshowImages(collectionId: string): void;
   selectSingleImage(mediaId: string | null): void;
   /** Set how one image meets the screen; each image keeps its own. */
   setImageFit(mediaId: string, fit: FitMode): void;
@@ -121,6 +122,7 @@ export function useControllerActions(api: ControllerApi): ControllerActions {
       showPatternOnProjector: () => run(() => api.showPatternOnProjector()),
       hidePatternOnProjector: () => run(() => api.hidePatternOnProjector()),
       importImages: () => run(() => api.importImages()),
+      importSlideshowImages: (collectionId: string) => run(() => api.importSlideshowImages(collectionId)),
       selectSingleImage: (mediaId: string | null) => run(() => api.selectSingleImage(mediaId)),
       setImageFit: (mediaId: string, fit: FitMode) => run(() => api.setImageFit(mediaId, fit)),
       removeImage: (mediaId: string) => run(() => api.removeImage(mediaId)),

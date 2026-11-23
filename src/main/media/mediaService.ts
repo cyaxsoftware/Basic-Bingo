@@ -27,6 +27,7 @@ import {
   type MediaItem,
 } from '../../shared/media';
 import type { MediaService } from '../ipc/registerIpcHandlers';
+import { slideshowImages } from '../../shared/media/slideshow';
 import type { AppStore } from '../state/appStore';
 import { readImageInfo } from './imageInfo';
 
@@ -60,6 +61,7 @@ export class ImageLibraryService implements MediaService {
   private readonly pickFiles: () => Promise<readonly string[]>;
   private readonly now: () => Date;
   private readonly newId: () => string;
+  private readonly allocatedIds = new Set<string>();
 
   constructor(options: ImageLibraryOptions) {
     this.store = options.store;
@@ -70,10 +72,10 @@ export class ImageLibraryService implements MediaService {
   }
 
   /** The IPC entry point: pick files, import them, and say how it went. */
-  async importImages(): Promise<CommandResult> {
+  async importImages(collectionId?: string): Promise<CommandResult> {
     const paths = await this.pickFiles();
     if (paths.length === 0) return ok; // cancelled
-    const report = await this.importFiles(paths);
+    const report = await this.importFiles(paths, collectionId);
     if (report.added.length === 0) {
       return fail(`No images were added. ${describeSkipped(report.skipped)}`);
     }
@@ -87,8 +89,8 @@ export class ImageLibraryService implements MediaService {
     return ok;
   }
 
-  /** Copy each file into the library. A bad file is skipped with a reason; it never stops the others. */
-  async importFiles(paths: readonly string[]): Promise<ImportReport> {
+  /** Copy selected files for the gallery or a collection. One bad file never stops the others. */
+  async importFiles(paths: readonly string[], collectionId?: string): Promise<ImportReport> {
     const added: MediaItem[] = [];
     const skipped: Skipped[] = [];
     for (const source of paths) {
@@ -103,9 +105,12 @@ export class ImageLibraryService implements MediaService {
       }
     }
     if (added.length > 0) {
-      const result = this.store.dispatchMedia({ type: 'addMedia', items: added });
+      const result =
+        collectionId === undefined
+          ? this.store.dispatchMedia({ type: 'addMedia', items: added })
+          : this.store.addSlideshowImages(collectionId, added);
       if (!result.ok) {
-        // Should not happen (the entries were just built), but never leave orphaned files behind.
+        // The destination may have been deleted while its file dialog was open.
         await Promise.all(added.map((item) => this.deleteFile(item)));
         return {
           added: [],
@@ -114,11 +119,16 @@ export class ImageLibraryService implements MediaService {
       }
       // The first image added to an empty Single Image choice is shown, so "Add images" visibly does something.
       const first = added[0];
-      if (first && this.store.getSnapshot().singleImage.imageId === null) {
+      if (collectionId === undefined && first && this.store.getSnapshot().singleImage.imageId === null) {
         this.store.dispatchMedia({ type: 'selectSingleImage', mediaId: first.id });
       }
     }
     return { added, skipped };
+  }
+
+  private storedImages(): readonly MediaItem[] {
+    const { mediaLibrary, slideshow } = this.store.getSnapshot();
+    return [...mediaLibrary, ...slideshowImages(slideshow)];
   }
 
   /** Returns the new library entry, or the reason the file was skipped. */
@@ -133,6 +143,11 @@ export class ImageLibraryService implements MediaService {
     if (!image) return 'it is not a PNG, JPEG, WebP or GIF image';
 
     const id = this.newId();
+    if (!isValidMediaId(id) || this.allocatedIds.has(id) || findMedia(this.storedImages(), id)) {
+      return 'a unique image ID could not be assigned';
+    }
+    // Gallery and collection files share a directory, including during concurrent imports.
+    this.allocatedIds.add(id);
     const item: MediaItem = {
       id,
       name,
@@ -163,12 +178,12 @@ export class ImageLibraryService implements MediaService {
   }
 
   /**
-   * The bytes of a library image, or null if the id is not in the library or its file cannot be read. The file is
-   * found from the LIBRARY entry (never from the request), so nothing outside the media folder is reachable.
+   * The bytes of a stored gallery image or slide. Its metadata determines the file name, so a request
+   * cannot reach anything outside the media folder.
    */
   async readImage(id: string): Promise<{ readonly data: Buffer; readonly mimeType: string } | null> {
     if (!isValidMediaId(id)) return null;
-    const item = findMedia(this.store.getSnapshot().mediaLibrary, id);
+    const item = findMedia(this.storedImages(), id);
     if (!item) return null;
     try {
       const data = await readFile(path.join(this.directory, mediaFileName(item)));
@@ -181,7 +196,7 @@ export class ImageLibraryService implements MediaService {
   /** At startup: tell the operator if any library image's file has gone missing, instead of a broken picture later. */
   async checkFiles(): Promise<void> {
     const missing: string[] = [];
-    for (const item of this.store.getSnapshot().mediaLibrary) {
+    for (const item of this.storedImages()) {
       try {
         await access(path.join(this.directory, mediaFileName(item)));
       } catch {

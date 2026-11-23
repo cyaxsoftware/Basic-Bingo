@@ -463,20 +463,22 @@ describe('image commands over IPC', () => {
   describe('editSlideshow', () => {
     const edit = (command: unknown) => invoke(IpcChannel.editSlideshow, command);
 
-    it('applies every collection operation and publishes library deletion atomically', () => {
+    it('edits imported slides and removes only their app-owned copies after saving', async () => {
       expect(edit({ type: 'create', name: 'Sponsors' })).toEqual(ok);
       const collectionId = ctx.store.getSnapshot().slideshow.activeId;
+      if (!collectionId) throw new Error('No collection was created.');
+      const first = entry('cccccccc-cccc-4ccc-8ccc-cccccccccccc');
+      const second = entry('dddddddd-dddd-4ddd-8ddd-dddddddddddd');
+      expect(ctx.store.addSlideshowImages(collectionId, [first, second])).toEqual(ok);
       for (const command of [
         { type: 'rename', name: 'Announcements' },
         { type: 'select', collectionId: null },
         { type: 'select' },
         { type: 'setInterval', secondsPerSlide: 15 },
         { type: 'setFit', fit: 'fill' },
-        { type: 'addSlide', mediaId: ID_A },
-        { type: 'addSlide', mediaId: ID_B },
-        { type: 'moveSlide', mediaId: ID_B, direction: 'up' },
-        { type: 'setSlideFit', mediaId: ID_B, fit: 'fit' },
-        { type: 'removeSlide', mediaId: ID_A },
+        { type: 'moveSlide', mediaId: second.id, direction: 'up' },
+        { type: 'setSlideFit', mediaId: second.id, fit: 'original' },
+        { type: 'removeSlide', mediaId: first.id },
       ]) {
         expect(edit({ collectionId, ...command })).toEqual(ok);
       }
@@ -488,18 +490,18 @@ describe('image commands over IPC', () => {
             name: 'Announcements',
             secondsPerSlide: 15,
             fit: 'fill',
-            slides: [{ mediaId: ID_B, fit: 'fit' }],
+            slides: [{ mediaId: second.id, fit: 'original', image: second }],
           },
         ],
       });
-      const published = vi.fn();
-      ctx.store.subscribe(published);
-      expect(invoke(IpcChannel.removeImage, ID_B)).toEqual(ok);
-      expect(published).toHaveBeenCalledExactlyOnceWith(ctx.store.getSnapshot());
-      expect(ctx.store.getSnapshot().mediaLibrary.map(({ id }) => id)).toEqual([ID_A]);
-      expect(ctx.store.getSnapshot().slideshow.collections[0]?.slides).toEqual([]);
+      expect(invoke(IpcChannel.selectSingleImage, second.id).ok).toBe(false);
+      expect(invoke(IpcChannel.removeImage, second.id).ok).toBe(false);
       expect(edit({ type: 'delete', collectionId })).toEqual(ok);
       expect(ctx.store.getAppData().slideshow).toEqual({ activeId: null, collections: [] });
+      expect(ctx.store.getSnapshot().mediaLibrary.map(({ id }) => id)).toEqual([ID_A, ID_B]);
+      await vi.waitFor(() => expect(ctx.deps.media.deleteFile).toHaveBeenCalledTimes(2));
+      expect(ctx.deps.media.deleteFile).toHaveBeenCalledWith(first);
+      expect(ctx.deps.media.deleteFile).toHaveBeenCalledWith(second);
     });
 
     it('refuses non-Controller senders, wrong arity and malformed payloads', () => {
@@ -520,6 +522,20 @@ describe('image commands over IPC', () => {
       }
       expect(ctx.store.getSnapshot()).toBe(before);
     });
+  });
+
+  it('opens the picker for the specified collection only after validating the sender and ID', async () => {
+    expect(invoke(IpcChannel.editSlideshow, { type: 'create', name: 'Sponsors' })).toEqual(ok);
+    const collectionId = ctx.store.getSnapshot().slideshow.activeId;
+    expect(invoke(IpcChannel.importSlideshowImages, 'not an id').ok).toBe(false);
+    expect(invoke(IpcChannel.importSlideshowImages, ID_A).ok).toBe(false);
+    expect(invoke(IpcChannel.importSlideshowImages, collectionId, 'extra').ok).toBe(false);
+    expect(ctx.ipc.invoke(PRESENTATION_ID, IpcChannel.importSlideshowImages, collectionId)).toMatchObject({
+      ok: false,
+    });
+    expect(ctx.deps.media.importImages).not.toHaveBeenCalled();
+    expect(await invoke(IpcChannel.importSlideshowImages, collectionId)).toEqual(ok);
+    expect(ctx.deps.media.importImages).toHaveBeenCalledExactlyOnceWith(collectionId);
   });
 
   describe('importImages', () => {

@@ -126,6 +126,7 @@ export const IpcChannel = {
   showPatternOnProjector: 'bingo:show-pattern-on-projector',
   hidePatternOnProjector: 'bingo:hide-pattern-on-projector',
   importImages: 'bingo:import-images',
+  importSlideshowImages: 'bingo:import-slideshow-images',
   selectSingleImage: 'bingo:select-single-image',
   setImageFit: 'bingo:set-image-fit',
   removeImage: 'bingo:remove-image',
@@ -189,6 +190,7 @@ export interface ControllerApi extends PresentationApi {
   hidePatternOnProjector(): Promise<CommandResult>;
   /** Open the file dialog and copy the chosen images into the media library. Resolves when it is done. */
   importImages(): Promise<CommandResult>;
+  importSlideshowImages(collectionId: string): Promise<CommandResult>;
   /** Show a library image in Single Image mode (null: none). */
   selectSingleImage(mediaId: string | null): Promise<CommandResult>;
   /** Set how one image meets the screen. Each image remembers its own Fit or Fill. */

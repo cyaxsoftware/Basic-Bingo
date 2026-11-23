@@ -3,6 +3,7 @@ import type { MediaItem } from './media';
 import {
   DEFAULT_SLIDE_SECONDS,
   EMPTY_SLIDESHOW,
+  appendSlideshowImages,
   reduceSlideshow,
   removeImageFromSlideshows,
   type SlideshowCommand,
@@ -26,11 +27,12 @@ const library: MediaItem[] = [A, B].map((id) => ({
 function setup() {
   let state = EMPTY_SLIDESHOW;
   let nextId = FIRST;
-  const send = (command: unknown) =>
-    (state = reduceSlideshow(state, command, { library, newId: () => nextId }));
+  const send = (command: unknown) => (state = reduceSlideshow(state, command, () => nextId));
+  const add = (collectionId: string, images: readonly MediaItem[] = library) =>
+    (state = appendSlideshowImages(state, collectionId, images, []));
   send({ type: 'create', name: ' Sponsors ' });
   nextId = SECOND;
-  return { send, current: () => state };
+  return { send, add, current: () => state };
 }
 
 describe('slideshow collections', () => {
@@ -42,23 +44,23 @@ describe('slideshow collections', () => {
         { id: FIRST, name: 'Sponsors', secondsPerSlide: DEFAULT_SLIDE_SECONDS, fit: 'fit', slides: [] },
       ],
     });
-    expect(send({ type: 'create', name: 'Events' }).activeId).toBe(FIRST);
+    expect(send({ type: 'create', name: 'Events' }).activeId).toBe(SECOND);
     expect(send({ type: 'rename', collectionId: SECOND, name: 'Announcements' }).collections[1]?.name).toBe(
       'Announcements',
     );
+    expect(send({ type: 'select', collectionId: FIRST }).activeId).toBe(FIRST);
     expect(send({ type: 'select', collectionId: SECOND }).activeId).toBe(SECOND);
     expect(send({ type: 'delete', collectionId: FIRST }).activeId).toBe(SECOND);
     expect(send({ type: 'delete', collectionId: SECOND })).toEqual(EMPTY_SLIDESHOW);
     expect(send({ type: 'select', collectionId: null })).toBe(current());
   });
 
-  it('adds, moves and removes unique library IDs in order and saves fit overrides separately', () => {
-    const { send } = setup();
+  it('appends, moves and removes owned images in order and saves fit overrides separately', () => {
+    const { send, add } = setup();
     const apply = (command: SlideshowCommand) => send(command).collections[0];
     apply({ type: 'setInterval', collectionId: FIRST, secondsPerSlide: 25 });
     apply({ type: 'setFit', collectionId: FIRST, fit: 'fill' });
-    apply({ type: 'addSlide', collectionId: FIRST, mediaId: A });
-    apply({ type: 'addSlide', collectionId: FIRST, mediaId: B });
+    add(FIRST);
     expect(
       apply({ type: 'moveSlide', collectionId: FIRST, mediaId: A, direction: 'down' })?.slides.map(
         (slide) => slide.mediaId,
@@ -69,27 +71,27 @@ describe('slideshow collections', () => {
         (slide) => slide.mediaId,
       ),
     ).toEqual([A, B]);
-    const withOverride = apply({ type: 'setSlideFit', collectionId: FIRST, mediaId: B, fit: 'fit' });
+    const withOverride = apply({ type: 'setSlideFit', collectionId: FIRST, mediaId: B, fit: 'original' });
     expect(withOverride).toMatchObject({
       fit: 'fill',
       secondsPerSlide: 25,
       slides: [
         { mediaId: A, fit: null },
-        { mediaId: B, fit: 'fit' },
+        { mediaId: B, fit: 'original' },
       ],
     });
     expect(
       apply({ type: 'setSlideFit', collectionId: FIRST, mediaId: B, fit: null })?.slides[1]?.fit,
     ).toBeNull();
     expect(apply({ type: 'removeSlide', collectionId: FIRST, mediaId: A })?.slides).toEqual([
-      { mediaId: B, fit: null },
+      { mediaId: B, fit: null, image: library[1] },
     ]);
   });
 
   it('keeps identity for repeated choices and moves at the edge', () => {
-    const { send } = setup();
-    const state = send({ type: 'addSlide', collectionId: FIRST, mediaId: A });
-    expect(send({ type: 'addSlide', collectionId: FIRST, mediaId: A })).toBe(state);
+    const { send, add } = setup();
+    const state = add(FIRST);
+    expect(add(FIRST, [])).toBe(state);
     expect(send({ type: 'moveSlide', collectionId: FIRST, mediaId: A, direction: 'up' })).toBe(state);
     expect(send({ type: 'select', collectionId: FIRST })).toBe(state);
     expect(send({ type: 'setFit', collectionId: FIRST, fit: 'fit' })).toBe(state);
@@ -113,15 +115,33 @@ describe('slideshow collections', () => {
     expect(current()).toBe(before);
   });
 
-  it('clears a removed library image from every collection, keeping remaining order', () => {
+  it('rejects duplicate imports or a missing destination without mutating the state', () => {
+    const { add, current } = setup();
+    expect(() => appendSlideshowImages(current(), FIRST, library, library)).toThrow(RangeError);
+    expect(() => add(SECOND)).toThrow(RangeError);
+    const added = add(FIRST);
+    expect(() => add(FIRST)).toThrow(RangeError);
+    expect(current()).toBe(added);
+  });
+
+  it('clears a removed legacy library image from every collection, keeping remaining order', () => {
     const { send, current } = setup();
     send({ type: 'create', name: 'Events' });
-    for (const collectionId of [FIRST, SECOND]) {
-      send({ type: 'addSlide', collectionId, mediaId: B });
-      send({ type: 'addSlide', collectionId, mediaId: A });
-    }
-    const cleaned = removeImageFromSlideshows(current(), B);
-    expect(cleaned.activeId).toBe(FIRST);
+    const state = current();
+    const cleaned = removeImageFromSlideshows(
+      {
+        ...state,
+        collections: state.collections.map((entry) => ({
+          ...entry,
+          slides: [
+            { mediaId: B, fit: null },
+            { mediaId: A, fit: null },
+          ],
+        })),
+      },
+      B,
+    );
+    expect(cleaned.activeId).toBe(SECOND);
     expect(cleaned.collections.map(({ slides }) => slides.map(({ mediaId }) => mediaId))).toEqual([[A], [A]]);
     expect(removeImageFromSlideshows(cleaned, B)).toBe(cleaned);
   });

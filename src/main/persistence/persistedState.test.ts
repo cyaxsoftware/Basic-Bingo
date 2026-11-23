@@ -684,14 +684,24 @@ describe('V4 save format (milestone 4: the media library)', () => {
     if (!parsed.ok) throw new Error(parsed.error);
     expect(parsed.state.slideshow).toEqual(EMPTY_SLIDESHOW);
     const dir = await mkdtemp(path.join(os.tmpdir(), 'bingo-slideshow-'));
+    const data = fromPersistedState(parsed.state);
+    const sample = data.media.library[0];
+    if (!sample) throw new Error('The fixture needs an imported image.');
+    const owned = { ...sample, id: COLLECTION_ID, name: 'Collection cover.png' };
+    const withOwned: SlideshowState = {
+      ...slideshow,
+      collections: slideshow.collections.map((entry) => ({
+        ...entry,
+        slides: [...entry.slides, { mediaId: owned.id, fit: 'original', image: owned }],
+      })),
+    };
     try {
-      await new JsonStateRepository(dir).save(
-        toPersistedState({ ...fromPersistedState(parsed.state), slideshow }),
-      );
+      await new JsonStateRepository(dir).save(toPersistedState({ ...data, slideshow: withOwned }));
       const loaded = await new JsonStateRepository(dir).load();
       expect(loaded.source).toBe('primary');
       expect(loaded.issues).toEqual([]);
-      expect(fromPersistedState(loaded.state).slideshow).toEqual(slideshow);
+      expect(fromPersistedState(loaded.state).slideshow).toEqual(withOwned);
+      expect(fromPersistedState(loaded.state).media).toEqual(data.media);
     } finally {
       await rm(dir, { recursive: true, force: true });
     }

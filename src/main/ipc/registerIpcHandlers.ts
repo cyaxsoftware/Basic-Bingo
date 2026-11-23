@@ -12,6 +12,7 @@
  */
 import { isBingoLetter, isValidBall } from '../../shared/game/balls';
 import { findMedia, isFitMode, isValidMediaId, type MediaItem } from '../../shared/media';
+import { slideshowImages } from '../../shared/media/slideshow';
 import { isValidPatternId } from '../../shared/patterns';
 import { isPresentationMode } from '../../shared/presentation/presentationMode';
 import { isCountdownMessage, isTimerDuration } from '../../shared/timer/timerState';
@@ -57,7 +58,7 @@ export interface DisplayService {
 /** Importing and deleting image files, which the main process does (renderers never touch the disk). */
 export interface MediaService {
   /** Ask the operator to choose images, copy them into the library, and say how it went. */
-  importImages(): Promise<CommandResult>;
+  importImages(collectionId?: string): Promise<CommandResult>;
   /** Delete a removed image's stored file. Best effort: the library entry is already gone. */
   deleteFile(item: MediaItem): Promise<void>;
 }
@@ -203,6 +204,14 @@ export function registerIpcHandlers(ipc: IpcMainLike, deps: IpcDependencies): vo
   command(IpcChannel.hidePatternOnProjector, () => store.dispatchPattern({ type: 'hidePatternOnProjector' }));
 
   command(IpcChannel.importImages, () => media.importImages());
+  command(IpcChannel.importSlideshowImages, (...args) => {
+    const [collectionId] = args;
+    if (args.length !== 1 || !isValidMediaId(collectionId)) return fail('Choose a slideshow collection.');
+    if (!store.getSnapshot().slideshow.collections.some(({ id }) => id === collectionId)) {
+      return fail('That slideshow collection no longer exists.');
+    }
+    return media.importImages(collectionId);
+  });
 
   command(IpcChannel.selectSingleImage, (mediaId) =>
     mediaId === null || isValidMediaId(mediaId)
@@ -250,9 +259,22 @@ export function registerIpcHandlers(ipc: IpcMainLike, deps: IpcDependencies): vo
     );
   }
 
-  command(IpcChannel.editSlideshow, (...args) =>
-    args.length === 1 ? store.dispatchSlideshow(args[0]) : fail('Expected one slideshow command.'),
-  );
+  command(IpcChannel.editSlideshow, (...args) => {
+    if (args.length !== 1) return fail('Expected one slideshow command.');
+    const before = store.getSnapshot().slideshow;
+    const result = store.dispatchSlideshow(args[0]);
+    const after = store.getSnapshot().slideshow;
+    if (before === after) return result;
+    const remaining = new Set(slideshowImages(after).map(({ id }) => id));
+    const removed = slideshowImages(before).filter(({ id }) => !remaining.has(id));
+    if (removed.length > 0) {
+      // If the save fails, the last on-disk collection still needs its images.
+      void store.settleSaves(2000).then(async (status) => {
+        if (status === 'saved') await Promise.all(removed.map((image) => media.deleteFile(image)));
+      });
+    }
+    return result;
+  });
 
   command(IpcChannel.openPresentation, (displayId) => {
     if (typeof displayId !== 'number' || !Number.isSafeInteger(displayId)) {

@@ -130,10 +130,11 @@ export function createFakeBingoApi(initial: AppSnapshot = makeSnapshot()): FakeB
   let collectionIds = 0;
   const dispatchSlideshow = (command: SlideshowCommand): CommandResult => {
     try {
-      const slideshow = reduceSlideshow(snapshot.slideshow, command, {
-        library: snapshot.mediaLibrary,
-        newId: () => `00000000-0000-4000-8000-${String(++collectionIds).padStart(12, '0')}`,
-      });
+      const slideshow = reduceSlideshow(
+        snapshot.slideshow,
+        command,
+        () => `00000000-0000-4000-8000-${String(++collectionIds).padStart(12, '0')}`,
+      );
       if (slideshow !== snapshot.slideshow) publish({ slideshow });
       return ok;
     } catch (error) {
@@ -211,6 +212,7 @@ export function createFakeBingoApi(initial: AppSnapshot = makeSnapshot()): FakeB
     hidePatternOnProjector: vi.fn(async () => dispatchPattern({ type: 'hidePatternOnProjector' })),
     // Importing needs the file dialog, which tests do not have: they put images in with api.push(makeSnapshot({...})).
     importImages: vi.fn(async () => ok),
+    importSlideshowImages: vi.fn(async (_collectionId: string) => ok),
     selectSingleImage: vi.fn(async (mediaId: string | null) =>
       dispatchMedia({ type: 'selectSingleImage', mediaId }),
     ),

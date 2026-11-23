@@ -96,12 +96,16 @@ Images the operator imports (PNG, JPEG, WebP, GIF, up to 20 MB each) are copied 
 ## Slideshow collections
 
 - `src/shared/media/slideshow.ts` owns collection rules. A collection stores a name, a slide interval,
-  a default Fit or Fill setting, and an ordered list of image IDs. Each image may appear once in a
-  collection and may override that collection's fit. The same image can belong to multiple collections.
+  a default Fit or Fill setting, and an ordered list of slides. A slide can inherit the default or use
+  Original, Fit, or Fill.
 - The Controller's `editSlideshow` bridge method sends a typed command. The handler checks the sender
   and arity, and `AppStore.dispatchSlideshow` applies the shared payload and state validation before
   publishing or saving. Deleting an image from the library drops its slide references in the same snapshot.
-- V4 persists `slideshow` alongside media and timer settings. Earlier files start with no collections.
+- `importSlideshowImages(collectionId)` opens the native picker and appends managed copies to the
+  chosen collection. Collection-owned metadata lives on its slides and the media protocol serves the
+  thumbnails by UUID. The Single Image gallery has its own metadata and selection.
+- V4 persists `slideshow` alongside media and timer settings. The first collection format used gallery
+  references, which still load and show thumbnails. Earlier files start with no collections.
   Recovery skips damaged collections and invalid slide references while preserving the order of the
   surviving entries. A lost active collection clears the selection.
 
