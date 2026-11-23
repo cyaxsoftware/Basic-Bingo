@@ -141,36 +141,6 @@ function CollectionEditor({
             const name = image?.name ?? 'Unavailable image';
             return (
               <li key={mediaId} className={styles.slide}>
-                <button
-                  type="button"
-                  className={styles.showSlide}
-                  aria-label={`Show ${name}`}
-                  aria-current={current?.mediaId === mediaId ? 'true' : undefined}
-                  onClick={() => onPlayback({ type: 'hold', mediaId })}
-                >
-                  <Thumbnail image={image} slideNumber={index + 1} />
-                </button>
-                <span className={styles.imageName} title={name}>
-                  {name}
-                </span>
-                <label>
-                  Image fit
-                  <select
-                    aria-label={`Image fit for ${name}`}
-                    value={fit ?? ''}
-                    onChange={(event) => {
-                      const value = event.currentTarget.value;
-                      const override = slideFit.safeParse(value === '' ? null : value);
-                      if (override.success)
-                        onEdit({ type: 'setSlideFit', collectionId, mediaId, fit: override.data });
-                    }}
-                  >
-                    <option value="">Use collection fit</option>
-                    <option value="original">Original</option>
-                    <option value="fit">Fit</option>
-                    <option value="fill">Fill</option>
-                  </select>
-                </label>
                 <div className={styles.slideActions}>
                   <button
                     type="button"
@@ -202,6 +172,36 @@ function CollectionEditor({
                     <TrashIcon />
                   </button>
                 </div>
+                <button
+                  type="button"
+                  className={styles.showSlide}
+                  aria-label={`Show ${name}`}
+                  aria-current={current?.mediaId === mediaId ? 'true' : undefined}
+                  onClick={() => onPlayback({ type: 'hold', mediaId })}
+                >
+                  <Thumbnail image={image} slideNumber={index + 1} />
+                </button>
+                <span className={styles.imageName} title={name}>
+                  {name}
+                </span>
+                <label>
+                  Image fit
+                  <select
+                    aria-label={`Image fit for ${name}`}
+                    value={fit ?? ''}
+                    onChange={(event) => {
+                      const value = event.currentTarget.value;
+                      const override = slideFit.safeParse(value === '' ? null : value);
+                      if (override.success)
+                        onEdit({ type: 'setSlideFit', collectionId, mediaId, fit: override.data });
+                    }}
+                  >
+                    <option value="">Use collection fit</option>
+                    <option value="original">Original</option>
+                    <option value="fit">Fit</option>
+                    <option value="fill">Fill</option>
+                  </select>
+                </label>
               </li>
             );
           })}
