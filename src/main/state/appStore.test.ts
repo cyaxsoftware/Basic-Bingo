@@ -432,25 +432,29 @@ describe('AppStore media', () => {
     width: 10,
     height: 10,
     addedAt: '2026-01-01T00:00:00.000Z',
+    fit: 'fit' as const,
   });
 
   it('starts empty, with nothing chosen', () => {
     const { store } = createStore();
     expect(store.getSnapshot().mediaLibrary).toEqual([]);
-    expect(store.getSnapshot().singleImage).toEqual({ imageId: null, fit: 'fit' });
+    expect(store.getSnapshot().singleImage).toEqual({ imageId: null });
   });
 
   it('adds, chooses and saves: one snapshot and one save per accepted command', async () => {
     const { store, persister, snapshots } = createStore();
     expect(store.dispatchMedia({ type: 'addMedia', items: [entry(ID_A)] })).toEqual({ ok: true });
     expect(store.dispatchMedia({ type: 'selectSingleImage', mediaId: ID_A })).toEqual({ ok: true });
-    expect(store.dispatchMedia({ type: 'setSingleImageFit', fit: 'fill' })).toEqual({ ok: true });
+    expect(store.dispatchMedia({ type: 'setImageFit', mediaId: ID_A, fit: 'fill' })).toEqual({ ok: true });
     await flushPromises();
     expect(snapshots).toHaveLength(3);
-    expect(store.getSnapshot().singleImage).toEqual({ imageId: ID_A, fit: 'fill' });
+    expect(store.getSnapshot().singleImage).toEqual({ imageId: ID_A });
+    expect(store.getSnapshot().mediaLibrary[0]?.fit).toBe('fill');
     const lastSaved = persister.saved.at(-1);
     expect(lastSaved?.media.library.map((item) => item.id)).toEqual([ID_A]);
-    expect(lastSaved?.media.singleImage).toEqual({ imageId: ID_A, fit: 'fill' });
+    expect(lastSaved?.media.singleImage).toEqual({ imageId: ID_A });
+    // Each image's own setting is saved with it.
+    expect(lastSaved?.media.library[0]?.fit).toBe('fill');
   });
 
   it('refuses an invalid command and leaves state, snapshot and saves alone', async () => {
@@ -466,10 +470,15 @@ describe('AppStore media', () => {
 
   it('a command that changes nothing publishes and saves nothing', async () => {
     const { store, persister, snapshots } = createStore();
-    store.dispatchMedia({ type: 'setSingleImageFit', fit: 'fit' });
+    store.dispatchMedia({ type: 'addMedia', items: [entry(ID_A)] });
     await flushPromises();
-    expect(snapshots).toHaveLength(0);
-    expect(persister.saved).toHaveLength(0);
+    const published = snapshots.length;
+    const saved = persister.saved.length;
+    // The image is already Fit, so setting Fit again is nothing.
+    store.dispatchMedia({ type: 'setImageFit', mediaId: ID_A, fit: 'fit' });
+    await flushPromises();
+    expect(snapshots).toHaveLength(published);
+    expect(persister.saved).toHaveLength(saved);
   });
 
   it('is not touched by the game, patterns or presentation mode', () => {
@@ -488,10 +497,10 @@ describe('AppStore media', () => {
   it('restores the library and the choice from saved data', () => {
     const initialData = {
       ...createDefaultAppData(),
-      media: { library: [entry(ID_A)], singleImage: { imageId: ID_A, fit: 'fill' as const } },
+      media: { library: [entry(ID_A)], singleImage: { imageId: ID_A } },
     };
     const store = new AppStore({ initialData, persister: new FakePersister() });
     expect(store.getSnapshot().mediaLibrary).toEqual([entry(ID_A)]);
-    expect(store.getSnapshot().singleImage).toEqual({ imageId: ID_A, fit: 'fill' });
+    expect(store.getSnapshot().singleImage).toEqual({ imageId: ID_A });
   });
 });

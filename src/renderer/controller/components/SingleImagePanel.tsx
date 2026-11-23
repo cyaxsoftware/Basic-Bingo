@@ -13,7 +13,8 @@ export interface SingleImagePanelProps {
   readonly library: readonly MediaItem[];
   readonly singleImage: SingleImageState;
   readonly onSelect: (mediaId: string | null) => void;
-  readonly onFit: (fit: FitMode) => void;
+  /** Set how the chosen image meets the screen; each image keeps its own. */
+  readonly onFit: (mediaId: string, fit: FitMode) => void;
   readonly onImport: () => void;
   readonly onRemove: (mediaId: string) => void;
 }
@@ -21,12 +22,22 @@ export interface SingleImagePanelProps {
 const FIT_CHOICES: readonly { readonly fit: FitMode; readonly label: string }[] = [
   { fit: 'fit', label: 'Fit' },
   { fit: 'fill', label: 'Fill' },
+  { fit: 'original', label: 'Original' },
 ];
 
 const FIT_HELP: Record<FitMode, string> = {
   fit: 'Fit shows the whole image, with black bars if it does not match the screen.',
   fill: 'Fill covers the whole screen and may crop the edges of the image.',
+  original:
+    'Original shows the image at its own size, centered. One bigger than the screen is shrunk to fit; a smaller one is not enlarged.',
 };
+
+/** The preview cannot know the projector's real resolution, so "Original" is drawn against a 1920 x 1080 screen. */
+const REFERENCE_SCREEN_WIDTH = 1920;
+const originalWidth = (item: MediaItem): string =>
+  `${Math.min(100, (item.width / REFERENCE_SCREEN_WIDTH) * 100)}%`;
+
+const FIT_LABEL: Record<FitMode, string> = { fit: 'Fit', fill: 'Fill', original: 'Original' };
 
 const sizeText = (item: MediaItem): string => `${item.width} × ${item.height}`;
 
@@ -56,7 +67,7 @@ export function SingleImagePanel({
 
       <div className={styles.show}>
         <div className={styles.previewBox}>
-          <div className={styles.preview} data-fit={singleImage.fit}>
+          <div className={styles.preview} data-fit={chosen?.fit ?? 'fit'}>
             {chosen === undefined ? (
               <p className={styles.previewNote}>No image is showing. Choose one below.</p>
             ) : unloadable.has(chosen.id) ? (
@@ -67,6 +78,7 @@ export function SingleImagePanel({
                 className={styles.previewImage}
                 src={mediaUrl(chosen.id)}
                 alt={chosen.name}
+                style={chosen.fit === 'original' ? { width: originalWidth(chosen) } : undefined}
                 onError={() => markUnloadable(chosen.id)}
               />
             )}
@@ -81,7 +93,7 @@ export function SingleImagePanel({
 
         <div className={styles.controls}>
           <div className={styles.eyebrow} id="fit-label">
-            How it fits the screen
+            How this image fits the screen
           </div>
           <div className={styles.segments} role="group" aria-labelledby="fit-label">
             {FIT_CHOICES.map(({ fit, label }) => (
@@ -89,14 +101,19 @@ export function SingleImagePanel({
                 key={fit}
                 type="button"
                 className={styles.segment}
-                aria-pressed={singleImage.fit === fit}
-                onClick={() => onFit(fit)}
+                aria-pressed={chosen?.fit === fit}
+                disabled={chosen === undefined}
+                onClick={() => chosen && onFit(chosen.id, fit)}
               >
                 {label}
               </button>
             ))}
           </div>
-          <p className={styles.help}>{FIT_HELP[singleImage.fit]}</p>
+          <p className={styles.help}>
+            {chosen
+              ? `${FIT_HELP[chosen.fit]} Each image remembers its own setting.`
+              : 'Choose an image to set how it fits the screen.'}
+          </p>
 
           <button type="button" className={styles.primary} onClick={onImport}>
             Add images…
@@ -150,6 +167,9 @@ export function SingleImagePanel({
                         loading="lazy"
                         onError={() => markUnloadable(item.id)}
                       />
+                    )}
+                    {item.fit === 'fit' ? null : (
+                      <span className={styles.thumbFit}>{FIT_LABEL[item.fit]}</span>
                     )}
                     {isChosen ? <span className={styles.thumbOn}>On projector</span> : null}
                   </button>

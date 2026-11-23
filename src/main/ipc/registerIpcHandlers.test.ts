@@ -394,6 +394,7 @@ describe('image commands over IPC', () => {
     width: 10,
     height: 10,
     addedAt: '2026-01-01T00:00:00.000Z',
+    fit: 'fit' as const,
   });
   let ctx: ReturnType<typeof setup>;
   beforeEach(() => {
@@ -427,12 +428,10 @@ describe('image commands over IPC', () => {
     });
   });
 
-  describe('selectSingleImage and setSingleImageFit', () => {
-    it('choose an image, clear the choice, and set Fit or Fill', () => {
+  describe('selectSingleImage', () => {
+    it('chooses an image, and clears the choice', () => {
       expect(invoke(IpcChannel.selectSingleImage, ID_B)).toEqual({ ok: true });
       expect(ctx.store.getSnapshot().singleImage.imageId).toBe(ID_B);
-      expect(invoke(IpcChannel.setSingleImageFit, 'fill')).toEqual({ ok: true });
-      expect(ctx.store.getSnapshot().singleImage).toEqual({ imageId: ID_B, fit: 'fill' });
       expect(invoke(IpcChannel.selectSingleImage, null)).toEqual({ ok: true });
       expect(ctx.store.getSnapshot().singleImage.imageId).toBeNull();
     });
@@ -445,12 +444,27 @@ describe('image commands over IPC', () => {
         expect(ctx.store.getSnapshot()).toBe(before);
       },
     );
+  });
 
-    it.each(['stretch', 'FIT', '', 1, null, undefined])(
-      'rejects %j as a fit mode, changing nothing',
+  describe('setImageFit', () => {
+    it('sets one image to Fit, Fill or Original, and no other', () => {
+      expect(invoke(IpcChannel.setImageFit, ID_B, 'fill')).toEqual({ ok: true });
+      expect(ctx.store.getSnapshot().mediaLibrary.map((item) => item.fit)).toEqual(['fit', 'fill']);
+      expect(invoke(IpcChannel.setImageFit, ID_A, 'original')).toEqual({ ok: true });
+      expect(ctx.store.getSnapshot().mediaLibrary.map((item) => item.fit)).toEqual(['original', 'fill']);
+    });
+
+    it.each(['stretch', 'FIT', '', 1, null, undefined])('rejects %j as a mode, changing nothing', (arg) => {
+      const before = ctx.store.getSnapshot();
+      expect(invoke(IpcChannel.setImageFit, ID_A, arg).ok).toBe(false);
+      expect(ctx.store.getSnapshot()).toBe(before);
+    });
+
+    it.each(['nope', '', 7, null, undefined, 'cccccccc-cccc-4ccc-8ccc-cccccccccccc'])(
+      'rejects %j as an image, changing nothing',
       (arg) => {
         const before = ctx.store.getSnapshot();
-        expect(invoke(IpcChannel.setSingleImageFit, arg).ok).toBe(false);
+        expect(invoke(IpcChannel.setImageFit, arg, 'fill').ok).toBe(false);
         expect(ctx.store.getSnapshot()).toBe(before);
       },
     );
@@ -481,7 +495,7 @@ describe('image commands over IPC', () => {
   it.each([
     [IpcChannel.importImages, []],
     [IpcChannel.selectSingleImage, [ID_A]],
-    [IpcChannel.setSingleImageFit, ['fill']],
+    [IpcChannel.setImageFit, [ID_A, 'fill']],
     [IpcChannel.removeImage, [ID_A]],
   ])(
     '%s is rejected from the Presentation window and from strangers, changing nothing',

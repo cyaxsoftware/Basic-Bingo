@@ -38,7 +38,8 @@ export interface ControllerActions {
   /** Open the file dialog and add the chosen images to the library. */
   importImages(): void;
   selectSingleImage(mediaId: string | null): void;
-  setSingleImageFit(fit: FitMode): void;
+  /** Set how one image meets the screen; each image keeps its own. */
+  setImageFit(mediaId: string, fit: FitMode): void;
   removeImage(mediaId: string): void;
   openPresentation(displayId: number): void;
   openPreview(): void;
@@ -113,7 +114,7 @@ export function useControllerActions(api: ControllerApi): ControllerActions {
       hidePatternOnProjector: () => run(() => api.hidePatternOnProjector()),
       importImages: () => run(() => api.importImages()),
       selectSingleImage: (mediaId: string | null) => run(() => api.selectSingleImage(mediaId)),
-      setSingleImageFit: (fit: FitMode) => run(() => api.setSingleImageFit(fit)),
+      setImageFit: (mediaId: string, fit: FitMode) => run(() => api.setImageFit(mediaId, fit)),
       removeImage: (mediaId: string) => run(() => api.removeImage(mediaId)),
       openPresentation: (displayId: number) => run(() => api.openPresentation(displayId)),
       openPreview: () => run(() => api.openPreview()),

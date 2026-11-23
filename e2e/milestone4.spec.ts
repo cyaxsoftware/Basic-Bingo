@@ -131,10 +131,19 @@ test('choosing, Fit / Fill and removing an image reach the projector; the game a
   await panel.getByRole('button', { name: /^Blue\.png/ }).click();
   await expect(stage.getByRole('img', { name: 'Blue.png' })).toBeVisible();
 
-  // Fit by default; Fill covers the screen.
+  // Fit by default. The setting belongs to the image: Fill, then Original, for this one.
   await expect(stage).toHaveAttribute('data-fit', 'fit');
   await panel.getByRole('button', { name: 'Fill' }).click();
   await expect(stage).toHaveAttribute('data-fit', 'fill');
+  await panel.getByRole('button', { name: 'Original' }).click();
+  await expect(stage).toHaveAttribute('data-fit', 'original');
+
+  // Another image has its own setting (Fit), and this one remembers Original when it comes back.
+  await panel.getByRole('button', { name: /^Red\.png/ }).click();
+  await expect(stage.getByRole('img', { name: 'Red.png' })).toBeVisible();
+  await expect(stage).toHaveAttribute('data-fit', 'fit');
+  await panel.getByRole('button', { name: /^Blue\.png/ }).click();
+  await expect(stage).toHaveAttribute('data-fit', 'original');
 
   // The Single Image tab has no countdown, and the Controller's game controls are not on this tab.
   await expect(projector.getByText(/Time to Play/i)).toHaveCount(0);

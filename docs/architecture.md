@@ -71,9 +71,11 @@ Images the operator imports (PNG, JPEG, WebP, GIF, up to 20 MB each) are copied 
 
 - **Rules** (`src/shared/media`, pure): `MediaItem` metadata (id, original name, format, bytes, width, height,
   added date), and `reduceMedia` for the commands `addMedia` (internal: only the main process sends it),
-  `removeMedia`, `selectSingleImage` and `setSingleImageFit`. Persisted in V4 (`media`), exposed as
-  `snapshot.mediaLibrary` and `snapshot.singleImage` (`{ imageId, fit }`), separate from the game, the patterns
-  and the presentation mode.
+  `removeMedia`, `selectSingleImage` and `setImageFit`. Persisted in V4 (`media`), exposed as
+  `snapshot.mediaLibrary` and `snapshot.singleImage` (`{ imageId }`), separate from the game, the patterns
+  and the presentation mode. How an image meets the screen (`fit`: Fit, Fill or Original) is a property of each
+  **image**, so every image remembers its own; a save file from before that (one setting for the whole Single
+  Image) is read as the chosen image's setting.
 - **Files** (`src/main/media`, no Electron import): `readImageInfo` checks that a file really is one of the four
   formats and reads its size from the header (the content is trusted, not the file name). `ImageLibraryService`
   imports the picked files (each written to `<id>.<ext>.tmp` and renamed, so a crash never leaves a half image),

@@ -6,20 +6,12 @@
  * `addMedia` is an internal command that no renderer can send; the Controller can only choose, set Fit / Fill
  * and remove. Returns the SAME object when a command changes nothing. Invalid arguments throw RangeError.
  */
-import { isMediaItem, isValidMediaId, type MediaItem } from './media';
-
-/** How an image meets the screen: Fit shows all of it (maybe with bars), Fill covers the screen (maybe cropped). */
-export type FitMode = 'fit' | 'fill';
-
-export function isFitMode(value: unknown): value is FitMode {
-  return value === 'fit' || value === 'fill';
-}
+import { isFitMode, isMediaItem, isValidMediaId, type FitMode, type MediaItem } from './media';
 
 /** What the Single Image mode shows. */
 export interface SingleImageState {
-  /** The chosen library image, or null when none is chosen. */
+  /** The chosen library image, or null when none is chosen. How it fits the screen is the image's own `fit`. */
   readonly imageId: string | null;
-  readonly fit: FitMode;
 }
 
 export interface MediaState {
@@ -29,7 +21,7 @@ export interface MediaState {
 
 export const INITIAL_MEDIA_STATE: MediaState = Object.freeze({
   library: Object.freeze([]) as readonly MediaItem[],
-  singleImage: Object.freeze({ imageId: null, fit: 'fit' as FitMode }),
+  singleImage: Object.freeze({ imageId: null }),
 });
 
 export type MediaCommand =
@@ -37,7 +29,8 @@ export type MediaCommand =
   | { readonly type: 'addMedia'; readonly items: readonly MediaItem[] }
   | { readonly type: 'removeMedia'; readonly mediaId: string }
   | { readonly type: 'selectSingleImage'; readonly mediaId: string | null }
-  | { readonly type: 'setSingleImageFit'; readonly fit: FitMode };
+  /** Set how one image meets the screen (each image keeps its own). */
+  | { readonly type: 'setImageFit'; readonly mediaId: string; readonly fit: FitMode };
 
 export type MediaCommandType = MediaCommand['type'];
 
@@ -65,8 +58,7 @@ export function reduceMedia(state: MediaState, command: MediaCommand): MediaStat
       return {
         library: library.filter((item) => item.id !== command.mediaId),
         // Taking the chosen image away leaves nothing chosen (the projector then shows its "no image" screen).
-        singleImage:
-          singleImage.imageId === command.mediaId ? { ...singleImage, imageId: null } : singleImage,
+        singleImage: singleImage.imageId === command.mediaId ? { imageId: null } : singleImage,
       };
     }
     case 'selectSingleImage': {
@@ -77,13 +69,19 @@ export function reduceMedia(state: MediaState, command: MediaCommand): MediaStat
       }
       return singleImage.imageId === command.mediaId
         ? state
-        : { ...state, singleImage: { ...singleImage, imageId: command.mediaId } };
+        : { ...state, singleImage: { imageId: command.mediaId } };
     }
-    case 'setSingleImageFit': {
-      if (!isFitMode(command.fit)) throw new RangeError('Fit mode must be "fit" or "fill".');
-      return singleImage.fit === command.fit
-        ? state
-        : { ...state, singleImage: { ...singleImage, fit: command.fit } };
+    case 'setImageFit': {
+      if (!isFitMode(command.fit)) throw new RangeError('Fit mode must be "fit", "fill" or "original".');
+      const item = findMedia(library, command.mediaId);
+      if (!item) throw new RangeError('That image is not in the library.');
+      if (item.fit === command.fit) return state;
+      return {
+        ...state,
+        library: library.map((entry) =>
+          entry.id === command.mediaId ? { ...entry, fit: command.fit } : entry,
+        ),
+      };
     }
     default: {
       // Compile-time exhaustiveness check; at runtime `command` can still be anything.

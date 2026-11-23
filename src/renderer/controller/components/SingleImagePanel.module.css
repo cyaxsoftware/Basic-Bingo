@@ -58,6 +58,17 @@
   object-fit: cover;
 }
 
+/* Original: centered at its own size, drawn against a 1920 px wide reference screen (the width is set inline). */
+.preview[data-fit='original'] .previewImage {
+  inset: auto;
+  top: 50%;
+  left: 50%;
+  height: auto;
+  max-width: 100%;
+  max-height: 100%;
+  transform: translate(-50%, -50%);
+}
+
 .previewNote {
   max-width: 80%;
   margin: 0;
@@ -101,7 +112,7 @@
 
 .segments {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: repeat(3, 1fr);
   border: 1px solid var(--border);
   border-radius: var(--radius-sm);
   overflow: hidden;
@@ -114,6 +125,10 @@
   color: var(--text);
   font-size: 1rem;
   font-weight: 600;
+}
+
+.segment:disabled {
+  opacity: 0.5;
 }
 
 .segment[aria-pressed='true'] {
@@ -218,6 +233,19 @@
 .thumbMissing {
   color: #d1d5db;
   font-size: 0.9rem;
+}
+
+/* A small mark on the images that are not set to the default Fit, so the library shows which ones differ. */
+.thumbFit {
+  position: absolute;
+  top: var(--space-1);
+  left: var(--space-1);
+  padding: 0 var(--space-2);
+  border-radius: 999px;
+  background: rgb(0 0 0 / 70%);
+  color: #fff;
+  font-size: 0.7rem;
+  font-weight: 700;
 }
 
 .thumbOn {

@@ -163,14 +163,15 @@ export interface PersistedMediaItemV4 {
   readonly width: number;
   readonly height: number;
   readonly addedAt: string;
+  /** How this image meets the screen. Each image has its own. */
+  readonly fit: FitMode;
 }
 
 export interface PersistedMediaV4 {
   readonly library: readonly PersistedMediaItemV4[];
-  /** What the Single Image mode shows: a library image (or none) and how it fits the screen. */
+  /** What the Single Image mode shows: a library image, or none. */
   readonly singleImage: {
     readonly imageId: string | null;
-    readonly fit: FitMode;
   };
 }
 
@@ -235,7 +236,7 @@ function defaultPersistedPatterns(): PersistedStateV3['patterns'] {
 }
 
 function defaultPersistedMedia(): PersistedMediaV4 {
-  return { library: [], singleImage: { imageId: null, fit: 'fit' } };
+  return { library: [], singleImage: { imageId: null } };
 }
 
 function toPersistedMedia(media: MediaState): PersistedMediaV4 {
@@ -248,8 +249,9 @@ function toPersistedMedia(media: MediaState): PersistedMediaV4 {
       width: item.width,
       height: item.height,
       addedAt: item.addedAt,
+      fit: item.fit,
     })),
-    singleImage: { imageId: media.singleImage.imageId, fit: media.singleImage.fit },
+    singleImage: { imageId: media.singleImage.imageId },
   };
 }
 
@@ -479,24 +481,36 @@ function normalizeMedia(raw: unknown): { media: PersistedMediaV4; warnings: stri
     };
   }
   const warnings: string[] = [];
+  const single = isRecord(raw['singleImage']) ? raw['singleImage'] : {};
+  // Early M4 builds kept ONE Fit / Fill choice for the Single Image; it becomes the chosen image's own setting.
+  const legacyFit = isFitMode(single['fit']) ? single['fit'] : 'fit';
+  const legacyImageId = single['imageId'];
+
   const library: PersistedMediaItemV4[] = [];
   const seen = new Set<string>();
   let dropped = 0;
   if (Array.isArray(raw['library'])) {
     for (const entry of raw['library']) {
-      if (!isMediaItem(entry) || seen.has(entry.id)) {
+      const candidate = isRecord(entry)
+        ? {
+            ...entry,
+            fit: isFitMode(entry['fit']) ? entry['fit'] : entry['id'] === legacyImageId ? legacyFit : 'fit',
+          }
+        : entry;
+      if (!isMediaItem(candidate) || seen.has(candidate.id)) {
         dropped += 1;
         continue;
       }
-      seen.add(entry.id);
+      seen.add(candidate.id);
       library.push({
-        id: entry.id,
-        name: entry.name,
-        format: entry.format,
-        bytes: entry.bytes,
-        width: entry.width,
-        height: entry.height,
-        addedAt: entry.addedAt,
+        id: candidate.id,
+        name: candidate.name,
+        format: candidate.format,
+        bytes: candidate.bytes,
+        width: candidate.width,
+        height: candidate.height,
+        addedAt: candidate.addedAt,
+        fit: candidate.fit,
       });
     }
   } else if (raw['library'] !== undefined) {
@@ -504,11 +518,8 @@ function normalizeMedia(raw: unknown): { media: PersistedMediaV4; warnings: stri
   }
   if (dropped > 0) warnings.push(`Removed ${dropped} damaged or duplicate saved image(s).`);
 
-  const single = isRecord(raw['singleImage']) ? raw['singleImage'] : {};
-  const wanted = single['imageId'];
-  const imageId = typeof wanted === 'string' && seen.has(wanted) ? wanted : null;
-  const fit: FitMode = isFitMode(single['fit']) ? single['fit'] : 'fit';
-  return { media: { library, singleImage: { imageId, fit } }, warnings };
+  const imageId = typeof legacyImageId === 'string' && seen.has(legacyImageId) ? legacyImageId : null;
+  return { media: { library, singleImage: { imageId } }, warnings };
 }
 
 /** Validate and migrate parsed JSON into the current {@link PersistedState}. */

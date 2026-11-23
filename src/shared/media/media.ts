@@ -18,6 +18,18 @@ export const MAX_IMAGE_BYTES = 20 * 1024 * 1024;
 /** The original file name is kept for the operator to recognize the image; longer ones are cut. */
 export const MAX_MEDIA_NAME_LENGTH = 200;
 
+/**
+ * How an image meets the screen.
+ *  - fit:      all of it, as large as fits (black bars if its shape differs from the screen's)
+ *  - fill:     covers the whole screen (the edges may be cropped)
+ *  - original: its own size, centered, never enlarged; one bigger than the screen is shrunk to fit
+ */
+export type FitMode = 'fit' | 'fill' | 'original';
+
+export function isFitMode(value: unknown): value is FitMode {
+  return value === 'fit' || value === 'fill' || value === 'original';
+}
+
 /** The custom, read-only protocol the windows use to show a library image: `bingo-media://<id>`. */
 export const MEDIA_PROTOCOL = 'bingo-media';
 
@@ -41,6 +53,8 @@ export interface MediaItem {
   readonly height: number;
   /** ISO timestamp of the import. Informational. */
   readonly addedAt: string;
+  /** How this image meets the screen. A property of the image, so each one remembers its own. Fit when imported. */
+  readonly fit: FitMode;
 }
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
@@ -93,6 +107,7 @@ export function isMediaItem(value: unknown): value is MediaItem {
     item['bytes'] <= MAX_IMAGE_BYTES &&
     isPositiveInteger(item['width']) &&
     isPositiveInteger(item['height']) &&
-    typeof item['addedAt'] === 'string'
+    typeof item['addedAt'] === 'string' &&
+    isFitMode(item['fit'])
   );
 }

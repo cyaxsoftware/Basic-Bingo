@@ -24,6 +24,11 @@
   object-fit: cover;
 }
 
+/* Original: the picture's own size, centered. scale-down never enlarges, and shrinks one that is too big. */
+.stage[data-fit='original'] .image {
+  object-fit: scale-down;
+}
+
 /* No image, or one that cannot be loaded: quiet text on the plain stage, large enough for the back of the room. */
 .note {
   margin: 0;

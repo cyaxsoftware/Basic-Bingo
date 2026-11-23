@@ -14,8 +14,8 @@
  *  - Command handlers return {@link CommandResult}; they never throw across IPC.
  */
 import type { BallNumber, BingoLetter } from '../game/balls';
-import type { MediaItem } from '../media/media';
-import type { FitMode, SingleImageState } from '../media/mediaState';
+import type { FitMode, MediaItem } from '../media/media';
+import type { SingleImageState } from '../media/mediaState';
 import type { GameState } from '../game/gameState';
 import type { ActivePattern, Pattern, PatternCells, ShownPattern } from '../patterns/pattern';
 import type { PresentationMode } from '../presentation/presentationMode';
@@ -82,7 +82,7 @@ export interface AppSnapshot {
   readonly shownPattern: ShownPattern | null;
   /** Persisted: the imported images (metadata; the files are in the media folder, shown through bingo-media://). */
   readonly mediaLibrary: readonly MediaItem[];
-  /** Persisted: which library image the Single Image mode shows, and how it fits the screen. */
+  /** Persisted: which library image the Single Image mode shows (each image has its own Fit / Fill). */
   readonly singleImage: SingleImageState;
   /** Runtime-only: what the Presentation window is doing. Never persisted. */
   readonly presentation: PresentationStatus;
@@ -123,7 +123,7 @@ export const IpcChannel = {
   hidePatternOnProjector: 'bingo:hide-pattern-on-projector',
   importImages: 'bingo:import-images',
   selectSingleImage: 'bingo:select-single-image',
-  setSingleImageFit: 'bingo:set-single-image-fit',
+  setImageFit: 'bingo:set-image-fit',
   removeImage: 'bingo:remove-image',
   listDisplays: 'bingo:list-displays',
   openPresentation: 'bingo:open-presentation',
@@ -180,7 +180,8 @@ export interface ControllerApi extends PresentationApi {
   importImages(): Promise<CommandResult>;
   /** Show a library image in Single Image mode (null: none). */
   selectSingleImage(mediaId: string | null): Promise<CommandResult>;
-  setSingleImageFit(fit: FitMode): Promise<CommandResult>;
+  /** Set how one image meets the screen. Each image remembers its own Fit or Fill. */
+  setImageFit(mediaId: string, fit: FitMode): Promise<CommandResult>;
   /** Delete an image from the library and its stored file. */
   removeImage(mediaId: string): Promise<CommandResult>;
   /** Re-reads displays from Windows and returns them (the snapshot updates too). */

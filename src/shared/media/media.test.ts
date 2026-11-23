@@ -24,6 +24,7 @@ function item(id: string, overrides: Partial<MediaItem> = {}): MediaItem {
     width: 800,
     height: 400,
     addedAt: '2026-01-01T00:00:00.000Z',
+    fit: 'fit' as const,
     ...overrides,
   };
 }
@@ -92,6 +93,8 @@ describe('isMediaItem', () => {
     ['a fractional width', item(ID_A, { width: 1.5 })],
     ['a missing height', { ...item(ID_A), height: undefined }],
     ['a missing date', { ...item(ID_A), addedAt: undefined }],
+    ['an unknown fit mode', item(ID_A, { fit: 'stretch' as never })],
+    ['a missing fit mode', { ...item(ID_A), fit: undefined }],
     ['not an object', 'x'],
     ['null', null],
   ])('rejects %s', (_label, value) => {
@@ -102,9 +105,9 @@ describe('isMediaItem', () => {
 describe('reduceMedia', () => {
   const run = (state: MediaState, command: MediaCommand) => reduceMedia(state, command);
 
-  it('starts empty, with nothing chosen and Fit', () => {
+  it('starts empty, with nothing chosen', () => {
     expect(INITIAL_MEDIA_STATE.library).toEqual([]);
-    expect(INITIAL_MEDIA_STATE.singleImage).toEqual({ imageId: null, fit: 'fit' });
+    expect(INITIAL_MEDIA_STATE.singleImage).toEqual({ imageId: null });
   });
 
   describe('addMedia', () => {
@@ -150,27 +153,45 @@ describe('reduceMedia', () => {
         );
       },
     );
-
-    it('keeps the Fit mode', () => {
-      const fill = run(withImages(ID_A), { type: 'setSingleImageFit', fit: 'fill' });
-      expect(run(fill, { type: 'selectSingleImage', mediaId: ID_A }).singleImage).toEqual({
-        imageId: ID_A,
-        fit: 'fill',
-      });
-    });
   });
 
-  describe('setSingleImageFit', () => {
-    it('switches between Fit and Fill, and the same value changes nothing', () => {
-      const fill = run(INITIAL_MEDIA_STATE, { type: 'setSingleImageFit', fit: 'fill' });
-      expect(fill.singleImage.fit).toBe('fill');
-      expect(run(fill, { type: 'setSingleImageFit', fit: 'fill' })).toBe(fill);
-      expect(run(fill, { type: 'setSingleImageFit', fit: 'fit' }).singleImage.fit).toBe('fit');
+  describe('setImageFit', () => {
+    it('sets one image to Fit, Fill or Original, leaving the others alone', () => {
+      const state = withImages(ID_A, ID_B);
+      const fill = run(state, { type: 'setImageFit', mediaId: ID_A, fit: 'fill' });
+      expect(fill.library.map((entry) => entry.fit)).toEqual(['fill', 'fit']);
+      const original = run(fill, { type: 'setImageFit', mediaId: ID_B, fit: 'original' });
+      expect(original.library.map((entry) => entry.fit)).toEqual(['fill', 'original']);
+      expect(
+        run(original, { type: 'setImageFit', mediaId: ID_A, fit: 'fit' }).library.map((e) => e.fit),
+      ).toEqual(['fit', 'original']);
     });
 
-    it.each(['stretch', '', 'FIT', null, 1])('refuses %j', (fit) => {
-      expect(() => run(INITIAL_MEDIA_STATE, { type: 'setSingleImageFit', fit: fit as never })).toThrow(
+    it('the same value changes nothing', () => {
+      const state = withImages(ID_A);
+      expect(run(state, { type: 'setImageFit', mediaId: ID_A, fit: 'fit' })).toBe(state);
+      const fill = run(state, { type: 'setImageFit', mediaId: ID_A, fit: 'fill' });
+      expect(run(fill, { type: 'setImageFit', mediaId: ID_A, fit: 'fill' })).toBe(fill);
+    });
+
+    it('each image keeps its own setting when another image is chosen', () => {
+      let state = withImages(ID_A, ID_B);
+      state = run(state, { type: 'setImageFit', mediaId: ID_A, fit: 'fill' });
+      state = run(state, { type: 'selectSingleImage', mediaId: ID_B });
+      state = run(state, { type: 'selectSingleImage', mediaId: ID_A });
+      expect(state.library.find((entry) => entry.id === ID_A)?.fit).toBe('fill');
+      expect(state.library.find((entry) => entry.id === ID_B)?.fit).toBe('fit');
+    });
+
+    it.each(['stretch', '', 'FIT', null, 1])('refuses %j as a mode', (fit) => {
+      expect(() => run(withImages(ID_A), { type: 'setImageFit', mediaId: ID_A, fit: fit as never })).toThrow(
         RangeError,
+      );
+    });
+
+    it('refuses an image that is not in the library', () => {
+      expect(() => run(withImages(ID_A), { type: 'setImageFit', mediaId: ID_B, fit: 'fill' })).toThrow(
+        /not in the library/,
       );
     });
   });
@@ -187,13 +208,13 @@ describe('reduceMedia', () => {
       expect(run(chosen, { type: 'removeMedia', mediaId: ID_B }).singleImage.imageId).toBe(ID_A);
     });
 
-    it('keeps the Fit mode when the chosen image goes', () => {
-      let state = run(withImages(ID_A), { type: 'setSingleImageFit', fit: 'fill' });
+    it('keeps the other images own settings when one goes', () => {
+      let state = withImages(ID_A, ID_B);
+      state = run(state, { type: 'setImageFit', mediaId: ID_B, fit: 'original' });
       state = run(state, { type: 'selectSingleImage', mediaId: ID_A });
-      expect(run(state, { type: 'removeMedia', mediaId: ID_A }).singleImage).toEqual({
-        imageId: null,
-        fit: 'fill',
-      });
+      const next = run(state, { type: 'removeMedia', mediaId: ID_A });
+      expect(next.singleImage).toEqual({ imageId: null });
+      expect(next.library.map((entry) => [entry.id, entry.fit])).toEqual([[ID_B, 'original']]);
     });
 
     it('refuses an unknown image', () => {

@@ -1,11 +1,10 @@
 import { useState } from 'react';
-import { mediaUrl, type FitMode, type MediaItem } from '../../../shared/media';
+import { mediaUrl, type MediaItem } from '../../../shared/media';
 import styles from './SingleImageView.module.css';
 
 export interface SingleImageViewProps {
   /** The chosen library image, or null when none is chosen. */
   readonly image: MediaItem | null;
-  readonly fit: FitMode;
 }
 
 /**
@@ -14,12 +13,12 @@ export interface SingleImageViewProps {
  * screen (and may crop). With no image chosen, or one whose file cannot be loaded, the audience sees a calm plain
  * screen with a short message, never a broken-image icon. Display only, like everything in this window.
  */
-export function SingleImageView({ image, fit }: SingleImageViewProps) {
+export function SingleImageView({ image }: SingleImageViewProps) {
   // Keyed by image id, so choosing another image starts with a fresh "it loads" assumption.
-  return <Shown key={image?.id ?? 'none'} image={image} fit={fit} />;
+  return <Shown key={image?.id ?? 'none'} image={image} />;
 }
 
-function Shown({ image, fit }: SingleImageViewProps) {
+function Shown({ image }: SingleImageViewProps) {
   const [failed, setFailed] = useState(false);
 
   if (image === null) {
@@ -37,7 +36,7 @@ function Shown({ image, fit }: SingleImageViewProps) {
     );
   }
   return (
-    <section className={styles.stage} aria-label="Single image" data-state="image" data-fit={fit}>
+    <section className={styles.stage} aria-label="Single image" data-state="image" data-fit={image.fit}>
       <img
         className={styles.image}
         src={mediaUrl(image.id)}

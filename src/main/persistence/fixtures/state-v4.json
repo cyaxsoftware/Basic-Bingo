@@ -186,7 +186,8 @@
         "bytes": 48213,
         "width": 1200,
         "height": 600,
-        "addedAt": "2026-12-01T09:00:00.000Z"
+        "addedAt": "2026-12-01T09:00:00.000Z",
+        "fit": "fit"
       },
       {
         "id": "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb",
@@ -195,12 +196,12 @@
         "bytes": 912345,
         "width": 1920,
         "height": 1080,
-        "addedAt": "2026-12-01T09:05:00.000Z"
+        "addedAt": "2026-12-01T09:05:00.000Z",
+        "fit": "fill"
       }
     ],
     "singleImage": {
-      "imageId": "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb",
-      "fit": "fill"
+      "imageId": "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb"
     }
   }
 }

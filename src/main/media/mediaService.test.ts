@@ -78,6 +78,7 @@ describe('importing images', () => {
         width: 1200,
         height: 600,
         addedAt: '2026-03-04T05:06:07.000Z',
+        fit: 'fit' as const,
       },
     ]);
     // A copy, under a generated name that is derived from the entry (not the original name or folder).

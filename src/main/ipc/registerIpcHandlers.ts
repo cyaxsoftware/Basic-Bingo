@@ -209,10 +209,10 @@ export function registerIpcHandlers(ipc: IpcMainLike, deps: IpcDependencies): vo
       : fail('Invalid image id.'),
   );
 
-  command(IpcChannel.setSingleImageFit, (fit) =>
-    isFitMode(fit)
-      ? store.dispatchMedia({ type: 'setSingleImageFit', fit })
-      : fail('Fit mode must be fit or fill.'),
+  command(IpcChannel.setImageFit, (mediaId, fit) =>
+    isValidMediaId(mediaId) && isFitMode(fit)
+      ? store.dispatchMedia({ type: 'setImageFit', mediaId, fit })
+      : fail('Choose an image and Fit, Fill or Original.'),
   );
 
   command(IpcChannel.removeImage, (mediaId) => {

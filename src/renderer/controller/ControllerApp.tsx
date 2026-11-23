@@ -132,7 +132,7 @@ export function ControllerApp({ api, store }: ControllerAppProps) {
               library={snapshot.mediaLibrary}
               singleImage={snapshot.singleImage}
               onSelect={actions.selectSingleImage}
-              onFit={actions.setSingleImageFit}
+              onFit={actions.setImageFit}
               onImport={actions.importImages}
               onRemove={actions.removeImage}
             />

@@ -17,6 +17,7 @@ const image = (id: string, name: string, width = 1200, height = 600): MediaItem 
   width,
   height,
   addedAt: '2026-01-01T00:00:00.000Z',
+  fit: 'fit' as const,
 });
 
 const LOGO = image(ID_LOGO, 'Legion Sponsors.png');
@@ -39,6 +40,11 @@ describe('Single Image panel', () => {
       expect(within(view).getByText(/No image is showing/)).toBeInTheDocument();
       expect(within(view).getByRole('button', { name: 'Remove this image…' })).toBeDisabled();
       expect(within(view).getByRole('button', { name: 'Add images…' })).toBeEnabled();
+      // Fit, Fill and Original are about the chosen image, so they wait for one.
+      for (const name of ['Fit', 'Fill', 'Original']) {
+        expect(within(view).getByRole('button', { name })).toBeDisabled();
+      }
+      expect(view).toHaveTextContent(/Choose an image to set how it fits the screen/);
     });
 
     it('asks the app to open the file dialog from Add images', async () => {
@@ -49,7 +55,7 @@ describe('Single Image panel', () => {
   });
 
   describe('with images', () => {
-    const withImages = { mediaLibrary: [LOGO, MENU], singleImage: { imageId: ID_LOGO, fit: 'fit' as const } };
+    const withImages = { mediaLibrary: [LOGO, MENU], singleImage: { imageId: ID_LOGO } };
 
     it('shows the chosen image in the preview, from the library, with its name and size', async () => {
       renderPanel(withImages);
@@ -87,21 +93,78 @@ describe('Single Image panel', () => {
       );
     });
 
-    it('switches between Fit and Fill, explaining each', async () => {
+    const previewOf = (view: HTMLElement, name: string) => {
+      const picture = within(view).getByRole('img', { name });
+      return { picture, box: picture.parentElement as HTMLElement };
+    };
+
+    it('sets how the chosen image fits: Fit, Fill or Original, each explained', async () => {
       const api = renderPanel(withImages);
       const view = await panel();
       const fit = within(view).getByRole('button', { name: 'Fit' });
       const fill = within(view).getByRole('button', { name: 'Fill' });
+      const original = within(view).getByRole('button', { name: 'Original' });
       expect(fit).toHaveAttribute('aria-pressed', 'true');
       expect(fill).toHaveAttribute('aria-pressed', 'false');
+      expect(original).toHaveAttribute('aria-pressed', 'false');
       expect(view).toHaveTextContent(/Fit shows the whole image/);
 
       await userEvent.click(fill);
-      expect(api.setSingleImageFit).toHaveBeenCalledExactlyOnceWith('fill');
-      expect(api.current().singleImage.fit).toBe('fill');
+      expect(api.setImageFit).toHaveBeenCalledExactlyOnceWith(ID_LOGO, 'fill');
+      expect(api.current().mediaLibrary.find((item) => item.id === ID_LOGO)?.fit).toBe('fill');
       expect(fill).toHaveAttribute('aria-pressed', 'true');
       expect(fit).toHaveAttribute('aria-pressed', 'false');
       expect(view).toHaveTextContent(/Fill covers the whole screen/);
+      expect(previewOf(view, 'Legion Sponsors.png').box).toHaveAttribute('data-fit', 'fill');
+
+      await userEvent.click(original);
+      expect(api.current().mediaLibrary.find((item) => item.id === ID_LOGO)?.fit).toBe('original');
+      expect(original).toHaveAttribute('aria-pressed', 'true');
+      expect(view).toHaveTextContent(/Original shows the image at its own size, centered/);
+      const { picture, box } = previewOf(view, 'Legion Sponsors.png');
+      expect(box).toHaveAttribute('data-fit', 'original');
+      // 1200 px wide against the 1920 px reference screen: 62.5% of the preview.
+      expect(picture).toHaveStyle({ width: '62.5%' });
+    });
+
+    it('each image remembers its own setting: choosing another image shows that one', async () => {
+      renderPanel({
+        mediaLibrary: [
+          { ...LOGO, fit: 'fill' },
+          { ...MENU, fit: 'original' },
+        ],
+        singleImage: { imageId: ID_LOGO },
+      });
+      const view = await panel();
+      expect(within(view).getByRole('button', { name: 'Fill' })).toHaveAttribute('aria-pressed', 'true');
+
+      await userEvent.click(within(view).getByRole('button', { name: 'Menu.jpg, 1920 × 1080' }));
+      expect(within(view).getByRole('button', { name: 'Original' })).toHaveAttribute('aria-pressed', 'true');
+      expect(within(view).getByRole('button', { name: 'Fill' })).toHaveAttribute('aria-pressed', 'false');
+
+      await userEvent.click(within(view).getByRole('button', { name: 'Legion Sponsors.png, 1200 × 600' }));
+      expect(within(view).getByRole('button', { name: 'Fill' })).toHaveAttribute('aria-pressed', 'true');
+    });
+
+    it('marks the images that are not Fit in the library, so they can be told apart', async () => {
+      renderPanel({
+        mediaLibrary: [
+          { ...LOGO, fit: 'fill' },
+          { ...MENU, fit: 'original' },
+          image('cccccccc-cccc-4ccc-8ccc-cccccccccccc', 'Plain.png'),
+        ],
+        singleImage: { imageId: ID_LOGO },
+      });
+      const view = await panel();
+      expect(within(view).getByRole('button', { name: 'Legion Sponsors.png, 1200 × 600' })).toHaveTextContent(
+        'Fill',
+      );
+      expect(within(view).getByRole('button', { name: 'Menu.jpg, 1920 × 1080' })).toHaveTextContent(
+        'Original',
+      );
+      const plain = within(view).getByRole('button', { name: 'Plain.png, 1200 × 600' });
+      expect(plain).not.toHaveTextContent('Fill');
+      expect(plain).not.toHaveTextContent('Original');
     });
 
     describe('Remove this image…', () => {
@@ -156,15 +219,15 @@ describe('Single Image panel', () => {
   });
 
   it('follows the app: an image chosen or added elsewhere appears', async () => {
-    const api = renderPanel({ mediaLibrary: [LOGO], singleImage: { imageId: null, fit: 'fit' } });
+    const api = renderPanel({ mediaLibrary: [LOGO], singleImage: { imageId: null } });
     const view = await panel();
     expect(within(view).getByText(/No image is showing/)).toBeInTheDocument();
     api.push(
       makeSnapshot({
         revision: 5,
         presentationMode: 'singleImage',
-        mediaLibrary: [LOGO, MENU],
-        singleImage: { imageId: ID_MENU, fit: 'fill' },
+        mediaLibrary: [LOGO, { ...MENU, fit: 'fill' }],
+        singleImage: { imageId: ID_MENU },
       }),
     );
     expect(await within(view).findByRole('img', { name: 'Menu.jpg' })).toBeInTheDocument();

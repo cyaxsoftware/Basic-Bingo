@@ -141,6 +141,7 @@ export class ImageLibraryService implements MediaService {
       width: image.width,
       height: image.height,
       addedAt: this.now().toISOString(),
+      fit: 'fit',
     };
     await mkdir(this.directory, { recursive: true });
     const target = path.join(this.directory, mediaFileName(item));

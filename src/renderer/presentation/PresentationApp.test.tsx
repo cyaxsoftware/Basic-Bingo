@@ -263,12 +263,13 @@ describe('PresentationApp', () => {
       width: 800,
       height: 400,
       addedAt: '2026-01-01T00:00:00.000Z',
+      fit: 'fit' as const,
     });
     const single = (overrides: Parameters<typeof makeSnapshot>[0] = {}) =>
       makeSnapshot({
         presentationMode: 'singleImage',
         mediaLibrary: [entry(ID, 'Sponsors.png'), entry(ID_2, 'Menu.png')],
-        singleImage: { imageId: ID, fit: 'fit' },
+        singleImage: { imageId: ID },
         ...overrides,
       });
     const stage = () => screen.getByRole('region', { name: 'Single image' });
@@ -285,24 +286,49 @@ describe('PresentationApp', () => {
       expect(screen.queryAllByRole('button')).toHaveLength(0);
     });
 
-    it('fits or fills the screen as chosen', async () => {
+    it('fits, fills or shows at original size, as the image is set', async () => {
       const { api } = renderPresentation(single());
       await screen.findByRole('region', { name: 'Single image' });
       expect(stage()).toHaveAttribute('data-fit', 'fit');
-      act(() => api.push(single({ revision: 2, singleImage: { imageId: ID, fit: 'fill' } })));
+      for (const [revision, fit] of [
+        [2, 'fill'],
+        [3, 'original'],
+        [4, 'fit'],
+      ] as const) {
+        act(() =>
+          api.push(
+            single({
+              revision,
+              mediaLibrary: [{ ...entry(ID, 'Sponsors.png'), fit }, entry(ID_2, 'Menu.png')],
+            }),
+          ),
+        );
+        expect(stage()).toHaveAttribute('data-fit', fit);
+      }
+    });
+
+    it('each image uses its own setting', async () => {
+      const library = [
+        { ...entry(ID, 'Sponsors.png'), fit: 'fill' as const },
+        { ...entry(ID_2, 'Menu.png'), fit: 'original' as const },
+      ];
+      const { api } = renderPresentation(single({ mediaLibrary: library }));
+      await screen.findByRole('img', { name: 'Sponsors.png' });
       expect(stage()).toHaveAttribute('data-fit', 'fill');
+      act(() => api.push(single({ revision: 2, mediaLibrary: library, singleImage: { imageId: ID_2 } })));
+      expect(stage()).toHaveAttribute('data-fit', 'original');
     });
 
     it('follows the operator to another image', async () => {
       const { api } = renderPresentation(single());
       await screen.findByRole('img', { name: 'Sponsors.png' });
-      act(() => api.push(single({ revision: 2, singleImage: { imageId: ID_2, fit: 'fit' } })));
+      act(() => api.push(single({ revision: 2, singleImage: { imageId: ID_2 } })));
       expect(screen.getByRole('img', { name: 'Menu.png' })).toHaveAttribute('src', `bingo-media://${ID_2}`);
       expect(screen.queryByRole('img', { name: 'Sponsors.png' })).toBeNull();
     });
 
     it('shows a calm message, not a broken icon, when no image is chosen', async () => {
-      renderPresentation(single({ singleImage: { imageId: null, fit: 'fit' } }));
+      renderPresentation(single({ singleImage: { imageId: null } }));
       const view = await screen.findByRole('region', { name: 'Single image' });
       expect(view).toHaveAttribute('data-state', 'none');
       expect(within(view).getByText('No image selected')).toBeInTheDocument();
@@ -310,7 +336,7 @@ describe('PresentationApp', () => {
     });
 
     it('shows the same message when the chosen image is no longer in the library', async () => {
-      renderPresentation(single({ mediaLibrary: [], singleImage: { imageId: ID, fit: 'fit' } }));
+      renderPresentation(single({ mediaLibrary: [], singleImage: { imageId: ID } }));
       expect(await screen.findByText('No image selected')).toBeInTheDocument();
     });
 
@@ -321,7 +347,7 @@ describe('PresentationApp', () => {
       expect(screen.getByText('Image unavailable')).toBeInTheDocument();
       expect(screen.queryByRole('img')).toBeNull();
 
-      act(() => api.push(single({ revision: 2, singleImage: { imageId: ID_2, fit: 'fit' } })));
+      act(() => api.push(single({ revision: 2, singleImage: { imageId: ID_2 } })));
       expect(screen.getByRole('img', { name: 'Menu.png' })).toBeInTheDocument();
       expect(stage()).toHaveAttribute('data-state', 'image');
     });

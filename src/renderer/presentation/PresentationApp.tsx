@@ -57,7 +57,6 @@ export function PresentationApp({ store }: PresentationAppProps) {
                 ? null
                 : (findMedia(snapshot.mediaLibrary, snapshot.singleImage.imageId) ?? null)
             }
-            fit={snapshot.singleImage.fit}
           />
         ) : (
           <ComingSoon mode={snapshot.presentationMode} />

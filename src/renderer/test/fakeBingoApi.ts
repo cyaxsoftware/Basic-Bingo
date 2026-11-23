@@ -52,7 +52,7 @@ export function makeSnapshot(overrides: Partial<AppSnapshot> = {}): AppSnapshot 
     activePattern: blankActivePattern(),
     shownPattern: null,
     mediaLibrary: [],
-    singleImage: { imageId: null, fit: 'fit' },
+    singleImage: { imageId: null },
     presentation: { kind: 'closed' },
     displays: [LAPTOP, PROJECTOR],
     preferredDisplayId: null,
@@ -173,7 +173,9 @@ export function createFakeBingoApi(initial: AppSnapshot = makeSnapshot()): FakeB
     selectSingleImage: vi.fn(async (mediaId: string | null) =>
       dispatchMedia({ type: 'selectSingleImage', mediaId }),
     ),
-    setSingleImageFit: vi.fn(async (fit: FitMode) => dispatchMedia({ type: 'setSingleImageFit', fit })),
+    setImageFit: vi.fn(async (mediaId: string, fit: FitMode) =>
+      dispatchMedia({ type: 'setImageFit', mediaId, fit }),
+    ),
     removeImage: vi.fn(async (mediaId: string) => dispatchMedia({ type: 'removeMedia', mediaId })),
     listDisplays: vi.fn(async () => snapshot.displays),
     openPresentation: vi.fn(async (displayId: number) => {

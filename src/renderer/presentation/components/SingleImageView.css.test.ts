@@ -27,6 +27,12 @@ describe('the image is pinned to its container, so Fit and Fill differ', () => {
     expect(text).toMatch(/object-fit:\s*contain/);
   });
 
+  it('Original shows the picture at its own size: scale-down never enlarges, and shrinks one that is too big', () => {
+    expect(rule(viewCss, ".stage[data-fit='original'] .image")).toMatch(/object-fit:\s*scale-down/);
+    // The Controller preview centers it at a size set inline, against a 1920 px wide reference screen.
+    expect(rule(panelCss, ".preview[data-fit='original'] .previewImage")).toMatch(/translate\(-50%, -50%\)/);
+  });
+
   it('Fill switches the projector image and the preview to cover', () => {
     expect(rule(viewCss, ".stage[data-fit='fill'] .image")).toMatch(/object-fit:\s*cover/);
     expect(rule(panelCss, ".preview[data-fit='fill'] .previewImage")).toMatch(/object-fit:\s*cover/);

@@ -39,7 +39,7 @@ const CONTEXT = {
 };
 
 // Older files predate patterns, so they come back with the default library and an empty working pattern.
-const DEFAULT_MEDIA = { library: [], singleImage: { imageId: null, fit: 'fit' as const } };
+const DEFAULT_MEDIA = { library: [], singleImage: { imageId: null } };
 const DEFAULT_PATTERNS = { library: createDefaultLibrary(), active: blankActivePattern(), shown: null };
 
 // A V1 file predates the banner, so it must come back with the banner hidden.
@@ -249,7 +249,7 @@ describe('V3 save format is frozen (released in milestone 3)', () => {
     expect({ ...written, savedAt: stateV3Fixture.savedAt }).toEqual({
       ...stateV3Fixture,
       schemaVersion: 4,
-      media: { library: [], singleImage: { imageId: null, fit: 'fit' } },
+      media: { library: [], singleImage: { imageId: null } },
     });
   });
 
@@ -608,6 +608,7 @@ describe('V4 save format (milestone 4: the media library)', () => {
     width: 10,
     height: 10,
     addedAt: '2026-01-01T00:00:00.000Z',
+    fit: 'fit' as const,
     ...overrides,
   });
   const load = (media: unknown) => {
@@ -619,7 +620,7 @@ describe('V4 save format (milestone 4: the media library)', () => {
     return result;
   };
 
-  it('loads the V4 fixture: two images, one chosen for Single Image, Fill', () => {
+  it('loads the V4 fixture: two images, each with its own Fit or Fill, one chosen for Single Image', () => {
     const parsed = parsePersistedState(stateV4Fixture);
     if (!parsed.ok) throw new Error(parsed.error);
     expect(parsed.warnings).toEqual([]);
@@ -628,7 +629,8 @@ describe('V4 save format (milestone 4: the media library)', () => {
       ['Legion Sponsors.png', 'png', 1200, 600],
       ['Menu.jpg', 'jpeg', 1920, 1080],
     ]);
-    expect(media.singleImage).toEqual({ imageId: ID_B, fit: 'fill' });
+    expect(media.library.map((item) => item.fit)).toEqual(['fit', 'fill']);
+    expect(media.singleImage).toEqual({ imageId: ID_B });
     // Everything else in the file is unchanged by the media section.
     expect(patterns.active.title).toBe('Big L plus');
   });
@@ -658,13 +660,13 @@ describe('V4 save format (milestone 4: the media library)', () => {
     const parsed = parsePersistedState(stateV3Fixture);
     if (!parsed.ok) throw new Error(parsed.error);
     expect(parsed.warnings).toEqual([]);
-    expect(parsed.state.media).toEqual({ library: [], singleImage: { imageId: null, fit: 'fit' } });
+    expect(parsed.state.media).toEqual({ library: [], singleImage: { imageId: null } });
   });
 
   describe('damaged image data never costs the game', () => {
     it('treats a missing media section as an empty library, silently', () => {
       const result = load(undefined);
-      expect(result.state.media).toEqual({ library: [], singleImage: { imageId: null, fit: 'fit' } });
+      expect(result.state.media).toEqual({ library: [], singleImage: { imageId: null } });
       expect(result.warnings).toEqual([]);
     });
 
@@ -691,7 +693,7 @@ describe('V4 save format (milestone 4: the media library)', () => {
           image(ID_A, { name: 'duplicate id' }),
           image('cccccccc-cccc-4ccc-8ccc-cccccccccccc'),
         ],
-        singleImage: { imageId: null, fit: 'fit' },
+        singleImage: { imageId: null },
       });
       expect(result.state.media.library.map((item) => item.id)).toEqual([
         ID_A,
@@ -704,26 +706,71 @@ describe('V4 save format (milestone 4: the media library)', () => {
     it('does not trust a stored file path: only the known fields survive', () => {
       const result = load({
         library: [{ ...image(ID_A), file: '../../Windows/win.ini', path: 'C:\\secret.png' }],
-        singleImage: { imageId: ID_A, fit: 'fit' },
+        singleImage: { imageId: ID_A },
       });
       expect(result.state.media.library[0]).toEqual(image(ID_A));
     });
 
     it('forgets a Single Image choice that no longer names a library image', () => {
-      const result = load({ library: [image(ID_A)], singleImage: { imageId: ID_B, fit: 'fill' } });
-      expect(result.state.media.singleImage).toEqual({ imageId: null, fit: 'fill' });
+      const result = load({ library: [image(ID_A)], singleImage: { imageId: ID_B } });
+      expect(result.state.media.singleImage).toEqual({ imageId: null });
     });
 
-    it.each(['stretch', 'FILL', 1, null, undefined])('falls back to Fit for %j', (fit) => {
-      const result = load({ library: [image(ID_A)], singleImage: { imageId: ID_A, fit } });
-      expect(result.state.media.singleImage).toEqual({ imageId: ID_A, fit: 'fit' });
+    it.each(['fit', 'fill', 'original'])('keeps an image set to %s', (fit) => {
+      const result = load({ library: [image(ID_A, { fit })], singleImage: { imageId: null } });
+      expect(result.state.media.library[0]?.fit).toBe(fit);
+    });
+
+    it.each(['stretch', 'FILL', 1, null, undefined])(
+      'falls back to Fit for an image whose setting is %j',
+      (fit) => {
+        const result = load({ library: [image(ID_A, { fit })], singleImage: { imageId: ID_A } });
+        expect(result.state.media.library[0]?.fit).toBe('fit');
+        expect(result.warnings).toEqual([]);
+      },
+    );
+
+    describe('a file saved while Fit / Fill was one setting for the whole Single Image', () => {
+      const without = (entry: Record<string, unknown>) => {
+        const { fit: _ignored, ...rest } = entry;
+        return rest;
+      };
+
+      it('gives the chosen image that setting, and leaves the others at Fit', () => {
+        const result = load({
+          library: [without(image(ID_A)), without(image(ID_B))],
+          singleImage: { imageId: ID_B, fit: 'fill' },
+        });
+        expect(result.state.media.library.map((item) => [item.id, item.fit])).toEqual([
+          [ID_A, 'fit'],
+          [ID_B, 'fill'],
+        ]);
+        expect(result.state.media.singleImage).toEqual({ imageId: ID_B });
+        expect(result.warnings).toEqual([]);
+      });
+
+      it('does not override an image that already has its own setting', () => {
+        const result = load({
+          library: [image(ID_A, { fit: 'original' })],
+          singleImage: { imageId: ID_A, fit: 'fill' },
+        });
+        expect(result.state.media.library[0]?.fit).toBe('original');
+      });
+
+      it('ignores an unknown old setting', () => {
+        const result = load({
+          library: [without(image(ID_A))],
+          singleImage: { imageId: ID_A, fit: 'stretch' },
+        });
+        expect(result.state.media.library[0]?.fit).toBe('fit');
+      });
     });
 
     it.each(['x', 7, null, undefined])(
       'treats a Single Image section of %j as none chosen',
       (singleImage) => {
         const result = load({ library: [image(ID_A)], singleImage });
-        expect(result.state.media.singleImage).toEqual({ imageId: null, fit: 'fit' });
+        expect(result.state.media.singleImage).toEqual({ imageId: null });
       },
     );
   });
