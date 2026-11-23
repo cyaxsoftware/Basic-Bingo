@@ -194,4 +194,171 @@ describe('Patterns view', () => {
       );
     });
   });
+
+  describe('library tools', () => {
+    const tool = (view: HTMLElement, name: string) => within(view).getByRole('button', { name });
+    const titles = (api: Awaited<ReturnType<typeof openPatterns>>['api']) =>
+      api.current().patternLibrary.map((pattern) => pattern.title);
+
+    async function openWithBigL() {
+      const open = await openPatterns();
+      await userEvent.click(item(open.view, 'Big L'));
+      return open;
+    }
+
+    describe('Add pattern', () => {
+      it('adds a blank saved pattern and switches to it, ready to edit', async () => {
+        const { api, view } = await openWithBigL();
+        const before = api.current().patternLibrary.length;
+        await userEvent.click(tool(view, 'Add pattern'));
+        expect(api.current().patternLibrary).toHaveLength(before + 1);
+        const added = api.current().patternLibrary.at(-1);
+        expect(added).toMatchObject({ title: 'New pattern' });
+        expect(added?.cells.every((on) => !on)).toBe(true);
+        expect(api.current().activePattern).toMatchObject({
+          sourcePatternId: added?.id,
+          title: 'New pattern',
+          editedFromLibrary: false,
+        });
+        expect(item(view, 'New pattern')).toHaveAttribute('aria-current', 'true');
+      });
+
+      it('asks first when there are unsaved edits, and Keep editing changes nothing', async () => {
+        const { api, view } = await openWithBigL();
+        await userEvent.click(cell(view, 3, 3));
+        const before = api.current().patternLibrary.length;
+        await userEvent.click(tool(view, 'Add pattern'));
+        expect(view).toHaveTextContent(/Your edits to Big L are not saved/);
+        expect(api.current().patternLibrary).toHaveLength(before);
+        await userEvent.click(within(view).getByRole('button', { name: 'Keep editing' }));
+        expect(api.current().patternLibrary).toHaveLength(before);
+        expect(api.current().activePattern.sourcePatternId).toBe('seed-big-l');
+      });
+
+      it('Update saved, then switch saves the edit before making the new pattern', async () => {
+        const { api, view } = await openWithBigL();
+        await userEvent.click(cell(view, 3, 3));
+        await userEvent.click(tool(view, 'Add pattern'));
+        await userEvent.click(within(view).getByRole('button', { name: 'Update saved, then switch' }));
+        expect(api.current().patternLibrary.find((p) => p.id === 'seed-big-l')?.cells[12]).toBe(true);
+        expect(api.current().activePattern.title).toBe('New pattern');
+      });
+
+      it('Discard makes the new pattern and leaves the saved one untouched', async () => {
+        const { api, view } = await openWithBigL();
+        await userEvent.click(cell(view, 3, 3));
+        await userEvent.click(tool(view, 'Add pattern'));
+        await userEvent.click(within(view).getByRole('button', { name: 'Discard edits and switch' }));
+        expect(api.current().patternLibrary.find((p) => p.id === 'seed-big-l')?.cells[12]).toBe(false);
+        expect(api.current().activePattern.title).toBe('New pattern');
+      });
+    });
+
+    describe('Rename', () => {
+      it('renames the saved pattern in place, and the unedited copy keeps following it', async () => {
+        const { api, view } = await openWithBigL();
+        await userEvent.click(tool(view, 'Rename'));
+        const field = within(view).getByRole('textbox', { name: 'Rename Big L' });
+        expect(field).toHaveFocus();
+        await userEvent.clear(field);
+        await userEvent.type(field, 'Hook{Enter}');
+        expect(titles(api)).toContain('Hook');
+        expect(titles(api)).not.toContain('Big L');
+        expect(api.current().activePattern).toMatchObject({
+          sourcePatternId: 'seed-big-l',
+          title: 'Hook',
+          editedFromLibrary: false,
+        });
+        expect(item(view, 'Hook')).toHaveAttribute('aria-current', 'true');
+      });
+
+      it('leaves an edited working copy alone: it keeps its own name and stays Edited', async () => {
+        const { api, view } = await openWithBigL();
+        await userEvent.click(cell(view, 3, 3));
+        await userEvent.click(tool(view, 'Rename'));
+        const field = within(view).getByRole('textbox', { name: 'Rename Big L' });
+        await userEvent.clear(field);
+        await userEvent.type(field, 'Hook{Enter}');
+        expect(titles(api)).toContain('Hook');
+        expect(api.current().activePattern).toMatchObject({ title: 'Big L', editedFromLibrary: true });
+        expect(api.current().activePattern.cells[12]).toBe(true);
+      });
+
+      it('ignores an empty name and Escape, changing nothing', async () => {
+        const { api, view } = await openWithBigL();
+        const before = titles(api);
+        await userEvent.click(tool(view, 'Rename'));
+        await userEvent.clear(within(view).getByRole('textbox', { name: 'Rename Big L' }));
+        await userEvent.keyboard('{Enter}');
+        expect(titles(api)).toEqual(before);
+        expect(within(view).queryByRole('textbox', { name: /^Rename/ })).toBeNull();
+
+        await userEvent.click(tool(view, 'Rename'));
+        await userEvent.type(within(view).getByRole('textbox', { name: 'Rename Big L' }), 'xyz{Escape}');
+        expect(titles(api)).toEqual(before);
+        expect(item(view, 'Big L')).toBeInTheDocument();
+      });
+    });
+
+    describe('Duplicate', () => {
+      it('adds a copy right after the saved pattern, and the game keeps its pattern', async () => {
+        const { api, view } = await openWithBigL();
+        await userEvent.click(tool(view, 'Duplicate'));
+        const library = titles(api);
+        expect(library.indexOf('Big L (copy)')).toBe(library.indexOf('Big L') + 1);
+        expect(api.current().activePattern.sourcePatternId).toBe('seed-big-l');
+        expect(item(view, 'Big L (copy)')).toBeInTheDocument();
+      });
+    });
+
+    describe('Delete', () => {
+      it('asks for confirmation naming the pattern, and Cancel changes nothing', async () => {
+        const { api, view } = await openWithBigL();
+        const before = titles(api);
+        await userEvent.click(tool(view, 'Delete'));
+        const dialog = screen.getByRole('dialog', { name: /Delete “Big L”\?/ });
+        expect(dialog).toHaveTextContent(/cannot be undone/);
+        await userEvent.click(within(dialog).getByRole('button', { name: 'Cancel' }));
+        expect(screen.queryByRole('dialog')).toBeNull();
+        expect(titles(api)).toEqual(before);
+        expect(api.current().activePattern.sourcePatternId).toBe('seed-big-l');
+      });
+
+      it('Confirm removes it, and the game keeps its pattern as one that is not in the library', async () => {
+        const { api, view } = await openWithBigL();
+        await userEvent.click(cell(view, 3, 3));
+        const copyCells = [...api.current().activePattern.cells];
+        await userEvent.click(tool(view, 'Delete'));
+        await userEvent.click(
+          within(screen.getByRole('dialog')).getByRole('button', { name: 'Delete Pattern' }),
+        );
+        expect(titles(api)).not.toContain('Big L');
+        expect(api.current().activePattern).toMatchObject({
+          sourcePatternId: null,
+          title: 'Big L',
+          editedFromLibrary: false,
+        });
+        expect(api.current().activePattern.cells).toEqual(copyCells);
+        expect(within(view).getByText(/not in the saved library/)).toBeInTheDocument();
+        expect(within(view).queryByText('Edited')).toBeNull();
+      });
+
+      it('Escape cancels the confirmation too', async () => {
+        const { api, view } = await openWithBigL();
+        const before = titles(api);
+        await userEvent.click(tool(view, 'Delete'));
+        await userEvent.keyboard('{Escape}');
+        expect(screen.queryByRole('dialog')).toBeNull();
+        expect(titles(api)).toEqual(before);
+      });
+    });
+
+    it('Rename, Duplicate and Delete are off while the game pattern is not a saved one; Add pattern is not', async () => {
+      const { view } = await openPatterns();
+      expect(tool(view, 'Rename')).toBeDisabled();
+      expect(tool(view, 'Duplicate')).toBeDisabled();
+      expect(tool(view, 'Delete')).toBeDisabled();
+      expect(tool(view, 'Add pattern')).toBeEnabled();
+    });
+  });
 });

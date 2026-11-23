@@ -5,6 +5,10 @@ import type { PresentationMode } from '../../shared/presentation/presentationMod
 
 export type UnsavedEdits = 'update' | 'saveAsNew' | 'discard';
 
+/** The title and cells of the pattern "New pattern" makes: every square off (there is no free space). */
+export const NEW_PATTERN_TITLE = 'New pattern';
+const BLANK_PATTERN_CELLS: readonly boolean[] = Array.from({ length: 25 }, () => false);
+
 export interface ControllerActions {
   toggleBall(ball: number): void;
   /** Black out (or restore) a row this game does not use. Visual only. */
@@ -21,6 +25,12 @@ export interface ControllerActions {
   renameActivePattern(title: string): void;
   updateSavedPattern(): void;
   saveActivePatternAsNew(): void;
+  /** Make a new blank saved pattern and switch to it, first saving or discarding unsaved edits. */
+  createBlankPattern(unsavedEdits: UnsavedEdits): void;
+  /** Rename a saved pattern; with `followCopy`, the unedited working copy takes the new name too. */
+  renameSavedPattern(patternId: string, title: string, followCopy: boolean): void;
+  duplicatePattern(patternId: string): void;
+  deletePattern(patternId: string): void;
   /** Push the working pattern to the projector (a snapshot; later edits wait for the next push). */
   showPatternOnProjector(): void;
   hidePatternOnProjector(): void;
@@ -71,6 +81,28 @@ export function useControllerActions(api: ControllerApi): ControllerActions {
       renameActivePattern: (title: string) => run(() => api.renameActivePattern(title)),
       updateSavedPattern: () => run(() => api.updateSavedPattern()),
       saveActivePatternAsNew: () => run(() => api.saveActivePatternAsNew()),
+      // Create, then find the new pattern (the one that was not there before) and switch to it. Unsaved edits are
+      // saved first if asked; if that fails, nothing else happens, so no edits are lost.
+      createBlankPattern: (unsavedEdits: UnsavedEdits) =>
+        run(async () => {
+          if (unsavedEdits !== 'discard') {
+            const saved =
+              unsavedEdits === 'update' ? await api.updateSavedPattern() : await api.saveActivePatternAsNew();
+            if (!saved.ok) return saved;
+          }
+          const before = new Set((await api.getSnapshot()).patternLibrary.map((pattern) => pattern.id));
+          const created = await api.createPattern(NEW_PATTERN_TITLE, BLANK_PATTERN_CELLS);
+          if (!created.ok) return created;
+          const added = (await api.getSnapshot()).patternLibrary.find((pattern) => !before.has(pattern.id));
+          return added ? api.selectPattern(added.id) : created;
+        }),
+      renameSavedPattern: (patternId: string, title: string, followCopy: boolean) =>
+        run(async () => {
+          const renamed = await api.renamePattern(patternId, title);
+          return renamed.ok && followCopy ? api.renameActivePattern(title) : renamed;
+        }),
+      duplicatePattern: (patternId: string) => run(() => api.duplicatePattern(patternId)),
+      deletePattern: (patternId: string) => run(() => api.deletePattern(patternId)),
       showPatternOnProjector: () => run(() => api.showPatternOnProjector()),
       hidePatternOnProjector: () => run(() => api.hidePatternOnProjector()),
       openPresentation: (displayId: number) => run(() => api.openPresentation(displayId)),
