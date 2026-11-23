@@ -1,12 +1,17 @@
 /*
- * A band above the board, not an overlay on it: the board and the call display
- * stay fully visible and simply get a little shorter. It is about half the height it started with (about 64 px
- * at 1920x1080), sized from the smaller screen dimension and capped by width so it stays legible from the back
- * of the room; at 1024x768 the shorter text fits on a single line.
+ * The BINGO CALLED band at the top of the Game Board. The band is always reserved (see .bannerSlot in
+ * PresentationApp.module.css), so raising the banner draws into empty space and nothing else moves. It is about
+ * 64 px tall at 1920x1080, sized from the smaller screen dimension and capped by width so it stays legible from the
+ * back of the room. The font is capped by the width too (3.2vw), so the one line of text fits on any screen shape.
  */
 .banner {
-  flex: none;
-  padding: 1vmin 3vmin;
+  /* Fills the band reserved for it (PresentationApp.module.css .bannerSlot), centred, so showing it moves nothing. */
+  box-sizing: border-box;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 3vmin;
   border-radius: 1vmin;
   background: var(--bingo-banner-bg);
   color: var(--bingo-banner-text);

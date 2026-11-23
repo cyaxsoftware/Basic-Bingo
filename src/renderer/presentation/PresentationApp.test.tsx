@@ -21,6 +21,48 @@ const played = (number: number, title = 'Four Corners') => ({
 });
 const NO_CLOCK = { firstBallAt: null, lastBingoAt: null, resumedAt: null, pausedMs: 0 };
 
+describe('PresentationApp banner band', () => {
+  it('keeps the band on the Game Board with no banner in it, so there is nothing to move later', async () => {
+    renderPresentation();
+    const slot = await screen.findByTestId('banner-slot');
+    expect(slot).toBeEmptyDOMElement();
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+  });
+
+  it('puts the banner into that same band when BINGO CALLED is raised, and takes it out again', async () => {
+    const { api } = renderPresentation(
+      makeSnapshot({ game: { calledNumbers: [3], bingoBannerVisible: false, disabledRows: [] } }),
+    );
+    const slot = await screen.findByTestId('banner-slot');
+    act(() =>
+      api.push(
+        makeSnapshot({
+          revision: 2,
+          game: { calledNumbers: [3], bingoBannerVisible: true, disabledRows: [] },
+        }),
+      ),
+    );
+    expect(within(slot).getByRole('alert')).toBeInTheDocument();
+    expect(screen.getByTestId('banner-slot')).toBe(slot);
+    act(() =>
+      api.push(
+        makeSnapshot({
+          revision: 3,
+          game: { calledNumbers: [3], bingoBannerVisible: false, disabledRows: [] },
+        }),
+      ),
+    );
+    expect(screen.getByTestId('banner-slot')).toBe(slot);
+    expect(slot).toBeEmptyDOMElement();
+  });
+
+  it('has no band on the other modes, which use the whole screen', async () => {
+    renderPresentation(makeSnapshot({ presentationMode: 'countdown' }));
+    await screen.findByRole('region', { name: /countdown/i }).catch(() => undefined);
+    expect(screen.queryByTestId('banner-slot')).not.toBeInTheDocument();
+  });
+});
+
 describe('PresentationApp game number', () => {
   it('shows Game 1 on the board before anything is played', async () => {
     renderPresentation();
@@ -37,6 +79,34 @@ describe('PresentationApp game number', () => {
   it('keeps counting from the last logged number when old games have aged out of the list', async () => {
     renderPresentation(makeSnapshot({ gameLog: { records: [played(41), played(42)], current: NO_CLOCK } }));
     expect(await screen.findByLabelText('Game 43')).toBeInTheDocument();
+  });
+
+  it('goes under the pattern name once a pattern is pushed, and is not shown twice', async () => {
+    const cells = Array.from({ length: 25 }, (_, i) => i % 6 === 0);
+    renderPresentation(
+      makeSnapshot({
+        shownPattern: { title: 'Big L', cells },
+        gameLog: { records: [played(1), played(2)], current: NO_CLOCK },
+      }),
+    );
+    const pattern = await screen.findByRole('region', { name: 'Winning pattern' });
+    expect(within(pattern).getByLabelText('Game 3')).toBeInTheDocument();
+    expect(screen.getAllByLabelText('Game 3')).toHaveLength(1);
+    // Under the name: the name is read first, then the number.
+    const heading = within(pattern).getByRole('heading', { name: 'Big L' });
+    const label = within(pattern).getByLabelText('Game 3');
+    expect(heading.compareDocumentPosition(label) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
+
+  it('takes the board corner again when the pattern is hidden', async () => {
+    const { api } = renderPresentation(
+      makeSnapshot({ shownPattern: { title: 'Big L', cells: Array.from({ length: 25 }, () => false) } }),
+    );
+    const pattern = await screen.findByRole('region', { name: 'Winning pattern' });
+    expect(within(pattern).getByLabelText('Game 1')).toBeInTheDocument();
+    act(() => api.push(makeSnapshot({ revision: 9, shownPattern: null })));
+    expect(screen.queryByRole('region', { name: 'Winning pattern' })).not.toBeInTheDocument();
+    expect(screen.getAllByLabelText('Game 1')).toHaveLength(1);
   });
 
   it('is not shown on the other presentation modes', async () => {

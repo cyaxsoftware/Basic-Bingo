@@ -1,23 +1,39 @@
 /*
- * Pinned to the top-left of the board's area, over the board panel's top padding (above the B row), so it works
- * with or without a pattern and on 16:9 and squarer screens alike. Sized from the screen (vmin), like the rest of
- * the stage, so it is readable from the back of the hall without growing into the first row.
+ * Two places, one look: a muted "GAME" with the number larger and brighter.
+ *  - caption: under the pattern's name, inside the pattern card. It is sized from that card (cqw/cqh), like the
+ *    rest of the card, so it fits the column beside the board on 16:9 and the band below it on squarer screens.
+ *  - corner: pinned to the top-left of the board's area when no pattern is shown. It sits over the board panel's
+ *    top padding (above the B row) and is sized from the screen (vmin), so it is readable from the back of the
+ *    hall without growing into the first row.
  */
 .gameNumber {
-  position: absolute;
-  top: 1.1vmin;
-  left: 2.2vmin;
   margin: 0;
   display: flex;
   align-items: baseline;
-  gap: 0.9vmin;
-  font-size: 2.6vmin;
+  justify-content: center;
   line-height: 1;
   font-weight: 800;
   letter-spacing: 0.08em;
   text-transform: uppercase;
   color: var(--stage-muted);
   pointer-events: none;
+}
+
+.caption {
+  /* The bottom line of the pattern card, under the title (see ShownPattern.module.css). */
+  order: 1;
+  flex: none;
+  gap: 1.6cqw;
+  font-size: min(6.5cqw, 5.4cqh);
+}
+
+.corner {
+  position: absolute;
+  top: 0.7vmin;
+  left: 2vmin;
+  gap: 0.8vmin;
+  justify-content: flex-start;
+  font-size: 2.2vmin;
 }
 
 .number {

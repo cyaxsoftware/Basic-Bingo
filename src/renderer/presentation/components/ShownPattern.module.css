@@ -2,14 +2,14 @@
  * The panel is a size container, like the other projector pieces, so the same markup works in the column beside
  * the board on a 16:9 screen and in the band below it on a squarer one. It has no background: the cells and the
  * title sit straight on the stage. The grid cell is the largest square that fits the width and what is left of
- * the height after the title (up to two lines, about 17cqh).
+ * the height after the title (up to two lines, about 17cqh) and the game number (about 6cqh).
  */
 .panel {
   container-type: size;
   min-height: 0;
   padding: 2vmin;
   display: flex;
-  /* The title comes first in the markup (so it is read first) but is drawn under the cells. */
+  /* Read as title, game number, cells; drawn bottom to top as game number, title, cells (the `order` values). */
   flex-direction: column-reverse;
   justify-content: center;
   align-items: center;
@@ -17,6 +17,7 @@
 }
 
 .title {
+  order: 2;
   flex: none;
   max-width: 100%;
   max-height: 17cqh;
@@ -33,7 +34,9 @@
 }
 
 .grid {
-  --cell: min(18cqw, 14cqh);
+  order: 3;
+  /* Leaves room under the cells for the title (up to two lines) and the game number. */
+  --cell: min(18cqw, 12cqh);
 
   flex: none;
   display: grid;

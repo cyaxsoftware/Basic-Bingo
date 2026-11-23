@@ -30,21 +30,31 @@ export function PresentationApp({ store }: PresentationAppProps) {
 
   const { snapshot } = state;
   const onBoard = snapshot.presentationMode === 'gameBoard';
+  const gameNumber = nextGameNumber(snapshot.gameLog);
   return (
     <div className={styles.root} data-mode={snapshot.presentation.kind} data-view={snapshot.presentationMode}>
-      {/* Shown above the Game Board only. In other modes the flag is untouched and returns with the board. */}
-      {onBoard && snapshot.game.bingoBannerVisible ? <BingoBanner /> : null}
+      {/*
+        The Game Board always keeps a band of its own at the top, so the board and the calls do not move when the
+        BINGO banner comes and goes (the banner fills the band). In other modes the flag is untouched and returns
+        with the board.
+      */}
+      {onBoard ? (
+        <div className={styles.bannerSlot} data-testid="banner-slot">
+          {snapshot.game.bingoBannerVisible ? <BingoBanner /> : null}
+        </div>
+      ) : null}
       <div className={styles.stage}>
         {onBoard ? (
           <div className={styles.game} data-pattern={snapshot.shownPattern ? 'shown' : 'none'}>
             {/* The pattern the operator pushed (nothing until they do), the board, and the calls. */}
             {snapshot.shownPattern ? (
               <div className={styles.pattern}>
-                <ShownPattern pattern={snapshot.shownPattern} />
+                <ShownPattern pattern={snapshot.shownPattern} gameNumber={gameNumber} />
               </div>
             ) : null}
             <div className={styles.board}>
-              <GameNumber number={nextGameNumber(snapshot.gameLog)} />
+              {/* With no pattern there is no name to sit under, so the number takes the board's corner. */}
+              {snapshot.shownPattern ? null : <GameNumber number={gameNumber} placement="corner" />}
               <AudienceBoard
                 calledNumbers={snapshot.game.calledNumbers}
                 disabledRows={snapshot.game.disabledRows}

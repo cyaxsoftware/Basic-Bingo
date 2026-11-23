@@ -1,5 +1,5 @@
 /*
- * .root stacks the optional BINGO banner above the .stage. .stage takes whatever height is left and holds the
+ * .root stacks the BINGO banner's reserved band (empty until the banner is raised) above the .stage. .stage takes whatever height is left and holds the
  * game layout (or a placeholder).
  */
 .root {
@@ -8,6 +8,12 @@
   gap: 2vmin;
   height: 100vh;
   padding: 2.5vmin;
+}
+
+.bannerSlot {
+  /* Always this tall on the Game Board, banner or not, so nothing below it moves (see BingoBanner.module.css). */
+  flex: none;
+  height: 6vmin;
 }
 
 .stage {
