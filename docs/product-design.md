@@ -53,7 +53,7 @@ No internet connection, cloud database, user account, local HTTP server, or sepa
 
 **Primary layout:**
 - Compact top bar with app name, presentation status (`Not projecting` / selected display), `Project`, and display selection.
-- Presentation mode tabs: **Game Board**, **Break Slideshow**, **Single Image**, **Countdown**.
+- Presentation mode tabs: **Game Board**, **Slideshow**, **Single Image**, **Countdown**.
 - In Game Board mode, allocate the largest possible area to an interactive 5-by-15 number layout, grouped into five rows of 15, with B/I/N/G/O row indicators.
 - Visible current call, last five *previous* calls, and called-ball count.
 - A prominent **BINGO CALLED** button. When the banner is active, show an equally prominent **Dismiss BINGO Banner** control.
@@ -90,7 +90,7 @@ No internet connection, cloud database, user account, local HTTP server, or sepa
 
 **Scaling:** Use proportional sizing to fit 16:9 and 4:3 projections, and test common 1920x1080, 1366x768, 1280x720, and 1024x768 display areas. No essential content should fall off screen. Readability outranks decoration.
 
-### 4.3 Break Slideshow
+### 4.3 Slideshow
 - Create, rename, and delete **multiple collections** (e.g., Legion Sponsors, VFW Announcements, Scout Fundraiser).
 - The Collections list switches between collections. **New collection** opens a name field and
   selects the new collection when created. Renaming, deletion, the default fit, and the interval
@@ -108,11 +108,11 @@ No internet connection, cloud database, user account, local HTTP server, or sepa
 - **Start** loops from the first slide. **Stop** ends rotation and leaves the current slide visible.
   Select a thumbnail to show that slide immediately and hold it. **Continue** gives the held slide a
   full interval, then advances through the collection from there.
-- Choosing a different collection, leaving Break Slideshow, or removing the current slide stops
+- Choosing a different collection, leaving Slideshow, or removing the current slide stops
   rotation. The first slide of a newly selected collection appears as a still. Changing the interval
   during playback gives the current slide a fresh interval.
 - The shared break countdown appears in the upper-right corner by default. Open **Countdown settings** within
-  Break Slideshow to adjust it during projection or turn off **Show timer on slideshow**. The
+  Slideshow to adjust it during projection or turn off **Show timer on slideshow**. The
   visibility preference is remembered across restarts. The shared timer also has a Countdown tab
   and continues across slide holds, mode changes and New Game. At zero, a visible overlay shows
   **Time to Play!** and any playing slideshow keeps rotating.
@@ -135,7 +135,7 @@ No internet connection, cloud database, user account, local HTTP server, or sepa
 - The projector centers the message and large minute and second digits. Idle shows the full duration,
   and paused shows the held time with a small “Paused” label. At zero, the projector shows only
   “Time to Play!” until the operator switches modes or changes the timer’s status.
-- Countdown uses the shared timer planned for Break Slideshow. Game Board and Single Image omit it.
+- Countdown uses the shared timer planned for Slideshow. Game Board and Single Image omit it.
   A running timer resumes at its original deadline after a restart and restores as expired if that deadline passed.
 
 ### 4.6 Projection actions

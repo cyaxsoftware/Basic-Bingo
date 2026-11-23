@@ -52,7 +52,7 @@ Repeat at each scaling level (Windows Settings → System → Display → Scale)
 
 ## C. Mode tabs
 
-- [ ] C1. Tap **Break Slideshow**. The tab shows as selected; the projector shows a "Coming soon" screen; your calls
+- [ ] C1. Tap **Slideshow**. The tab shows as selected; the projector shows a "Coming soon" screen; your calls
       are still listed in the summary.
 - [ ] C2. Tap **Game Board**. The same game returns on the projector, calls unchanged.
 - [ ] C3. Tap **Single Image** and **Countdown** the same way. Quit and reopen the app: the tab you left selected is

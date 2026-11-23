@@ -7,7 +7,7 @@ import { createFakeBingoApi, makeSnapshot } from '../../test/fakeBingoApi';
 import { ControllerApp } from '../ControllerApp';
 import { ModeTabs } from './ModeTabs';
 
-const LABELS = ['Game Board', 'Break Slideshow', 'Single Image', 'Countdown'];
+const LABELS = ['Game Board', 'Slideshow', 'Single Image', 'Countdown'];
 
 function renderTabs(mode: PresentationMode = 'gameBoard') {
   const onSelect = vi.fn();
@@ -30,7 +30,7 @@ describe('ModeTabs', () => {
 
   it.each([
     ['gameBoard', 'Game Board'],
-    ['slideshow', 'Break Slideshow'],
+    ['slideshow', 'Slideshow'],
     ['singleImage', 'Single Image'],
     ['countdown', 'Countdown'],
   ] as const)('marks only the current mode (%s) as selected', (mode, label) => {
@@ -48,12 +48,12 @@ describe('ModeTabs', () => {
 
   it('is one tab stop (the selected tab); the others are reached with the arrow keys', async () => {
     renderTabs('slideshow');
-    expect(tab('Break Slideshow')).toHaveAttribute('tabindex', '0');
+    expect(tab('Slideshow')).toHaveAttribute('tabindex', '0');
     for (const name of ['Game Board', 'Single Image', 'Countdown']) {
       expect(tab(name)).toHaveAttribute('tabindex', '-1');
     }
     await userEvent.tab();
-    expect(tab('Break Slideshow')).toHaveFocus();
+    expect(tab('Slideshow')).toHaveFocus();
   });
 
   it('moves focus with the arrow keys, Home and End, wrapping, WITHOUT switching the projector', async () => {
@@ -62,7 +62,7 @@ describe('ModeTabs', () => {
     expect(tab('Game Board')).toHaveFocus();
 
     await userEvent.keyboard('{ArrowRight}');
-    expect(tab('Break Slideshow')).toHaveFocus();
+    expect(tab('Slideshow')).toHaveFocus();
     await userEvent.keyboard('{End}');
     expect(tab('Countdown')).toHaveFocus();
     await userEvent.keyboard('{ArrowRight}'); // wraps
@@ -105,14 +105,14 @@ describe('mode tabs in the Controller', () => {
     const api = renderController();
     await screen.findByRole('group', { name: 'B row' });
 
-    await userEvent.click(tab('Break Slideshow'));
+    await userEvent.click(tab('Slideshow'));
     expect(api.setPresentationMode).toHaveBeenCalledExactlyOnceWith('slideshow');
     expect(api.current().presentationMode).toBe('slideshow');
-    expect(tab('Break Slideshow')).toHaveAttribute('aria-selected', 'true');
+    expect(tab('Slideshow')).toHaveAttribute('aria-selected', 'true');
     expect(tab('Game Board')).toHaveAttribute('aria-selected', 'false');
 
-    const panel = screen.getByRole('tabpanel', { name: 'Break Slideshow' });
-    expect(within(panel).getByRole('heading', { name: 'Break Slideshow' })).toBeInTheDocument();
+    const panel = screen.getByRole('tabpanel', { name: 'Slideshow' });
+    expect(within(panel).getByRole('heading', { name: 'Slideshow' })).toBeInTheDocument();
     expect(within(panel).getByRole('region', { name: 'Slideshow collections' })).toBeInTheDocument();
     expect(screen.queryByRole('group', { name: 'B row' })).not.toBeInTheDocument();
   });
@@ -122,7 +122,7 @@ describe('mode tabs in the Controller', () => {
     await screen.findByRole('group', { name: 'B row' });
     const game = api.current().game;
 
-    for (const name of ['Break Slideshow', 'Single Image', 'Countdown']) {
+    for (const name of ['Slideshow', 'Single Image', 'Countdown']) {
       await userEvent.click(tab(name));
       expect(api.current().game).toBe(game);
     }
@@ -143,7 +143,7 @@ describe('mode tabs in the Controller', () => {
     ];
     expect(gameControls().every((control) => control !== null)).toBe(true);
 
-    for (const name of ['Break Slideshow', 'Single Image', 'Countdown']) {
+    for (const name of ['Slideshow', 'Single Image', 'Countdown']) {
       await userEvent.click(tab(name));
       expect(gameControls().every((control) => control === null)).toBe(true);
     }
@@ -162,7 +162,7 @@ describe('mode tabs in the Controller', () => {
   it('labels the panel by the selected tab', async () => {
     renderController({ presentationMode: 'slideshow' });
     const panel = await screen.findByRole('tabpanel');
-    expect(panel).toHaveAccessibleName('Break Slideshow');
-    expect(tab('Break Slideshow')).toHaveAttribute('aria-controls', panel.id);
+    expect(panel).toHaveAccessibleName('Slideshow');
+    expect(tab('Slideshow')).toHaveAttribute('aria-controls', panel.id);
   });
 });

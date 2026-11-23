@@ -63,7 +63,7 @@ a left rail on a large window, a strip above the board on a medium one, a small 
       projector**.
 - [ ] C4. Press **Hide**. The pattern leaves the projector; the board and calls stay.
 - [ ] C5. Press **Stop**, then **Project** again. The pattern you last pushed is shown.
-- [ ] C6. Tap **Break Slideshow** and back to **Game Board**. The pattern is still shown.
+- [ ] C6. Tap **Slideshow** and back to **Game Board**. The pattern is still shown.
 
 ## D. Reading the projector from the back of the room
 

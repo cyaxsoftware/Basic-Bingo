@@ -47,7 +47,7 @@ async function setup(library: readonly MediaItem[] = [], pickedImages: readonly 
   return { api, user, view, create };
 }
 
-describe('Break Slideshow collection management', () => {
+describe('Slideshow collection management', () => {
   it('imports a deck into the active collection and shows busy and failure states', async () => {
     const { api, view, create, user } = await setup();
     expect(view.queryByRole('button', { name: 'Import PowerPoint…' })).toBeNull();

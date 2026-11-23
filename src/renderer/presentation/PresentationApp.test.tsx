@@ -48,9 +48,9 @@ describe('PresentationApp', () => {
     expect(screen.queryByText('Ready for first call')).not.toBeInTheDocument();
   });
 
-  it('shows the Break Slideshow placeholder and countdown when no collection is selected', async () => {
+  it('shows the Slideshow placeholder and countdown when no collection is selected', async () => {
     renderPresentation(makeSnapshot({ presentationMode: 'slideshow' }));
-    expect(await screen.findByRole('region', { name: 'Break Slideshow' })).toBeInTheDocument();
+    expect(await screen.findByRole('region', { name: 'Slideshow' })).toBeInTheDocument();
     expect(screen.getByText('No slideshow selected')).toBeInTheDocument();
     expect(screen.getByRole('timer')).toHaveTextContent('05:00');
     expect(screen.queryByLabelText('Bingo board')).not.toBeInTheDocument();
@@ -216,7 +216,7 @@ describe('PresentationApp', () => {
   it('returns to the board with the game intact after a mode change', async () => {
     const calls = { calledNumbers: [3, 17, 9], bingoBannerVisible: false, disabledRows: [] };
     const { api } = renderPresentation(makeSnapshot({ game: calls, presentationMode: 'slideshow' }));
-    await screen.findByRole('region', { name: 'Break Slideshow' });
+    await screen.findByRole('region', { name: 'Slideshow' });
 
     act(() => api.push(makeSnapshot({ revision: 2, game: calls, presentationMode: 'gameBoard' })));
     expect(screen.getByRole('img', { name: 'B-9' })).toBeInTheDocument();
@@ -281,7 +281,7 @@ describe('PresentationApp', () => {
 
       act(() => api.push(makeSnapshot({ revision: 2, game: game(true), presentationMode: 'slideshow' })));
       expect(screen.queryByRole('alert')).not.toBeInTheDocument();
-      expect(screen.getByRole('region', { name: 'Break Slideshow' })).toBeInTheDocument();
+      expect(screen.getByRole('region', { name: 'Slideshow' })).toBeInTheDocument();
 
       act(() => api.push(makeSnapshot({ revision: 3, game: game(true), presentationMode: 'gameBoard' })));
       expect(screen.getByRole('alert')).toHaveTextContent(BANNER);

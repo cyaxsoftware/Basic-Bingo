@@ -211,8 +211,7 @@ export class AppStore {
   }
 
   dispatchSlideshowPlayback(command: unknown): CommandResult {
-    if (this.snapshot.presentationMode !== 'slideshow')
-      return fail('Open Break Slideshow to control playback.');
+    if (this.snapshot.presentationMode !== 'slideshow') return fail('Open Slideshow to control playback.');
     const { slideshow, slideshowPlayback } = this.snapshot;
     try {
       const next = reduceSlideshowPlayback(

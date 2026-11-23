@@ -20,6 +20,7 @@ import {
 } from '../../../shared/media/slideshowPlayback';
 import { ConfirmDialog, ModalDialog } from './ConfirmDialog';
 import { CountdownPanel, type CountdownPanelProps } from './CountdownPanel';
+import { ArrowLeftIcon, ArrowRightIcon, TrashIcon } from './icons';
 import styles from './SlideshowPanel.module.css';
 
 interface SlideshowPanelProps {
@@ -173,26 +174,32 @@ function CollectionEditor({
                 <div className={styles.slideActions}>
                   <button
                     type="button"
+                    className={styles.iconButton}
                     aria-label={`Move ${name} earlier`}
+                    title="Move earlier"
                     disabled={index === 0}
                     onClick={() => onEdit({ type: 'moveSlide', collectionId, mediaId, direction: 'up' })}
                   >
-                    Earlier
+                    <ArrowLeftIcon />
                   </button>
                   <button
                     type="button"
+                    className={styles.iconButton}
                     aria-label={`Move ${name} later`}
+                    title="Move later"
                     disabled={index === slides.length - 1}
                     onClick={() => onEdit({ type: 'moveSlide', collectionId, mediaId, direction: 'down' })}
                   >
-                    Later
+                    <ArrowRightIcon />
                   </button>
                   <button
                     type="button"
+                    className={`${styles.iconButton} ${styles.removeSlide}`}
                     aria-label={`Remove ${name} from collection`}
+                    title="Remove from collection"
                     onClick={() => onEdit({ type: 'removeSlide', collectionId, mediaId })}
                   >
-                    Remove
+                    <TrashIcon />
                   </button>
                 </div>
               </li>
@@ -346,7 +353,7 @@ export function SlideshowPanel({
           />
         ) : (
           <div className={styles.editor}>
-            <h2>Break Slideshow</h2>
+            <h2>Slideshow</h2>
             <p className={styles.empty}>
               {slideshow.collections.length === 0
                 ? 'Create a collection to start adding images.'

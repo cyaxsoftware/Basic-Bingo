@@ -24,7 +24,7 @@ export function SlideshowView({ slideshow, playback, library, timer }: Slideshow
   const image = item && collection && slide ? { ...item, fit: slide.fit ?? collection.fit } : null;
 
   return (
-    <section className={styles.stage} aria-label="Break Slideshow">
+    <section className={styles.stage} aria-label="Slideshow">
       <StageImage
         image={image}
         label="Slideshow image"

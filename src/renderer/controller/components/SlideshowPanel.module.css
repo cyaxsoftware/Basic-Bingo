@@ -90,6 +90,20 @@
   opacity: 0.5;
 }
 
+/* Icon-only buttons (earlier, later, remove): one touch-sized square each. */
+.panel button.iconButton {
+  display: grid;
+  place-items: center;
+  width: var(--touch-min);
+  padding: 0;
+}
+
+/* Remove sits apart from the two arrows, at the far end of the row, in the danger color. */
+.panel button.removeSlide {
+  margin-left: auto;
+  color: var(--danger-fg);
+}
+
 .slideBar,
 .playback,
 .slideActions,

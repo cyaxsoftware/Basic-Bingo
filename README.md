@@ -62,14 +62,14 @@ count. The current call has a dark ring around it on the grid.
 
 ### Presentation modes
 
-The four tabs under the top bar choose what the **projector** shows: **Game Board**, **Break Slideshow**,
+The four tabs under the top bar choose what the **projector** shows: **Game Board**, **Slideshow**,
 **Single Image** or **Countdown**. The selected tab always matches what the audience sees, and the choice
 is remembered across restarts. Tapping a tab switches immediately; with a keyboard, the arrow keys only
 move between tabs and Enter or Space switches. Switching modes never changes the called numbers or the BINGO
 banner, and **New Game** leaves the mode alone.
 
 Game Board contains the ball grid and game controls. Single Image displays a chosen library image,
-and Countdown shows the shared timer. The Break Slideshow tab manages named collections and their
+and Countdown shows the shared timer. The Slideshow tab manages named collections and their
 ordered slides. Choose a collection and use **Add images…** to append files directly to it. The
 thumbnails show slide order and let you set Original, Fit, or Fill for each image. **Start** loops
 from the first slide. Tap a thumbnail to hold it on screen, then press **Continue** to resume after a

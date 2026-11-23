@@ -17,7 +17,7 @@ export function isPresentationMode(value: unknown): value is PresentationMode {
 /** Operator-facing names, matching the Controller's mode tabs (design doc §4.1). */
 export const PRESENTATION_MODE_LABELS: Readonly<Record<PresentationMode, string>> = {
   gameBoard: 'Game Board',
-  slideshow: 'Break Slideshow',
+  slideshow: 'Slideshow',
   singleImage: 'Single Image',
   countdown: 'Countdown',
 };

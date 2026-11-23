@@ -161,7 +161,7 @@ export function createFakeBingoApi(initial: AppSnapshot = makeSnapshot()): FakeB
   };
 
   const controlSlideshow = (command: SlideshowPlaybackCommand): CommandResult => {
-    if (snapshot.presentationMode !== 'slideshow') return fail('Open Break Slideshow to control playback.');
+    if (snapshot.presentationMode !== 'slideshow') return fail('Open Slideshow to control playback.');
     try {
       const next = reduceSlideshowPlayback(
         snapshot.slideshowPlayback,

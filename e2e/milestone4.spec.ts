@@ -328,9 +328,9 @@ test('slideshow holds a chosen slide, continues from it, and loops after the cou
     ).toEqual({ ok: true });
     await controller.getByRole('button', { name: 'Preview' }).click();
     const projector = await findPresentationWindow(app);
-    await controller.getByRole('tab', { name: 'Break Slideshow' }).click();
+    await controller.getByRole('tab', { name: 'Slideshow' }).click();
     const panel = controller.getByRole('region', { name: 'Slideshow collections' });
-    const stage = projector.getByRole('region', { name: 'Break Slideshow' });
+    const stage = projector.getByRole('region', { name: 'Slideshow' });
     await expect(stage.getByText('No slideshow selected')).toBeVisible();
     await panel.getByRole('button', { name: 'New collection' }).click();
     const create = panel.getByRole('form', { name: 'New collection' });

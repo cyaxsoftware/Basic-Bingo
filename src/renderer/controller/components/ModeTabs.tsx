@@ -16,7 +16,7 @@ export interface ModeTabsProps {
 export const modeTabId = (mode: PresentationMode) => `mode-tab-${mode}`;
 
 /**
- * What the audience screen shows: Game Board, Break Slideshow, Single Image
+ * What the audience screen shows: Game Board, Slideshow, Single Image
  * or Countdown. The selected tab always mirrors the snapshot, never local state.
  *
  * Activation is manual: arrow keys only move focus, and Enter or Space switches
