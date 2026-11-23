@@ -227,7 +227,7 @@
 
   /* The projector controls become one widget in the top-right corner of the window. */
   .projector {
-    flex: 0 1 780px;
+    flex: 0 1 auto;
     margin-left: auto;
     padding: var(--space-1) var(--space-2);
     border: 1px solid var(--border);
