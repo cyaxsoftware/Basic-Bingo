@@ -185,9 +185,14 @@ test('the offline policy still blocks every remote address and unknown images, w
     projector.evaluate(
       (address) =>
         new Promise<string>((resolve) => {
-          const picture = new Image();
-          picture.onload = () => resolve('loaded');
-          picture.onerror = () => resolve('failed');
+          // The Node type definitions have no DOM, so describe the one thing we use of an image element.
+          type PictureElement = {
+            addEventListener(type: string, listener: () => void): void;
+            src: string;
+          };
+          const picture = new (globalThis as unknown as { Image: new () => PictureElement }).Image();
+          picture.addEventListener('load', () => resolve('loaded'));
+          picture.addEventListener('error', () => resolve('failed'));
           picture.src = address;
         }),
       url,
