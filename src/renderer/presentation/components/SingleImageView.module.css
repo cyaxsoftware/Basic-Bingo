@@ -1,0 +1,39 @@
+/* The whole screen is the image: black behind it, so Fit's bars are black on every projector. */
+.stage {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  display: grid;
+  place-items: center;
+  background: #000;
+}
+
+/*
+ * Pinned to the stage's edges so the image's box is always the whole screen. With a box that is the picture's own
+ * shape, Fit and Fill look the same; with the screen-shaped box, contain shows all of it and cover fills it.
+ */
+.image {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.stage[data-fit='fill'] .image {
+  object-fit: cover;
+}
+
+/* Original: the picture's own size, centered. scale-down never enlarges, and shrinks one that is too big. */
+.stage[data-fit='original'] .image {
+  object-fit: scale-down;
+}
+
+/* No image, or one that cannot be loaded: quiet text on the plain stage, large enough for the back of the room. */
+.note {
+  margin: 0;
+  color: var(--stage-muted);
+  font-size: 5vmin;
+  font-weight: 600;
+  text-align: center;
+}

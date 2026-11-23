@@ -12,6 +12,7 @@ import {
 import stateV1Fixture from './fixtures/state-v1.json';
 import stateV2Fixture from './fixtures/state-v2.json';
 import stateV3Fixture from './fixtures/state-v3.json';
+import stateV4Fixture from './fixtures/state-v4.json';
 import {
   CURRENT_SCHEMA_VERSION,
   createDefaultAppData,
@@ -24,6 +25,7 @@ import {
   type PersistedGameV2,
   type PersistedStateV1,
   type PersistedStateV2,
+  type PersistedStateV3,
 } from './persistedState';
 import { JsonStateRepository } from './stateRepository';
 
@@ -37,6 +39,7 @@ const CONTEXT = {
 };
 
 // Older files predate patterns, so they come back with the default library and an empty working pattern.
+const DEFAULT_MEDIA = { library: [], singleImage: { imageId: null } };
 const DEFAULT_PATTERNS = { library: createDefaultLibrary(), active: blankActivePattern(), shown: null };
 
 // A V1 file predates the banner, so it must come back with the banner hidden.
@@ -44,6 +47,7 @@ const V1_FIXTURE_APP_DATA: AppData = {
   game: { calledNumbers: [3, 17, 9, 31, 52, 75], bingoBannerVisible: false, disabledRows: [] },
   presentation: { mode: 'gameBoard' },
   patterns: DEFAULT_PATTERNS,
+  media: DEFAULT_MEDIA,
   settings: { preferredDisplayId: 2779098405 },
 };
 
@@ -51,6 +55,7 @@ const V2_FIXTURE_APP_DATA: AppData = {
   game: { calledNumbers: [3, 17, 9, 31, 52, 75], bingoBannerVisible: true, disabledRows: [] },
   presentation: { mode: 'slideshow' },
   patterns: DEFAULT_PATTERNS,
+  media: DEFAULT_MEDIA,
   settings: { preferredDisplayId: 2779098405 },
 };
 
@@ -102,11 +107,12 @@ describe('V1 save format is frozen (audit finding 5, #22)', () => {
         ok: true,
         warnings: [],
         state: {
-          schemaVersion: 3,
+          schemaVersion: 4,
           savedAt: '2026-01-01T00:00:00.000Z',
           game: { calledNumbers: expectedCalls, bingoBannerVisible: false, disabledRows: [] },
           presentation: { mode: 'gameBoard' },
           patterns: createDefaultPersistedState().patterns,
+          media: createDefaultPersistedState().media,
           settings: { preferredDisplayId: null },
         },
       });
@@ -152,10 +158,10 @@ describe('V2 save format is frozen (released in milestone 2)', () => {
     }
   });
 
-  it('migrates to V3 keeping the game and mode, and seeds the default library with an empty working pattern', () => {
+  it('migrates to the current version keeping the game and mode, and seeds the default library with an empty working pattern', () => {
     const parsed = parsePersistedState(stateV2Fixture);
     if (!parsed.ok) throw new Error(parsed.error);
-    expect(parsed.state.schemaVersion).toBe(3);
+    expect(parsed.state.schemaVersion).toBe(4);
     expect(parsed.state.game).toEqual({
       calledNumbers: [3, 17, 9, 31, 52, 75],
       bingoBannerVisible: true,
@@ -202,7 +208,13 @@ describe('V2 save format is frozen (released in milestone 2)', () => {
   });
 });
 
-describe('V3 save format (milestone 3, unreleased)', () => {
+describe('V3 save format is frozen (released in milestone 3)', () => {
+  it('has the expected shape: patterns, but no media library', () => {
+    expectTypeOf<PersistedStateV3['schemaVersion']>().toEqualTypeOf<3>();
+    expectTypeOf<PersistedStateV3>().toHaveProperty('patterns');
+    expectTypeOf<PersistedStateV3>().not.toHaveProperty('media');
+  });
+
   const loadFixture = () => {
     const parsed = parsePersistedState(stateV3Fixture);
     if (!parsed.ok) throw new Error(parsed.error);
@@ -231,10 +243,14 @@ describe('V3 save format (milestone 3, unreleased)', () => {
     expect(presentation.mode).toBe('slideshow');
   });
 
-  it('round-trips the V3 fixture exactly (apart from the save time)', () => {
+  it('migrates the V3 fixture to V4 unchanged, with an empty media library', () => {
     const parsed = loadFixture();
     const written = toPersistedState(fromPersistedState(parsed.state));
-    expect({ ...written, savedAt: stateV3Fixture.savedAt }).toEqual(stateV3Fixture);
+    expect({ ...written, savedAt: stateV3Fixture.savedAt }).toEqual({
+      ...stateV3Fixture,
+      schemaVersion: 4,
+      media: { library: [], singleImage: { imageId: null } },
+    });
   });
 
   it('loads the V3 fixture from disk through the repository', async () => {
@@ -520,22 +536,24 @@ describe('blacked-out rows in the save file', () => {
 describe('parsePersistedState', () => {
   it('accepts a valid current document', () => {
     const result = parsePersistedState({
-      schemaVersion: 3,
+      schemaVersion: 4,
       savedAt: '2026-01-01T00:00:00.000Z',
       game: { calledNumbers: [3, 17, 9], bingoBannerVisible: true, disabledRows: [] },
       presentation: { mode: 'singleImage' },
       patterns: createDefaultPersistedState().patterns,
+      media: createDefaultPersistedState().media,
       settings: { preferredDisplayId: 12 },
     });
     expect(result).toEqual({
       ok: true,
       warnings: [],
       state: {
-        schemaVersion: 3,
+        schemaVersion: 4,
         savedAt: '2026-01-01T00:00:00.000Z',
         game: { calledNumbers: [3, 17, 9], bingoBannerVisible: true, disabledRows: [] },
         presentation: { mode: 'singleImage' },
         patterns: createDefaultPersistedState().patterns,
+        media: createDefaultPersistedState().media,
         settings: { preferredDisplayId: 12 },
       },
     });
@@ -567,7 +585,7 @@ describe('parsePersistedState', () => {
   it('creates a default state: an empty game, the default patterns and an empty working pattern', () => {
     const state = createDefaultPersistedState(new Date('2026-01-01T00:00:00Z'));
     expect(state).toMatchObject({
-      schemaVersion: 3,
+      schemaVersion: 4,
       savedAt: '2026-01-01T00:00:00.000Z',
       game: { calledNumbers: [], bingoBannerVisible: false, disabledRows: [] },
       presentation: { mode: 'gameBoard' },
@@ -576,5 +594,184 @@ describe('parsePersistedState', () => {
     expect(state.patterns.library).toHaveLength(createDefaultLibrary().length);
     expect(state.patterns.active.sourcePatternId).toBeNull();
     expect(state.patterns.active.cells.some(Boolean)).toBe(false);
+  });
+});
+
+describe('V4 save format (milestone 4: the media library)', () => {
+  const ID_A = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
+  const ID_B = 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb';
+  const image = (id: string, overrides: Record<string, unknown> = {}) => ({
+    id,
+    name: 'Logo.png',
+    format: 'png',
+    bytes: 100,
+    width: 10,
+    height: 10,
+    addedAt: '2026-01-01T00:00:00.000Z',
+    fit: 'fit' as const,
+    ...overrides,
+  });
+  const load = (media: unknown) => {
+    const result = parsePersistedState({
+      ...stateV4Fixture,
+      ...(media === undefined ? { media: undefined } : { media }),
+    });
+    if (!result.ok) throw new Error(result.error);
+    return result;
+  };
+
+  it('loads the V4 fixture: two images, each with its own Fit or Fill, one chosen for Single Image', () => {
+    const parsed = parsePersistedState(stateV4Fixture);
+    if (!parsed.ok) throw new Error(parsed.error);
+    expect(parsed.warnings).toEqual([]);
+    const { media, patterns } = fromPersistedState(parsed.state);
+    expect(media.library.map((item) => [item.name, item.format, item.width, item.height])).toEqual([
+      ['Legion Sponsors.png', 'png', 1200, 600],
+      ['Menu.jpg', 'jpeg', 1920, 1080],
+    ]);
+    expect(media.library.map((item) => item.fit)).toEqual(['fit', 'fill']);
+    expect(media.singleImage).toEqual({ imageId: ID_B });
+    // Everything else in the file is unchanged by the media section.
+    expect(patterns.active.title).toBe('Big L plus');
+  });
+
+  it('round-trips the V4 fixture exactly (apart from the save time)', () => {
+    const parsed = parsePersistedState(stateV4Fixture);
+    if (!parsed.ok) throw new Error(parsed.error);
+    const written = toPersistedState(fromPersistedState(parsed.state));
+    expect({ ...written, savedAt: stateV4Fixture.savedAt }).toEqual(stateV4Fixture);
+  });
+
+  it('loads the V4 fixture from disk through the repository', async () => {
+    const dir = await mkdtemp(path.join(os.tmpdir(), 'bingo-v4-'));
+    try {
+      const repo = new JsonStateRepository(dir);
+      await copyFile(path.join(__dirname, 'fixtures', 'state-v4.json'), repo.filePath);
+      const loaded = await repo.load();
+      expect(loaded.source).toBe('primary');
+      expect(loaded.issues).toEqual([]);
+      expect(fromPersistedState(loaded.state).media.library).toHaveLength(2);
+    } finally {
+      await rm(dir, { recursive: true, force: true });
+    }
+  });
+
+  it('migrates a V3 file with no images and nothing chosen, without a warning', () => {
+    const parsed = parsePersistedState(stateV3Fixture);
+    if (!parsed.ok) throw new Error(parsed.error);
+    expect(parsed.warnings).toEqual([]);
+    expect(parsed.state.media).toEqual({ library: [], singleImage: { imageId: null } });
+  });
+
+  describe('damaged image data never costs the game', () => {
+    it('treats a missing media section as an empty library, silently', () => {
+      const result = load(undefined);
+      expect(result.state.media).toEqual({ library: [], singleImage: { imageId: null } });
+      expect(result.warnings).toEqual([]);
+    });
+
+    it.each(['oops', 7, null, [], ['x']])(
+      'clears an unreadable media section (%j), with a warning',
+      (media) => {
+        const result = load(media);
+        expect(result.state.media.library).toEqual([]);
+        expect(result.warnings.join(' ')).toMatch(/image library was damaged/);
+        expect(result.state.game.calledNumbers).toEqual(stateV4Fixture.game.calledNumbers);
+      },
+    );
+
+    it('drops only the damaged or duplicate entries, with a warning, and keeps the rest', () => {
+      const result = load({
+        library: [
+          image(ID_A),
+          image('not-a-uuid'),
+          image(ID_B, { format: 'bmp' }),
+          image(ID_B, { width: 0 }),
+          image(ID_B, { name: '' }),
+          'garbage',
+          null,
+          image(ID_A, { name: 'duplicate id' }),
+          image('cccccccc-cccc-4ccc-8ccc-cccccccccccc'),
+        ],
+        singleImage: { imageId: null },
+      });
+      expect(result.state.media.library.map((item) => item.id)).toEqual([
+        ID_A,
+        'cccccccc-cccc-4ccc-8ccc-cccccccccccc',
+      ]);
+      expect(result.warnings.join(' ')).toMatch(/Removed 7 damaged or duplicate saved image/);
+      expect(result.state.patterns.library.length).toBeGreaterThan(0);
+    });
+
+    it('does not trust a stored file path: only the known fields survive', () => {
+      const result = load({
+        library: [{ ...image(ID_A), file: '../../Windows/win.ini', path: 'C:\\secret.png' }],
+        singleImage: { imageId: ID_A },
+      });
+      expect(result.state.media.library[0]).toEqual(image(ID_A));
+    });
+
+    it('forgets a Single Image choice that no longer names a library image', () => {
+      const result = load({ library: [image(ID_A)], singleImage: { imageId: ID_B } });
+      expect(result.state.media.singleImage).toEqual({ imageId: null });
+    });
+
+    it.each(['fit', 'fill', 'original'])('keeps an image set to %s', (fit) => {
+      const result = load({ library: [image(ID_A, { fit })], singleImage: { imageId: null } });
+      expect(result.state.media.library[0]?.fit).toBe(fit);
+    });
+
+    it.each(['stretch', 'FILL', 1, null, undefined])(
+      'falls back to Fit for an image whose setting is %j',
+      (fit) => {
+        const result = load({ library: [image(ID_A, { fit })], singleImage: { imageId: ID_A } });
+        expect(result.state.media.library[0]?.fit).toBe('fit');
+        expect(result.warnings).toEqual([]);
+      },
+    );
+
+    describe('a file saved while Fit / Fill was one setting for the whole Single Image', () => {
+      const without = (entry: Record<string, unknown>) => {
+        const { fit: _ignored, ...rest } = entry;
+        return rest;
+      };
+
+      it('gives the chosen image that setting, and leaves the others at Fit', () => {
+        const result = load({
+          library: [without(image(ID_A)), without(image(ID_B))],
+          singleImage: { imageId: ID_B, fit: 'fill' },
+        });
+        expect(result.state.media.library.map((item) => [item.id, item.fit])).toEqual([
+          [ID_A, 'fit'],
+          [ID_B, 'fill'],
+        ]);
+        expect(result.state.media.singleImage).toEqual({ imageId: ID_B });
+        expect(result.warnings).toEqual([]);
+      });
+
+      it('does not override an image that already has its own setting', () => {
+        const result = load({
+          library: [image(ID_A, { fit: 'original' })],
+          singleImage: { imageId: ID_A, fit: 'fill' },
+        });
+        expect(result.state.media.library[0]?.fit).toBe('original');
+      });
+
+      it('ignores an unknown old setting', () => {
+        const result = load({
+          library: [without(image(ID_A))],
+          singleImage: { imageId: ID_A, fit: 'stretch' },
+        });
+        expect(result.state.media.library[0]?.fit).toBe('fit');
+      });
+    });
+
+    it.each(['x', 7, null, undefined])(
+      'treats a Single Image section of %j as none chosen',
+      (singleImage) => {
+        const result = load({ library: [image(ID_A)], singleImage });
+        expect(result.state.media.singleImage).toEqual({ imageId: null });
+      },
+    );
   });
 });

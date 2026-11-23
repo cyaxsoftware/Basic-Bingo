@@ -287,6 +287,20 @@
   }
 }
 
+/*
+ * The break modes (slideshow, single image, countdown) have no rail, side column or pattern: the mode's own panel
+ * gets the whole window under the tabs. Placed after the breakpoints above so it wins at every width.
+ */
+.layout[data-mode='panel'] {
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-rows: auto auto auto minmax(0, 1fr);
+  grid-template-areas:
+    'header'
+    'tabs'
+    'notices'
+    'panel';
+}
+
 .message {
   display: grid;
   place-items: center;

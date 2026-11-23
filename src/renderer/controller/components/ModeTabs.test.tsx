@@ -132,11 +132,23 @@ describe('mode tabs in the Controller', () => {
     expect(screen.getByTestId('called-count')).toHaveTextContent('Called: 3 of 75');
   });
 
-  it('keeps the call summary and the BINGO control available in every mode', async () => {
-    renderController({ presentationMode: 'countdown' });
-    await screen.findByRole('tabpanel', { name: 'Countdown' });
-    expect(screen.getByTestId('called-count')).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'BINGO CALLED' })).toBeInTheDocument();
+  it('shows the game controls only on the Game Board: the other tabs get the whole window', async () => {
+    renderController();
+    await screen.findByRole('group', { name: 'B row' });
+    const gameControls = () => [
+      screen.queryByTestId('called-count'),
+      screen.queryByRole('button', { name: 'BINGO CALLED' }),
+      screen.queryByRole('button', { name: 'New Game' }),
+      screen.queryByRole('button', { name: /^Pattern/ }),
+    ];
+    expect(gameControls().every((control) => control !== null)).toBe(true);
+
+    for (const name of ['Break Slideshow', 'Single Image', 'Countdown']) {
+      await userEvent.click(tab(name));
+      expect(gameControls().every((control) => control === null)).toBe(true);
+    }
+    await userEvent.click(tab('Game Board'));
+    expect(gameControls().every((control) => control !== null)).toBe(true);
   });
 
   it('follows a mode set elsewhere, because the snapshot is the source of truth', async () => {

@@ -10,13 +10,13 @@
  * document and AppData field by field, so adding a field to GameState cannot
  * silently change or leak into an existing file format.
  *
- * To change the format (this is how V3 added the pattern library):
- *   1. Add PersistedStateV3 (with its own game and pattern shapes) and a zod schema.
+ * To change the format (this is how V4 added the media library):
+ *   1. Add PersistedStateV4 (with its own new shapes) and a zod schema.
  *      Point `PersistedState` at it and bump CURRENT_SCHEMA_VERSION.
- *   2. Add MIGRATIONS[2]: a V2 document -> a V3 document (fill new fields with defaults).
+ *   2. Add MIGRATIONS[3]: a V3 document -> a V4 document (fill new fields with defaults).
  *   3. Update toPersistedState / fromPersistedState. The compiler flags them
  *      when AppData gains a required field.
- *   4. Add a fixtures/state-v3.json and keep the older fixture tests passing:
+ *   4. Add a fixtures/state-v4.json and keep the older fixture tests passing:
  *      old files must still load.
  * Never edit a released document type, schema, or migration.
  *
@@ -39,9 +39,10 @@ import {
   type Pattern,
   type PatternsState,
 } from '../../shared/patterns';
+import { isFitMode, isMediaItem, type FitMode, type ImageFormat, type MediaState } from '../../shared/media';
 import { DEFAULT_PRESENTATION_MODE, type PresentationMode } from '../../shared/presentation/presentationMode';
 
-export const CURRENT_SCHEMA_VERSION = 3;
+export const CURRENT_SCHEMA_VERSION = 4;
 
 // ---------------------------------------------------------------------------
 // Version 1 document (released in milestone 1; frozen)
@@ -93,8 +94,7 @@ export interface PersistedStateV2 {
 }
 
 // ---------------------------------------------------------------------------
-// Version 3 document (milestone 3; UNRELEASED, so later M3 cards may still extend it.
-// Freeze it, like V1 and V2, when M3 ships.)
+// Version 3 document (released in milestone 3; frozen)
 // ---------------------------------------------------------------------------
 
 export interface PersistedGameV3 {
@@ -150,13 +150,43 @@ export interface PersistedStateV3 {
   };
 }
 
+// ---------------------------------------------------------------------------
+// Version 4 document (milestone 4: the media library). Everything V3 had, plus `media`.
+// ---------------------------------------------------------------------------
+
+/** One imported image. The file's name is derived from `id` and `format`, never stored. */
+export interface PersistedMediaItemV4 {
+  readonly id: string;
+  readonly name: string;
+  readonly format: ImageFormat;
+  readonly bytes: number;
+  readonly width: number;
+  readonly height: number;
+  readonly addedAt: string;
+  /** How this image meets the screen. Each image has its own. */
+  readonly fit: FitMode;
+}
+
+export interface PersistedMediaV4 {
+  readonly library: readonly PersistedMediaItemV4[];
+  /** What the Single Image mode shows: a library image, or none. */
+  readonly singleImage: {
+    readonly imageId: string | null;
+  };
+}
+
+export interface PersistedStateV4 extends Omit<PersistedStateV3, 'schemaVersion'> {
+  readonly schemaVersion: 4;
+  readonly media: PersistedMediaV4;
+}
+
 // Lenient where safe (bad optional fields fall back to defaults), strict where
 // it matters (unknown version, missing game section). calledNumbers is
 // normalized rather than rejected so one bad entry cannot discard a game.
 // `patterns` is checked entry by entry in normalizePatterns, so one damaged
 // pattern cannot cost the game, or the rest of the library.
-const PersistedStateV3Schema = z.object({
-  schemaVersion: z.literal(3),
+const PersistedStateV4Schema = z.object({
+  schemaVersion: z.literal(4),
   savedAt: z.string().catch(''),
   game: z.object({
     calledNumbers: z.array(z.unknown()),
@@ -171,6 +201,8 @@ const PersistedStateV3Schema = z.object({
     })
     .catch({ mode: 'gameBoard' }),
   patterns: z.unknown(),
+  // Checked entry by entry in normalizeMedia, so one damaged image cannot cost the game or the rest of the library.
+  media: z.unknown(),
   settings: z
     .object({
       preferredDisplayId: z.number().int().nullable().catch(null),
@@ -183,7 +215,7 @@ const PersistedStateV3Schema = z.object({
 // ---------------------------------------------------------------------------
 
 /** The document version this build writes. */
-export type PersistedState = PersistedStateV3;
+export type PersistedState = PersistedStateV4;
 
 /** Durable state as the running app uses it (independent of the file format). */
 export interface AppData {
@@ -191,6 +223,8 @@ export interface AppData {
   readonly presentation: { readonly mode: PresentationMode };
   /** The pattern library and the working copy the game is showing. */
   readonly patterns: PatternsState;
+  /** The imported images and the Single Image choice. */
+  readonly media: MediaState;
   readonly settings: {
     readonly preferredDisplayId: number | null;
   };
@@ -199,6 +233,26 @@ export interface AppData {
 /** The default library and an empty working pattern, as plain on-disk data. */
 function defaultPersistedPatterns(): PersistedStateV3['patterns'] {
   return toPersistedPatterns({ library: createDefaultLibrary(), active: blankActivePattern(), shown: null });
+}
+
+function defaultPersistedMedia(): PersistedMediaV4 {
+  return { library: [], singleImage: { imageId: null } };
+}
+
+function toPersistedMedia(media: MediaState): PersistedMediaV4 {
+  return {
+    library: media.library.map((item) => ({
+      id: item.id,
+      name: item.name,
+      format: item.format,
+      bytes: item.bytes,
+      width: item.width,
+      height: item.height,
+      addedAt: item.addedAt,
+      fit: item.fit,
+    })),
+    singleImage: { imageId: media.singleImage.imageId },
+  };
 }
 
 function toPersistedPatterns(patterns: PatternsState): PersistedStateV3['patterns'] {
@@ -222,11 +276,12 @@ function toPersistedPatterns(patterns: PatternsState): PersistedStateV3['pattern
 
 export function createDefaultPersistedState(now: Date = new Date()): PersistedState {
   return {
-    schemaVersion: 3,
+    schemaVersion: 4,
     savedAt: now.toISOString(),
     game: { calledNumbers: [], bingoBannerVisible: false, disabledRows: [] },
     presentation: { mode: DEFAULT_PRESENTATION_MODE },
     patterns: defaultPersistedPatterns(),
+    media: defaultPersistedMedia(),
     settings: { preferredDisplayId: null },
   };
 }
@@ -239,7 +294,7 @@ export function createDefaultAppData(): AppData {
 /** Convert app data to the current on-disk document. Copies fields explicitly. */
 export function toPersistedState(data: AppData, now: Date = new Date()): PersistedState {
   return {
-    schemaVersion: 3,
+    schemaVersion: 4,
     savedAt: now.toISOString(),
     game: {
       calledNumbers: [...data.game.calledNumbers],
@@ -248,6 +303,7 @@ export function toPersistedState(data: AppData, now: Date = new Date()): Persist
     },
     presentation: { mode: data.presentation.mode },
     patterns: toPersistedPatterns(data.patterns),
+    media: toPersistedMedia(data.media),
     settings: { preferredDisplayId: data.settings.preferredDisplayId },
   };
 }
@@ -269,6 +325,10 @@ export function fromPersistedState(document: PersistedState): AppData {
     game,
     presentation: { mode: document.presentation.mode },
     patterns: { library, active, shown: shown ? { title: shown.title, cells: [...shown.cells] } : null },
+    media: {
+      library: document.media.library.map((item) => ({ ...item })),
+      singleImage: { ...document.media.singleImage },
+    },
     settings: { preferredDisplayId: document.settings.preferredDisplayId },
   };
 }
@@ -296,6 +356,8 @@ const MIGRATIONS: Record<number, (raw: Record<string, unknown>) => Record<string
   // working pattern. (These are what a fresh install gets; changing the seeds later only affects files
   // migrated after that.)
   2: (raw) => ({ ...raw, schemaVersion: 3, patterns: defaultPersistedPatterns() }),
+  // V3 -> V4: there was no media library, so a migrated game starts with none and no image chosen.
+  3: (raw) => ({ ...raw, schemaVersion: 4, media: defaultPersistedMedia() }),
 };
 
 export type ParseResult =
@@ -406,6 +468,60 @@ function normalizePatterns(raw: unknown): { patterns: PersistedStateV3['patterns
   };
 }
 
+/**
+ * Check the media section entry by entry. A damaged image entry is dropped (with a warning), never the whole library
+ * or the game; a Single Image choice that no longer names a library image (or an unknown Fit mode) falls back to
+ * "none" / Fit. Whether the FILES exist is checked at startup by the media service, not here.
+ */
+function normalizeMedia(raw: unknown): { media: PersistedMediaV4; warnings: string[] } {
+  if (!isRecord(raw)) {
+    return {
+      media: defaultPersistedMedia(),
+      warnings: raw === undefined ? [] : ['The saved image library was damaged, so it was cleared.'],
+    };
+  }
+  const warnings: string[] = [];
+  const single = isRecord(raw['singleImage']) ? raw['singleImage'] : {};
+  // Early M4 builds kept ONE Fit / Fill choice for the Single Image; it becomes the chosen image's own setting.
+  const legacyFit = isFitMode(single['fit']) ? single['fit'] : 'fit';
+  const legacyImageId = single['imageId'];
+
+  const library: PersistedMediaItemV4[] = [];
+  const seen = new Set<string>();
+  let dropped = 0;
+  if (Array.isArray(raw['library'])) {
+    for (const entry of raw['library']) {
+      const candidate = isRecord(entry)
+        ? {
+            ...entry,
+            fit: isFitMode(entry['fit']) ? entry['fit'] : entry['id'] === legacyImageId ? legacyFit : 'fit',
+          }
+        : entry;
+      if (!isMediaItem(candidate) || seen.has(candidate.id)) {
+        dropped += 1;
+        continue;
+      }
+      seen.add(candidate.id);
+      library.push({
+        id: candidate.id,
+        name: candidate.name,
+        format: candidate.format,
+        bytes: candidate.bytes,
+        width: candidate.width,
+        height: candidate.height,
+        addedAt: candidate.addedAt,
+        fit: candidate.fit,
+      });
+    }
+  } else if (raw['library'] !== undefined) {
+    warnings.push('The saved image library was damaged, so it was cleared.');
+  }
+  if (dropped > 0) warnings.push(`Removed ${dropped} damaged or duplicate saved image(s).`);
+
+  const imageId = typeof legacyImageId === 'string' && seen.has(legacyImageId) ? legacyImageId : null;
+  return { media: { library, singleImage: { imageId } }, warnings };
+}
+
 /** Validate and migrate parsed JSON into the current {@link PersistedState}. */
 export function parsePersistedState(raw: unknown): ParseResult {
   if (typeof raw !== 'object' || raw === null || Array.isArray(raw)) {
@@ -429,7 +545,7 @@ export function parsePersistedState(raw: unknown): ParseResult {
     version += 1;
   }
 
-  const parsed = PersistedStateV3Schema.safeParse(data);
+  const parsed = PersistedStateV4Schema.safeParse(data);
   if (!parsed.success) {
     return { ok: false, error: `State file is malformed: ${z.prettifyError(parsed.error)}` };
   }
@@ -442,12 +558,14 @@ export function parsePersistedState(raw: unknown): ParseResult {
   }
   const { patterns, warnings: patternWarnings } = normalizePatterns(parsed.data.patterns);
   warnings.push(...patternWarnings);
+  const { media, warnings: mediaWarnings } = normalizeMedia(parsed.data.media);
+  warnings.push(...mediaWarnings);
 
   return {
     ok: true,
     warnings,
     state: {
-      schemaVersion: 3,
+      schemaVersion: 4,
       savedAt: parsed.data.savedAt,
       game: {
         calledNumbers,
@@ -456,6 +574,7 @@ export function parsePersistedState(raw: unknown): ParseResult {
       },
       presentation: { mode: parsed.data.presentation.mode },
       patterns,
+      media,
       settings: { preferredDisplayId: parsed.data.settings.preferredDisplayId },
     },
   };

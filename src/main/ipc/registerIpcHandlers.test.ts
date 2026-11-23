@@ -39,6 +39,10 @@ function setup() {
   });
   const deps: IpcDependencies = {
     store,
+    media: {
+      importImages: vi.fn(async (): Promise<CommandResult> => ok),
+      deleteFile: vi.fn(async () => undefined),
+    },
     presentation: {
       openOnDisplay: vi.fn((): CommandResult => ok),
       openPreview: vi.fn((): CommandResult => ok),
@@ -377,4 +381,135 @@ describe('pattern commands over IPC', () => {
       expect(invoke(IpcChannel.updateSavedPattern).ok).toBe(false);
     });
   });
+});
+
+describe('image commands over IPC', () => {
+  const ID_A = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
+  const ID_B = 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb';
+  const entry = (id: string) => ({
+    id,
+    name: 'Logo.png',
+    format: 'png' as const,
+    bytes: 100,
+    width: 10,
+    height: 10,
+    addedAt: '2026-01-01T00:00:00.000Z',
+    fit: 'fit' as const,
+  });
+  let ctx: ReturnType<typeof setup>;
+  beforeEach(() => {
+    ctx = setup();
+    ctx.store.dispatchMedia({ type: 'addMedia', items: [entry(ID_A), entry(ID_B)] });
+  });
+
+  const invoke = (channel: string, ...args: unknown[]) =>
+    ctx.ipc.invoke(CONTROLLER_ID, channel, ...args) as CommandResult;
+
+  describe('importImages', () => {
+    it('hands over to the media service from the Controller and returns its answer', async () => {
+      const answer = await (ctx.ipc.invoke(CONTROLLER_ID, IpcChannel.importImages) as Promise<CommandResult>);
+      expect(answer).toEqual({ ok: true });
+      expect(ctx.deps.media.importImages).toHaveBeenCalledTimes(1);
+    });
+
+    it('passes a failure message through', async () => {
+      vi.mocked(ctx.deps.media.importImages).mockResolvedValueOnce({
+        ok: false,
+        error: 'No images were added.',
+      });
+      const answer = await (ctx.ipc.invoke(CONTROLLER_ID, IpcChannel.importImages) as Promise<CommandResult>);
+      expect(answer).toEqual({ ok: false, error: 'No images were added.' });
+    });
+
+    it('turns a service that throws into a failed result instead of an IPC error', async () => {
+      vi.mocked(ctx.deps.media.importImages).mockRejectedValueOnce(new Error('disk exploded'));
+      const answer = await (ctx.ipc.invoke(CONTROLLER_ID, IpcChannel.importImages) as Promise<CommandResult>);
+      expect(answer).toEqual({ ok: false, error: 'disk exploded' });
+    });
+  });
+
+  describe('selectSingleImage', () => {
+    it('chooses an image, and clears the choice', () => {
+      expect(invoke(IpcChannel.selectSingleImage, ID_B)).toEqual({ ok: true });
+      expect(ctx.store.getSnapshot().singleImage.imageId).toBe(ID_B);
+      expect(invoke(IpcChannel.selectSingleImage, null)).toEqual({ ok: true });
+      expect(ctx.store.getSnapshot().singleImage.imageId).toBeNull();
+    });
+
+    it.each(['nope', '', 7, undefined, { id: ID_A }, 'cccccccc-cccc-4ccc-8ccc-cccccccccccc'])(
+      'rejects %j as an image to show, changing nothing',
+      (arg) => {
+        const before = ctx.store.getSnapshot();
+        expect(invoke(IpcChannel.selectSingleImage, arg).ok).toBe(false);
+        expect(ctx.store.getSnapshot()).toBe(before);
+      },
+    );
+  });
+
+  describe('setImageFit', () => {
+    it('sets one image to Fit, Fill or Original, and no other', () => {
+      expect(invoke(IpcChannel.setImageFit, ID_B, 'fill')).toEqual({ ok: true });
+      expect(ctx.store.getSnapshot().mediaLibrary.map((item) => item.fit)).toEqual(['fit', 'fill']);
+      expect(invoke(IpcChannel.setImageFit, ID_A, 'original')).toEqual({ ok: true });
+      expect(ctx.store.getSnapshot().mediaLibrary.map((item) => item.fit)).toEqual(['original', 'fill']);
+    });
+
+    it.each(['stretch', 'FIT', '', 1, null, undefined])('rejects %j as a mode, changing nothing', (arg) => {
+      const before = ctx.store.getSnapshot();
+      expect(invoke(IpcChannel.setImageFit, ID_A, arg).ok).toBe(false);
+      expect(ctx.store.getSnapshot()).toBe(before);
+    });
+
+    it.each(['nope', '', 7, null, undefined, 'cccccccc-cccc-4ccc-8ccc-cccccccccccc'])(
+      'rejects %j as an image, changing nothing',
+      (arg) => {
+        const before = ctx.store.getSnapshot();
+        expect(invoke(IpcChannel.setImageFit, arg, 'fill').ok).toBe(false);
+        expect(ctx.store.getSnapshot()).toBe(before);
+      },
+    );
+  });
+
+  describe('removeImage', () => {
+    it('removes the image, clears it if it was shown, and has its file deleted', () => {
+      invoke(IpcChannel.selectSingleImage, ID_A);
+      expect(invoke(IpcChannel.removeImage, ID_A)).toEqual({ ok: true });
+      expect(ctx.store.getSnapshot().mediaLibrary.map((item) => item.id)).toEqual([ID_B]);
+      expect(ctx.store.getSnapshot().singleImage.imageId).toBeNull();
+      expect(ctx.deps.media.deleteFile).toHaveBeenCalledExactlyOnceWith(
+        expect.objectContaining({ id: ID_A }),
+      );
+    });
+
+    it.each(['nope', '', 7, null, undefined, 'cccccccc-cccc-4ccc-8ccc-cccccccccccc'])(
+      'rejects %j, deleting nothing',
+      (arg) => {
+        const before = ctx.store.getSnapshot();
+        expect(invoke(IpcChannel.removeImage, arg).ok).toBe(false);
+        expect(ctx.store.getSnapshot()).toBe(before);
+        expect(ctx.deps.media.deleteFile).not.toHaveBeenCalled();
+      },
+    );
+  });
+
+  it.each([
+    [IpcChannel.importImages, []],
+    [IpcChannel.selectSingleImage, [ID_A]],
+    [IpcChannel.setImageFit, [ID_A, 'fill']],
+    [IpcChannel.removeImage, [ID_A]],
+  ])(
+    '%s is rejected from the Presentation window and from strangers, changing nothing',
+    async (channel, args) => {
+      const before = ctx.store.getSnapshot();
+      for (const sender of [PRESENTATION_ID, STRANGER_ID]) {
+        const answer = await (ctx.ipc.invoke(sender, channel, ...args) as
+          | CommandResult
+          | Promise<CommandResult>);
+        expect(answer.ok).toBe(false);
+      }
+      expect(ctx.store.getSnapshot()).toBe(before);
+      expect(ctx.deps.media.importImages).not.toHaveBeenCalled();
+      expect(ctx.deps.media.deleteFile).not.toHaveBeenCalled();
+    },
+  );
 });

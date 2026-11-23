@@ -10,11 +10,14 @@
  *
  * See docs/architecture.md for the full picture.
  */
-import { app, BrowserWindow, dialog, ipcMain, Menu, screen, session } from 'electron';
+import path from 'node:path';
+import { app, BrowserWindow, dialog, ipcMain, Menu, protocol, screen, session } from 'electron';
 import started from 'electron-squirrel-startup';
 import type { Notice } from '../shared/ipc/contract';
+import { MEDIA_PROTOCOL } from '../shared/media';
 import { confirmClose, describeUnsavedGame, type CloseChoice } from './app/closeGuard';
 import { registerIpcHandlers } from './ipc/registerIpcHandlers';
+import { answerMediaRequest, ImageLibraryService } from './media/mediaService';
 import { resolveDataDirectory } from './persistence/dataDirectory';
 import { fromPersistedState } from './persistence/persistedState';
 import { JsonStateRepository, type LoadResult } from './persistence/stateRepository';
@@ -28,6 +31,12 @@ import { devServerOrigins } from './windows/rendererEntry';
 import { WindowRegistry } from './windows/windowRegistry';
 
 const APP_USER_MODEL_ID = 'com.cyaxsoftware.offlinebingodisplay';
+
+// The windows show library images through bingo-media://<id>. A custom scheme has to be declared before the app is
+// ready; "standard" gives it normal URL handling (the id is the host) and "secure" lets pages use it like https.
+protocol.registerSchemesAsPrivileged([
+  { scheme: MEDIA_PROTOCOL, privileges: { standard: true, secure: true, supportFetchAPI: true } },
+]);
 /** How long closing the Controller waits for a pending save before asking the operator. */
 const CLOSE_SAVE_DEADLINE_MS = 2000;
 /** Upper bound on how long any quit path may wait for the last save. */
@@ -74,7 +83,8 @@ async function startApplication(registry: WindowRegistry): Promise<void> {
   if (app.isPackaged) Menu.setApplicationMenu(null);
   installOfflinePolicy(session.defaultSession, app.isPackaged ? [] : devServerOrigins());
 
-  const repository = new JsonStateRepository(resolveDataDirectory(app.getPath('userData')));
+  const dataDirectory = resolveDataDirectory(app.getPath('userData'));
+  const repository = new JsonStateRepository(dataDirectory);
   const loaded = await repository.load();
   const store = new AppStore({
     initialData: fromPersistedState(loaded.state),
@@ -82,6 +92,23 @@ async function startApplication(registry: WindowRegistry): Promise<void> {
     initialNotices: recoveryNotices(loaded),
   });
   if (loaded.issues.length > 0) console.warn('[startup] state load issues:', loaded.issues);
+
+  // Imported images live in bingo-data/media. Only this service reads or writes them.
+  const media = new ImageLibraryService({
+    store,
+    directory: path.join(dataDirectory, 'media'),
+    pickFiles: () => pickImageFiles(registry.getController()),
+  });
+  protocol.handle(MEDIA_PROTOCOL, async (request) => {
+    const answer = await answerMediaRequest(media, request.url);
+    if (answer.status !== 200 || !answer.data) return new Response(null, { status: answer.status });
+    return new Response(new Uint8Array(answer.data), {
+      status: 200,
+      headers: { 'Content-Type': answer.mimeType ?? 'application/octet-stream', 'Cache-Control': 'no-store' },
+    });
+  });
+  // Tell the operator now (not with a broken picture later) if an image's file has gone missing.
+  void media.checkFiles();
 
   const controller = createControllerWindow();
   registry.setController(controller);
@@ -97,7 +124,7 @@ async function startApplication(registry: WindowRegistry): Promise<void> {
     createWindow: (options) => createAppWindow('presentation', options),
   });
 
-  registerIpcHandlers(ipcMain, { store, presentation, displays, senders: registry });
+  registerIpcHandlers(ipcMain, { store, media, presentation, displays, senders: registry });
   store.subscribe((snapshot) => registry.broadcast(snapshot));
 
   displays.start((list) => {
@@ -115,6 +142,17 @@ async function startApplication(registry: WindowRegistry): Promise<void> {
   });
 
   installShutdown(store, presentation, displays);
+}
+
+/** The native "Add images" dialog, over the Controller. An empty list means the operator cancelled. */
+async function pickImageFiles(parent: BrowserWindow | null): Promise<string[]> {
+  const options: Electron.OpenDialogOptions = {
+    title: 'Add images',
+    properties: ['openFile', 'multiSelections'],
+    filters: [{ name: 'Images', extensions: ['png', 'jpg', 'jpeg', 'webp', 'gif'] }],
+  };
+  const result = parent ? await dialog.showOpenDialog(parent, options) : await dialog.showOpenDialog(options);
+  return result.canceled ? [] : result.filePaths;
 }
 
 /**

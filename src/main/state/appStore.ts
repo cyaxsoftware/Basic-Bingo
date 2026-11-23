@@ -24,6 +24,7 @@ import {
 } from '../../shared/ipc/contract';
 import type { PresentationMode } from '../../shared/presentation/presentationMode';
 import { toPersistedState, type AppData } from '../persistence/persistedState';
+import { reduceMedia, type MediaCommand } from '../../shared/media';
 import { reducePatterns, type PatternCommand } from '../../shared/patterns';
 import type { StatePersister } from '../persistence/stateRepository';
 
@@ -69,6 +70,8 @@ export class AppStore {
       patternLibrary: options.initialData.patterns.library,
       activePattern: options.initialData.patterns.active,
       shownPattern: options.initialData.patterns.shown,
+      mediaLibrary: options.initialData.media.library,
+      singleImage: options.initialData.media.singleImage,
       presentation: { kind: 'closed' },
       displays: [],
       preferredDisplayId: options.initialData.settings.preferredDisplayId,
@@ -120,6 +123,25 @@ export class AppStore {
     }
     if (next !== current) {
       this.update({ patternLibrary: next.library, activePattern: next.active, shownPattern: next.shown });
+      this.persist();
+    }
+    return ok;
+  }
+
+  /**
+   * Validate and apply a media command (choose the Single Image, Fit / Fill, remove an image, or add what main has
+   * just imported). Invalid commands leave state untouched. Touches no game or pattern state.
+   */
+  dispatchMedia(command: MediaCommand): CommandResult {
+    const current = { library: this.snapshot.mediaLibrary, singleImage: this.snapshot.singleImage };
+    let next;
+    try {
+      next = reduceMedia(current, command);
+    } catch (error) {
+      return fail(error instanceof Error ? error.message : String(error));
+    }
+    if (next !== current) {
+      this.update({ mediaLibrary: next.library, singleImage: next.singleImage });
       this.persist();
     }
     return ok;
@@ -210,6 +232,7 @@ export class AppStore {
         active: this.snapshot.activePattern,
         shown: this.snapshot.shownPattern,
       },
+      media: { library: this.snapshot.mediaLibrary, singleImage: this.snapshot.singleImage },
       settings: { preferredDisplayId: this.snapshot.preferredDisplayId },
     };
   }

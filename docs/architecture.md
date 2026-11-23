@@ -64,6 +64,35 @@ Key rules:
   `deletePattern`, `showPatternOnProjector` and `hidePatternOnProjector`. The IPC handlers check argument types; the rules (cell 0 to 24, title 1 to 60 characters,
   exactly 25 cells, known ids) live in the reducer, so they apply to every caller.
 
+## Media library
+
+Images the operator imports (PNG, JPEG, WebP, GIF, up to 20 MB each) are copied into the app's own folder,
+`%APPDATA%\Offline Bingo Display\bingo-data\media\`, so they survive the original USB stick being removed.
+
+- **Rules** (`src/shared/media`, pure): `MediaItem` metadata (id, original name, format, bytes, width, height,
+  added date), and `reduceMedia` for the commands `addMedia` (internal: only the main process sends it),
+  `removeMedia`, `selectSingleImage` and `setImageFit`. Persisted in V4 (`media`), exposed as
+  `snapshot.mediaLibrary` and `snapshot.singleImage` (`{ imageId }`), separate from the game, the patterns
+  and the presentation mode. How an image meets the screen (`fit`: Fit, Fill or Original) is a property of each
+  **image**, so every image remembers its own; a save file from before that (one setting for the whole Single
+  Image) is read as the chosen image's setting.
+- **Files** (`src/main/media`, no Electron import): `readImageInfo` checks that a file really is one of the four
+  formats and reads its size from the header (the content is trusted, not the file name). `ImageLibraryService`
+  imports the picked files (each written to `<id>.<ext>.tmp` and renamed, so a crash never leaves a half image),
+  deletes a removed image's file, reads an image for the protocol, and at startup reports library images whose file
+  has gone missing. The file name is **derived** from the entry (`<uuid>.<ext>`), never stored, so a damaged or
+  edited save file cannot point the app at another file.
+- **Dialog and IPC:** the native "Add images" dialog opens in the main process; the Controller bridge has only
+  `importImages()`, `selectSingleImage`, `setSingleImageFit` and `removeImage` (no file paths cross the bridge).
+- **Showing an image:** both windows load `bingo-media://<id>`, a read-only protocol registered in `main.ts`
+  (`answerMediaRequest`). It serves only the exact form `bingo-media://<uuid>` for an image **in the library**
+  (anything with a path, query, other scheme or an unknown id is refused, so nothing outside the media folder is
+  reachable). The production CSP allows it in `img-src` only, and the offline policy allows the scheme and still
+  blocks every remote address.
+- **Missing or damaged files:** a library image whose file cannot be loaded shows a plain placeholder
+  ("Image unavailable" on the projector, "This image cannot be shown" in the Controller), never a broken-image
+  icon, and the Controller gets a notice at startup.
+
 ## Shared code boundaries
 
 | Folder           | May import                                   | Must not import                    |
@@ -105,15 +134,17 @@ if someone modified its page.
 
 `src/main/persistence/`:
 
-- `persistedState.ts`: the on-disk documents (`PersistedStateV1` and `V2` are frozen; `PersistedStateV3` adds
-  the pattern library and the active pattern and stays open to M3 changes until M3 ships), zod
+- `persistedState.ts`: the on-disk documents (`PersistedStateV1`, `V2` and `V3` are frozen; `PersistedStateV4`
+  adds the media library and the Single Image choice and stays open to M4 changes until M4 ships), zod
   validation, the migration table, and explicit conversion between the current document and
   `AppData` (the durable state the app uses). Documents never reference live domain types such as
   `GameState`, so growing the game model cannot change what an existing file means.
-- `fixtures/state-v1.json` / `state-v2.json` / `state-v3.json`: representative files for each version; tests
+- `fixtures/state-v1.json` ... `state-v4.json`: representative files for each version; tests
   load them on every run (an old file must keep loading, migrated up: V1 gets the banner hidden, V2 gets the
   default pattern library and an empty working pattern). Pattern data is checked entry by entry on load: one
   damaged pattern is dropped with a warning, and a missing section restores the defaults, never costing the game.
+  The media section is checked the same way: a damaged image entry is dropped, and a Single Image choice that no
+  longer names a library image falls back to "none". An image entry stores no file path (see Media library below).
 - `stateRepository.ts`: storage under `%APPDATA%\Offline Bingo Display\bingo-data\`.
 
 Save sequence: write `state.json.tmp` → `fsync` → **re-validate** the current `state.json` and copy it to

@@ -13,6 +13,7 @@ import { PatternCard } from './components/PatternCard';
 import { PatternWidget } from './components/PatternWidget';
 import { PatternsView } from './components/PatternsView';
 import { PresentationControls } from './components/PresentationControls';
+import { SingleImagePanel } from './components/SingleImagePanel';
 import styles from './ControllerApp.module.css';
 import { useControllerActions } from './useControllerActions';
 
@@ -76,8 +77,11 @@ export function ControllerApp({ api, store }: ControllerAppProps) {
     />
   );
   const onGame = view === 'game';
+  // New Game, the pattern, BINGO CALLED and the call summary belong to the game, so they are shown only on the
+  // Game Board tab. The break modes (slideshow, single image, countdown) get the whole window.
+  const onBoard = mode === 'gameBoard';
   return (
-    <main className={styles.layout} data-view={view} data-fill={fill}>
+    <main className={styles.layout} data-view={view} data-fill={fill} data-mode={onBoard ? 'board' : 'panel'}>
       <header className={styles.header}>
         <h1 className={styles.title}>Offline Bingo</h1>
         <div className={styles.projector}>
@@ -90,7 +94,7 @@ export function ControllerApp({ api, store }: ControllerAppProps) {
             onStop={actions.closePresentation}
           />
         </div>
-        {railLayout ? null : newGame}
+        {railLayout || !onBoard ? null : newGame}
       </header>
 
       <div className={styles.tabs}>
@@ -123,6 +127,15 @@ export function ControllerApp({ api, store }: ControllerAppProps) {
               onToggle={actions.toggleBall}
               onToggleRow={actions.toggleRow}
             />
+          ) : mode === 'singleImage' ? (
+            <SingleImagePanel
+              library={snapshot.mediaLibrary}
+              singleImage={snapshot.singleImage}
+              onSelect={actions.selectSingleImage}
+              onFit={actions.setImageFit}
+              onImport={actions.importImages}
+              onRemove={actions.removeImage}
+            />
           ) : (
             <ModePlaceholder mode={mode} />
           )}
@@ -145,33 +158,37 @@ export function ControllerApp({ api, store }: ControllerAppProps) {
         </div>
       )}
 
-      {railLayout ? (
+      {railLayout && onBoard ? (
         <div className={styles.rail}>
           {newGame}
           {onGame ? widget('rail') : null}
         </div>
       ) : null}
 
-      {wideLayout && !railLayout && onGame ? <div className={styles.strip}>{widget('strip')}</div> : null}
+      {wideLayout && !railLayout && onGame && onBoard ? (
+        <div className={styles.strip}>{widget('strip')}</div>
+      ) : null}
 
       {/* Beside the board on wide windows; in the stacked layout its children go to their own grid areas. */}
-      <div className={styles.side}>
-        <div className={styles.bingo}>
-          <BingoBannerControl
-            bannerVisible={bingoBannerVisible}
-            onShow={actions.showBingoBanner}
-            onDismiss={actions.dismissBingoBanner}
-          />
-        </div>
-        <div className={styles.summary}>
-          <CallSummaryPanel calledNumbers={calledNumbers} />
-        </div>
-        {wideLayout || !onGame ? null : (
-          <div className={styles.pattern}>
-            <PatternCard active={snapshot.activePattern} onOpen={() => setView('patterns')} />
+      {onBoard ? (
+        <div className={styles.side}>
+          <div className={styles.bingo}>
+            <BingoBannerControl
+              bannerVisible={bingoBannerVisible}
+              onShow={actions.showBingoBanner}
+              onDismiss={actions.dismissBingoBanner}
+            />
           </div>
-        )}
-      </div>
+          <div className={styles.summary}>
+            <CallSummaryPanel calledNumbers={calledNumbers} />
+          </div>
+          {wideLayout || !onGame ? null : (
+            <div className={styles.pattern}>
+              <PatternCard active={snapshot.activePattern} onOpen={() => setView('patterns')} />
+            </div>
+          )}
+        </div>
+      ) : null}
     </main>
   );
 }
