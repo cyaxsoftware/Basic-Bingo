@@ -41,8 +41,8 @@ Design doc §9 "Patterns" items and the milestone's own behaviour, so nothing is
 Repeat at each Windows scaling level (100%, 125%, 150%). Which layout you get depends on the window size:
 a left rail on a large window, a strip above the board on a medium one, a small card on the smallest.
 
-- [ ] B1. On a large window (about 1440 × 780 and up) the pattern widget is in the **left rail**, under **New
-      Game**: a name field, 25 squares, a saved-pattern choice, **Edit patterns…** and **Show on projector**.
+- [ ] B1. On a large window (about 1440 × 780 and up) the pattern widget is at the top of the **left rail**
+      (New Game is on the right, under BINGO CALLED): a name field, 25 squares, a saved-pattern choice, **Edit patterns…** and **Show on projector**.
 - [ ] B2. The 25 squares are easy to hit with a finger, and each tap turns one on or off at once.
 - [ ] B3. Tap the name, type a new name, and press **Enter** (or tap elsewhere). The name changes.
 - [ ] B4. Choose a saved pattern from **Saved pattern**. Its squares and name appear. Tap a square: an **Edited**
