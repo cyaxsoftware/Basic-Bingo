@@ -7,6 +7,7 @@ import { BallGrid } from './components/BallGrid';
 import { CallSummaryPanel } from './components/CallSummaryPanel';
 import { CountdownPanel } from './components/CountdownPanel';
 import { BingoBannerControl, NewGameControl } from './components/GameControls';
+import { CopyrightFooter } from './components/CopyrightFooter';
 import { modeTabId, ModeTabs } from './components/ModeTabs';
 import { NoticeArea } from './components/NoticeArea';
 import { PatternCard } from './components/PatternCard';
@@ -107,120 +108,128 @@ export function ControllerApp({ api, store }: ControllerAppProps) {
   // Game Board tab. The break modes (slideshow, single image, countdown) get the whole window.
   const onBoard = mode === 'gameBoard';
   return (
-    <main className={styles.layout} data-view={view} data-fill={fill} data-mode={onBoard ? 'board' : 'panel'}>
-      <header className={styles.header}>
-        <h1 className={styles.title}>Basic Bingo</h1>
-        {topRow ? tabs : null}
-        <div className={styles.projector}>
-          <PresentationControls
-            displays={snapshot.displays}
-            presentation={snapshot.presentation}
-            preferredDisplayId={snapshot.preferredDisplayId}
-            onProject={actions.openPresentation}
-            onPreview={actions.openPreview}
-            onStop={actions.closePresentation}
-          />
-        </div>
-        {railLayout || !onBoard ? null : newGame}
-        <ThemeSwitch theme={snapshot.controllerTheme} onChange={actions.setControllerTheme} />
-      </header>
-
-      {topRow ? null : tabs}
-
-      {/* Empty (and hidden by CSS) unless there is something to tell the operator. */}
-      <div className={styles.notices}>
-        <NoticeArea
-          notices={snapshot.notices}
-          persistence={snapshot.persistence}
-          actionError={actions.lastError}
-          onDismissNotice={actions.dismissNotice}
-          onDismissActionError={actions.clearError}
-        />
-      </div>
-
-      {view === 'game' ? (
-        <div className={styles.panel} role="tabpanel" id={panelId} aria-labelledby={modeTabId(mode)}>
-          {mode === 'gameBoard' ? (
-            <BallGrid
-              calledNumbers={calledNumbers}
-              disabledRows={snapshot.game.disabledRows}
-              onToggle={actions.toggleBall}
-              onToggleRow={actions.toggleRow}
-            />
-          ) : mode === 'singleImage' ? (
-            <SingleImagePanel
-              library={snapshot.mediaLibrary}
-              singleImage={snapshot.singleImage}
-              onSelect={actions.selectSingleImage}
-              onFit={actions.setImageFit}
-              onImport={actions.importImages}
-              onRemove={actions.removeImage}
-            />
-          ) : mode === 'countdown' ? (
-            <CountdownPanel {...countdown} />
-          ) : (
-            <SlideshowPanel
-              slideshow={snapshot.slideshow}
-              playback={snapshot.slideshowPlayback}
-              countdown={countdown}
-              library={snapshot.mediaLibrary}
-              onEdit={actions.editSlideshow}
-              onPlayback={actions.controlSlideshow}
-              onImport={actions.importSlideshowImages}
-              onImportPowerPoint={actions.importPowerPoint}
-              importingPowerPoint={actions.importingPowerPoint}
-            />
-          )}
-        </div>
-      ) : (
-        <div className={styles.panel}>
-          <PatternsView
-            library={snapshot.patternLibrary}
-            active={snapshot.activePattern}
-            onSwitch={actions.switchPattern}
-            onSetCell={actions.setPatternCell}
-            onRename={actions.renameActivePattern}
-            onUpdateSaved={actions.updateSavedPattern}
-            onSaveAsNew={actions.saveActivePatternAsNew}
-            onNewPattern={actions.createBlankPattern}
-            onRenamePattern={actions.renameSavedPattern}
-            onDuplicatePattern={actions.duplicatePattern}
-            onDeletePattern={actions.deletePattern}
-          />
-        </div>
-      )}
-
-      {railLayout && onBoard ? (
-        <div className={styles.rail}>
-          {newGame}
-          {onGame ? widget('rail') : null}
-        </div>
-      ) : null}
-
-      {wideLayout && !railLayout && onGame && onBoard ? (
-        <div className={styles.strip}>{widget('strip')}</div>
-      ) : null}
-
-      {/* Beside the board on wide windows; in the stacked layout its children go to their own grid areas. */}
-      {onBoard ? (
-        <div className={styles.side}>
-          <div className={styles.bingo}>
-            <BingoBannerControl
-              bannerVisible={bingoBannerVisible}
-              onShow={actions.showBingoBanner}
-              onDismiss={actions.dismissBingoBanner}
+    <div className={styles.app}>
+      <main
+        className={styles.layout}
+        data-view={view}
+        data-fill={fill}
+        data-mode={onBoard ? 'board' : 'panel'}
+      >
+        <header className={styles.header}>
+          <h1 className={styles.title}>Basic Bingo</h1>
+          {topRow ? tabs : null}
+          <div className={styles.projector}>
+            <PresentationControls
+              displays={snapshot.displays}
+              presentation={snapshot.presentation}
+              preferredDisplayId={snapshot.preferredDisplayId}
+              onProject={actions.openPresentation}
+              onPreview={actions.openPreview}
+              onStop={actions.closePresentation}
             />
           </div>
-          <div className={styles.summary}>
-            <CallSummaryPanel calledNumbers={calledNumbers} />
+          {railLayout || !onBoard ? null : newGame}
+          <ThemeSwitch theme={snapshot.controllerTheme} onChange={actions.setControllerTheme} />
+        </header>
+
+        {topRow ? null : tabs}
+
+        {/* Empty (and hidden by CSS) unless there is something to tell the operator. */}
+        <div className={styles.notices}>
+          <NoticeArea
+            notices={snapshot.notices}
+            persistence={snapshot.persistence}
+            actionError={actions.lastError}
+            onDismissNotice={actions.dismissNotice}
+            onDismissActionError={actions.clearError}
+          />
+        </div>
+
+        {view === 'game' ? (
+          <div className={styles.panel} role="tabpanel" id={panelId} aria-labelledby={modeTabId(mode)}>
+            {mode === 'gameBoard' ? (
+              <BallGrid
+                calledNumbers={calledNumbers}
+                disabledRows={snapshot.game.disabledRows}
+                onToggle={actions.toggleBall}
+                onToggleRow={actions.toggleRow}
+              />
+            ) : mode === 'singleImage' ? (
+              <SingleImagePanel
+                library={snapshot.mediaLibrary}
+                singleImage={snapshot.singleImage}
+                onSelect={actions.selectSingleImage}
+                onFit={actions.setImageFit}
+                onImport={actions.importImages}
+                onRemove={actions.removeImage}
+              />
+            ) : mode === 'countdown' ? (
+              <CountdownPanel {...countdown} />
+            ) : (
+              <SlideshowPanel
+                slideshow={snapshot.slideshow}
+                playback={snapshot.slideshowPlayback}
+                countdown={countdown}
+                library={snapshot.mediaLibrary}
+                onEdit={actions.editSlideshow}
+                onPlayback={actions.controlSlideshow}
+                onImport={actions.importSlideshowImages}
+                onImportPowerPoint={actions.importPowerPoint}
+                importingPowerPoint={actions.importingPowerPoint}
+              />
+            )}
           </div>
-          {wideLayout || !onGame ? null : (
-            <div className={styles.pattern}>
-              <PatternCard active={snapshot.activePattern} onOpen={() => setView('patterns')} />
+        ) : (
+          <div className={styles.panel}>
+            <PatternsView
+              library={snapshot.patternLibrary}
+              active={snapshot.activePattern}
+              onSwitch={actions.switchPattern}
+              onSetCell={actions.setPatternCell}
+              onRename={actions.renameActivePattern}
+              onUpdateSaved={actions.updateSavedPattern}
+              onSaveAsNew={actions.saveActivePatternAsNew}
+              onNewPattern={actions.createBlankPattern}
+              onRenamePattern={actions.renameSavedPattern}
+              onDuplicatePattern={actions.duplicatePattern}
+              onDeletePattern={actions.deletePattern}
+            />
+          </div>
+        )}
+
+        {railLayout && onBoard ? (
+          <div className={styles.rail}>
+            {newGame}
+            {onGame ? widget('rail') : null}
+          </div>
+        ) : null}
+
+        {wideLayout && !railLayout && onGame && onBoard ? (
+          <div className={styles.strip}>{widget('strip')}</div>
+        ) : null}
+
+        {/* Beside the board on wide windows; in the stacked layout its children go to their own grid areas. */}
+        {onBoard ? (
+          <div className={styles.side}>
+            <div className={styles.bingo}>
+              <BingoBannerControl
+                bannerVisible={bingoBannerVisible}
+                onShow={actions.showBingoBanner}
+                onDismiss={actions.dismissBingoBanner}
+              />
             </div>
-          )}
-        </div>
-      ) : null}
-    </main>
+            <div className={styles.summary}>
+              <CallSummaryPanel calledNumbers={calledNumbers} />
+            </div>
+            {wideLayout || !onGame ? null : (
+              <div className={styles.pattern}>
+                <PatternCard active={snapshot.activePattern} onOpen={() => setView('patterns')} />
+              </div>
+            )}
+          </div>
+        ) : null}
+      </main>
+      <CopyrightFooter />
+    </div>
   );
 }

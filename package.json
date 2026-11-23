@@ -6,7 +6,9 @@
   "description": "Offline 75-ball bingo controller and projector display for Windows 11.",
   "license": "UNLICENSED",
   "author": {
-    "name": "Cyax Software"
+    "name": "Cyax Software",
+    "email": "info@cyaxsoftware.com",
+    "url": "https://cyaxsoftware.com/"
   },
   "main": ".vite/build/main.cjs",
   "engines": {

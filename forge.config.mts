@@ -20,7 +20,7 @@ const config: ForgeConfig = {
     executableName: 'basic-bingo',
     // No extension: Packager appends .ico on Windows.
     icon: 'build/icon',
-    appCopyright: 'Copyright © 2026 Cyax Software',
+    appCopyright: 'Copyright © 2026 Phil Cazella Consulting, DBA Cyax Software. All rights reserved.',
     win32metadata: {
       CompanyName: 'Cyax Software',
       ProductName: 'Basic Bingo',

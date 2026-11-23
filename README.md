@@ -217,3 +217,12 @@ is unsigned, so Windows SmartScreen will warn on first run; code signing is plan
 
 The app icon lives in `build/` (`icon.ico` for the .exe and installer, `icon.png` for reference, plus the
 SVG sources). To change it, edit the drawing in `scripts/make-icon.mjs` and run `node scripts/make-icon.mjs`.
+
+## Copyright
+
+Copyright © 2026 Phil Cazella Consulting, DBA Cyax Software. All rights reserved.
+
+https://cyaxsoftware.com/ · info@cyaxsoftware.com
+
+The same notice is a quiet footer line in the Controller (hidden on short windows, never on the projector) and
+in the Windows file properties of the packaged app (`appCopyright` in `forge.config.mts`).
