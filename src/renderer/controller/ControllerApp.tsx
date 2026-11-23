@@ -39,6 +39,8 @@ export function ControllerApp({ api, store }: ControllerAppProps) {
   //   below 1141 (the compact layout): New Game in the top bar and a small Pattern card
   const wideLayout = useMediaQuery('(min-width: 1141px)');
   const railLayout = useMediaQuery('(min-width: 1440px) and (min-height: 780px)');
+  // Wide enough for the tabs and the projector controls to share the top bar (see ControllerApp.module.css).
+  const topRow = useMediaQuery('(min-width: 1366px)');
 
   if (state.status === 'loading') {
     return <div className={styles.message}>Loading game…</div>;
@@ -72,6 +74,17 @@ export function ControllerApp({ api, store }: ControllerAppProps) {
       onNewGame={actions.newGame}
     />
   );
+  const tabs = (
+    <div className={styles.tabs}>
+      {view === 'game' ? (
+        <ModeTabs mode={mode} onSelect={actions.setPresentationMode} panelId={panelId} />
+      ) : (
+        <button type="button" className={styles.back} onClick={() => setView('game')}>
+          <span aria-hidden="true">‹</span> Back to game
+        </button>
+      )}
+    </div>
+  );
   const widget = (variant: 'rail' | 'strip') => (
     <PatternWidget
       variant={variant}
@@ -94,6 +107,7 @@ export function ControllerApp({ api, store }: ControllerAppProps) {
     <main className={styles.layout} data-view={view} data-fill={fill} data-mode={onBoard ? 'board' : 'panel'}>
       <header className={styles.header}>
         <h1 className={styles.title}>Basic Bingo</h1>
+        {topRow ? tabs : null}
         <div className={styles.projector}>
           <PresentationControls
             displays={snapshot.displays}
@@ -107,15 +121,7 @@ export function ControllerApp({ api, store }: ControllerAppProps) {
         {railLayout || !onBoard ? null : newGame}
       </header>
 
-      <div className={styles.tabs}>
-        {view === 'game' ? (
-          <ModeTabs mode={mode} onSelect={actions.setPresentationMode} panelId={panelId} />
-        ) : (
-          <button type="button" className={styles.back} onClick={() => setView('game')}>
-            <span aria-hidden="true">‹</span> Back to game
-          </button>
-        )}
-      </div>
+      {topRow ? null : tabs}
 
       {/* Empty (and hidden by CSS) unless there is something to tell the operator. */}
       <div className={styles.notices}>

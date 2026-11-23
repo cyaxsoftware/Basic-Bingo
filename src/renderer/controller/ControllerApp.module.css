@@ -265,6 +265,28 @@
   }
 }
 
+/*
+ * From 1366 px the tabs move into the top bar, left of the projector controls (the JSX decides with the same
+ * query). Tabs (~555 px), the controls and, below 1440 px, New Game then fit in one row with the display name
+ * still readable; at 1280 the name is cut off. The grid's empty tabs row costs no height. Narrower windows
+ * keep the tabs in their own row beside BINGO CALLED.
+ */
+@media (min-width: 1366px) {
+  .header {
+    flex-wrap: nowrap;
+  }
+
+  .header > .tabs {
+    flex: none;
+  }
+
+  /* New Game (in the top bar below 1440 px) must not wrap onto two lines when the row is tight. */
+  .header > button {
+    flex: none;
+    white-space: nowrap;
+  }
+}
+
 @media (min-width: 1440px) and (min-height: 780px) {
   .layout {
     grid-template-columns: 272px minmax(0, 1fr) 260px;
