@@ -1,0 +1,27 @@
+/* The whole screen is the image: black behind it, so Fit's bars are black on every projector. */
+.stage {
+  flex: 1;
+  min-height: 0;
+  display: grid;
+  place-items: center;
+  background: #000;
+}
+
+.image {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.stage[data-fit='fill'] .image {
+  object-fit: cover;
+}
+
+/* No image, or one that cannot be loaded: quiet text on the plain stage, large enough for the back of the room. */
+.note {
+  margin: 0;
+  color: var(--stage-muted);
+  font-size: 5vmin;
+  font-weight: 600;
+  text-align: center;
+}

@@ -131,14 +131,14 @@ describe('New Game', () => {
   it('Confirm sends newGame: calls and banner clear, the presentation mode stays', async () => {
     const api = renderController(
       { calledNumbers: [3, 17, 9], bingoBannerVisible: true, disabledRows: [] },
-      { presentationMode: 'slideshow' },
+      { presentationMode: 'gameBoard' },
     );
     await userEvent.click(await button('New Game'));
     await userEvent.click(screen.getByRole('button', { name: 'Start New Game' }));
 
     expect(api.newGame).toHaveBeenCalledTimes(1);
     expect(api.current().game).toEqual({ calledNumbers: [], bingoBannerVisible: false, disabledRows: [] });
-    expect(api.current().presentationMode).toBe('slideshow');
+    expect(api.current().presentationMode).toBe('gameBoard');
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
     expect(await screen.findByText('No calls yet')).toBeInTheDocument();
     expect(await button('BINGO CALLED')).toBeInTheDocument();

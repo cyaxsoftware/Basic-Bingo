@@ -131,7 +131,7 @@ describe('importing images', () => {
     ]);
     expect(store.getSnapshot().mediaLibrary).toHaveLength(2);
     // Only the two good images were written.
-    expect((await readdir(mediaDirectory)).sort()).toEqual([`${ID_1}.png`, `${ID_2}.png`]);
+    expect((await readdir(mediaDirectory)).toSorted()).toEqual([`${ID_1}.png`, `${ID_2}.png`]);
   });
 
   it('does nothing when the operator cancels the dialog', async () => {

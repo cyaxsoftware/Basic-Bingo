@@ -46,7 +46,7 @@ describe('media ids, file names and urls', () => {
       7,
       null,
     ]) {
-      expect(isValidMediaId(bad), String(bad)).toBe(false);
+      expect(isValidMediaId(bad)).toBe(false);
     }
   });
 

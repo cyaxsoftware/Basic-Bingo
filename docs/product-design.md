@@ -103,6 +103,8 @@ No internet connection, cloud database, user account, local HTTP server, or sepa
 - Show **exactly one selected image indefinitely** until the operator changes it or switches modes. No automatic rotation and no default break countdown overlay.
 - Fit / Fill-Crop options; Fit default, to preserve flags and sponsor logos.
 - The selected image remains available even if the original source file or USB drive is removed after import.
+- **Controller:** the Single Image tab replaces the ball board with the image picker (a preview, a Fit / Fill switch, **Add images…** with a file dialog that accepts several files at once, **Remove this image…** with a confirmation, and a thumbnail library; tapping a thumbnail puts that image on the projector). The first image added when none is chosen is shown. With no image chosen, or one whose file is lost, the projector shows a plain "No image selected" / "Image unavailable" screen.
+- **The other tabs have the whole window:** New Game, the pattern widget, BINGO CALLED and the Current Call widget appear only on the Game Board tab. A raised BINGO banner is untouched and returns with the board.
 
 ### 4.5 Standalone Countdown
 - Optionally present a minimal countdown with a configurable simple message, such as “Next Game Begins In…”

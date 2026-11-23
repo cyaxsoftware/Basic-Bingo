@@ -19,9 +19,11 @@ const MAX_DIMENSION = 100_000;
 const ascii = (bytes: Uint8Array, start: number, length: number): string =>
   String.fromCharCode(...bytes.subarray(start, start + length));
 
+const validDimension = (value: number): boolean =>
+  Number.isInteger(value) && value > 0 && value <= MAX_DIMENSION;
+
 function sized(format: ImageFormat, width: number, height: number): ImageInfo | null {
-  const valid = (value: number) => Number.isInteger(value) && value > 0 && value <= MAX_DIMENSION;
-  return valid(width) && valid(height) ? { format, width, height } : null;
+  return validDimension(width) && validDimension(height) ? { format, width, height } : null;
 }
 
 function readPng(bytes: Uint8Array, view: DataView): ImageInfo | null {

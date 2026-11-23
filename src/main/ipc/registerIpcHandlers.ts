@@ -71,6 +71,12 @@ export interface IpcDependencies {
 
 const MAX_NOTICE_ID_LENGTH = 100;
 
+/** A command handler threw (or its promise rejected): log it, and answer with a failed result, never an IPC error. */
+function failedCommand(channel: string, error: unknown): CommandResult {
+  console.error(`[ipc] ${channel} failed`, error);
+  return fail(error instanceof Error ? error.message : 'Unexpected error.');
+}
+
 export function registerIpcHandlers(ipc: IpcMainLike, deps: IpcDependencies): void {
   const { store, media, presentation, displays, senders } = deps;
 
@@ -95,15 +101,11 @@ export function registerIpcHandlers(ipc: IpcMainLike, deps: IpcDependencies): vo
       if (!senders.isController(event.sender.id)) {
         return fail('Only the Controller window can change the game.');
       }
-      const failed = (error: unknown) => {
-        console.error(`[ipc] ${channel} failed`, error);
-        return fail(error instanceof Error ? error.message : 'Unexpected error.');
-      };
       try {
         const result = handler(...args);
-        return result instanceof Promise ? result.catch(failed) : result;
+        return result instanceof Promise ? result.catch((error) => failedCommand(channel, error)) : result;
       } catch (error) {
-        return failed(error);
+        return failedCommand(channel, error);
       }
     });
   };

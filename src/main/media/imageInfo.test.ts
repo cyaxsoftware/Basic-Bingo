@@ -19,7 +19,7 @@ describe('readImageInfo', () => {
     ['webp (extended)', webpExtendedBytes(4000, 3000), 4000, 3000],
   ])('reads a %s file', (name, bytes, width, height) => {
     const info = readImageInfo(bytes);
-    expect(info, name).not.toBeNull();
+    expect(info).not.toBeNull();
     expect(info?.width).toBe(width);
     expect(info?.height).toBe(height);
     expect(info?.format).toBe(name.startsWith('webp') ? 'webp' : name);

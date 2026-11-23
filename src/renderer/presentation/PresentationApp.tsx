@@ -3,8 +3,10 @@ import { useSnapshotState } from '../shared/useSnapshotState';
 import { AudienceBoard } from './components/AudienceBoard';
 import { BingoBanner } from './components/BingoBanner';
 import { CallDisplay } from './components/CallDisplay';
+import { findMedia } from '../../shared/media';
 import { ComingSoon } from './components/ComingSoon';
 import { ShownPattern } from './components/ShownPattern';
+import { SingleImageView } from './components/SingleImageView';
 import styles from './PresentationApp.module.css';
 
 export interface PresentationAppProps {
@@ -48,6 +50,15 @@ export function PresentationApp({ store }: PresentationAppProps) {
               <CallDisplay calledNumbers={snapshot.game.calledNumbers} />
             </div>
           </div>
+        ) : snapshot.presentationMode === 'singleImage' ? (
+          <SingleImageView
+            image={
+              snapshot.singleImage.imageId === null
+                ? null
+                : (findMedia(snapshot.mediaLibrary, snapshot.singleImage.imageId) ?? null)
+            }
+            fit={snapshot.singleImage.fit}
+          />
         ) : (
           <ComingSoon mode={snapshot.presentationMode} />
         )}

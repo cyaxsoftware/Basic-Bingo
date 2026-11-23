@@ -74,7 +74,7 @@ test('Big L keeps the center off, and a toggled center reaches the projector onl
 
   await update.click();
   await expect(projector.getByTestId(`pattern-cell-${CENTER}`)).toHaveAttribute('data-on', 'true');
-  expect(await projectorLitSquares(projector)).toEqual([...BIG_L, CENTER].sort((a, b) => a - b));
+  expect(await projectorLitSquares(projector)).toEqual([...BIG_L, CENTER].toSorted((a, b) => a - b));
 
   // And back off again.
   await centerCell(widget).click();

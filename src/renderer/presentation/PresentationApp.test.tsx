@@ -1,4 +1,4 @@
-import { act, render, screen, within } from '@testing-library/react';
+import { act, fireEvent, render, screen, within } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 import { createSnapshotStore } from '../shared/snapshotStore';
 import { createFakeBingoApi, makeSnapshot } from '../test/fakeBingoApi';
@@ -59,8 +59,8 @@ describe('PresentationApp', () => {
 
   it('returns to the board with the game intact after a mode change', async () => {
     const calls = { calledNumbers: [3, 17, 9], bingoBannerVisible: false, disabledRows: [] };
-    const { api } = renderPresentation(makeSnapshot({ game: calls, presentationMode: 'singleImage' }));
-    await screen.findByRole('heading', { name: 'Single Image' });
+    const { api } = renderPresentation(makeSnapshot({ game: calls, presentationMode: 'slideshow' }));
+    await screen.findByRole('heading', { name: 'Break Slideshow' });
 
     act(() => api.push(makeSnapshot({ revision: 2, game: calls, presentationMode: 'gameBoard' })));
     expect(screen.getByRole('img', { name: 'B-9' })).toBeInTheDocument();
@@ -249,6 +249,93 @@ describe('PresentationApp', () => {
       );
       await screen.findByTestId('board-row-B');
       expect(screen.queryAllByRole('button')).toHaveLength(0);
+    });
+  });
+
+  describe('Single Image mode', () => {
+    const ID = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
+    const ID_2 = 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb';
+    const entry = (id: string, name: string) => ({
+      id,
+      name,
+      format: 'png' as const,
+      bytes: 1000,
+      width: 800,
+      height: 400,
+      addedAt: '2026-01-01T00:00:00.000Z',
+    });
+    const single = (overrides: Parameters<typeof makeSnapshot>[0] = {}) =>
+      makeSnapshot({
+        presentationMode: 'singleImage',
+        mediaLibrary: [entry(ID, 'Sponsors.png'), entry(ID_2, 'Menu.png')],
+        singleImage: { imageId: ID, fit: 'fit' },
+        ...overrides,
+      });
+    const stage = () => screen.getByRole('region', { name: 'Single image' });
+
+    it('shows exactly the chosen image from the library, and nothing else', async () => {
+      renderPresentation(single());
+      const view = await screen.findByRole('region', { name: 'Single image' });
+      const picture = within(view).getByRole('img', { name: 'Sponsors.png' });
+      expect(picture).toHaveAttribute('src', `bingo-media://${ID}`);
+      expect(view).toHaveAttribute('data-state', 'image');
+      // No board, no calls, no countdown, no controls.
+      expect(screen.queryByTestId('board-ball-1')).toBeNull();
+      expect(screen.queryByText(/Time to Play/i)).toBeNull();
+      expect(screen.queryAllByRole('button')).toHaveLength(0);
+    });
+
+    it('fits or fills the screen as chosen', async () => {
+      const { api } = renderPresentation(single());
+      await screen.findByRole('region', { name: 'Single image' });
+      expect(stage()).toHaveAttribute('data-fit', 'fit');
+      act(() => api.push(single({ revision: 2, singleImage: { imageId: ID, fit: 'fill' } })));
+      expect(stage()).toHaveAttribute('data-fit', 'fill');
+    });
+
+    it('follows the operator to another image', async () => {
+      const { api } = renderPresentation(single());
+      await screen.findByRole('img', { name: 'Sponsors.png' });
+      act(() => api.push(single({ revision: 2, singleImage: { imageId: ID_2, fit: 'fit' } })));
+      expect(screen.getByRole('img', { name: 'Menu.png' })).toHaveAttribute('src', `bingo-media://${ID_2}`);
+      expect(screen.queryByRole('img', { name: 'Sponsors.png' })).toBeNull();
+    });
+
+    it('shows a calm message, not a broken icon, when no image is chosen', async () => {
+      renderPresentation(single({ singleImage: { imageId: null, fit: 'fit' } }));
+      const view = await screen.findByRole('region', { name: 'Single image' });
+      expect(view).toHaveAttribute('data-state', 'none');
+      expect(within(view).getByText('No image selected')).toBeInTheDocument();
+      expect(within(view).queryByRole('img')).toBeNull();
+    });
+
+    it('shows the same message when the chosen image is no longer in the library', async () => {
+      renderPresentation(single({ mediaLibrary: [], singleImage: { imageId: ID, fit: 'fit' } }));
+      expect(await screen.findByText('No image selected')).toBeInTheDocument();
+    });
+
+    it('shows "Image unavailable" if the file cannot be loaded, and tries again for the next image', async () => {
+      const { api } = renderPresentation(single());
+      fireEvent.error(await screen.findByRole('img', { name: 'Sponsors.png' }));
+      expect(stage()).toHaveAttribute('data-state', 'unavailable');
+      expect(screen.getByText('Image unavailable')).toBeInTheDocument();
+      expect(screen.queryByRole('img')).toBeNull();
+
+      act(() => api.push(single({ revision: 2, singleImage: { imageId: ID_2, fit: 'fit' } })));
+      expect(screen.getByRole('img', { name: 'Menu.png' })).toBeInTheDocument();
+      expect(stage()).toHaveAttribute('data-state', 'image');
+    });
+
+    it('keeps the game and the BINGO banner untouched: the banner returns with the board', async () => {
+      const game = { calledNumbers: [3, 17, 9], bingoBannerVisible: true, disabledRows: [] };
+      const { api } = renderPresentation(single({ game }));
+      await screen.findByRole('img', { name: 'Sponsors.png' });
+      // The banner belongs to the board; in this mode it is not shown.
+      expect(screen.queryByRole('alert')).toBeNull();
+
+      act(() => api.push(makeSnapshot({ revision: 2, game, presentationMode: 'gameBoard' })));
+      expect(screen.getByRole('alert')).toBeInTheDocument();
+      expect(screen.getByRole('img', { name: 'B-9' })).toBeInTheDocument();
     });
   });
 });
