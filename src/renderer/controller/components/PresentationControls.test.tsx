@@ -34,11 +34,11 @@ describe('PresentationControls Project / Stop toggle', () => {
     expect(stop()).toHaveAttribute('data-live', 'true');
   });
 
-  it('keeps Project and adds a plain Stop for the Preview window', () => {
+  it('swaps Project for the same red Stop while the Preview window is open', () => {
     renderControls({ kind: 'preview' });
-    expect(project()).toBeEnabled();
+    expect(project()).not.toBeInTheDocument();
     expect(stop()).toBeEnabled();
-    expect(stop()).not.toHaveAttribute('data-live');
+    expect(stop()).toHaveAttribute('data-live', 'true');
   });
 
   it('does not flash a Stop while the window is still opening (Project stays until it is live)', () => {

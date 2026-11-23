@@ -37,7 +37,8 @@ export function PresentationControls({
   onStop,
 }: PresentationControlsProps) {
   const selectId = useId();
-  const projecting = presentation.kind === 'projecting';
+  // Something is on screen (the projector or the Preview window): the Project slot becomes Stop.
+  const live = presentation.kind === 'projecting' || presentation.kind === 'preview';
   const candidates = projectableDisplays(displays);
   const [chosenId, setChosenId] = useState<number | null>(null);
   // Fall back to the default whenever the operator's choice is no longer connected.
@@ -81,8 +82,9 @@ export function PresentationControls({
         </span>
       )}
 
-      {/* One button in one place that flips: Project when the projector is dark, a red Stop while it is live. */}
-      {projecting ? (
+      {/* One button in one place that flips: Project when nothing is showing, a red Stop while the projector or
+          the Preview window is up. It stays Project while 'opening' so it flips once, with no flash in between. */}
+      {live ? (
         <button type="button" className={styles.toggle} data-live="true" onClick={onStop}>
           Stop
         </button>
@@ -101,14 +103,6 @@ export function PresentationControls({
       <button type="button" className={styles.secondary} onClick={onPreview}>
         Preview
       </button>
-
-      {/* Only for closing the Preview window. Not while 'opening': a Stop that appears next to Project for a moment
-          and then vanishes when the window goes live reads as a flicker (and Project/Preview can retry anyway). */}
-      {presentation.kind === 'preview' ? (
-        <button type="button" className={styles.secondary} onClick={onStop}>
-          Stop
-        </button>
-      ) : null}
     </div>
   );
 }
