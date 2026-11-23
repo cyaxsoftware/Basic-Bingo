@@ -19,6 +19,7 @@ const clock = (over: Partial<Clock> = {}): Clock => ({
   lastBingoAt: null,
   resumedAt: null,
   pausedMs: 0,
+  bingoTitle: null,
   ...over,
 });
 

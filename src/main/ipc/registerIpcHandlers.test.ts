@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { IpcChannel, ok, type CommandResult } from '../../shared/ipc/contract';
 import { createDefaultAppData } from '../persistence/persistedState';
 import { AppStore } from '../state/appStore';
@@ -31,11 +31,11 @@ class FakeIpcMain implements IpcMainLike {
   }
 }
 
-function setup() {
+function setup(persister: { save: () => Promise<void> } = { save: async () => undefined }) {
   const ipc = new FakeIpcMain();
   const store = new AppStore({
     initialData: createDefaultAppData(),
-    persister: { save: async () => undefined },
+    persister,
   });
   const deps: IpcDependencies = {
     store,
@@ -538,6 +538,75 @@ describe('image commands over IPC', () => {
 
   describe('editSlideshow', () => {
     const edit = (command: unknown) => invoke(IpcChannel.editSlideshow, command);
+
+    describe('removed slide images and a slow disk', () => {
+      afterEach(() => {
+        vi.useRealTimers();
+      });
+
+      /** A store whose saves all wait until the test lets them finish (or fail). */
+      function slowDisk() {
+        let finish: () => void = () => undefined;
+        let fail: () => void = () => undefined;
+        const gate = new Promise<void>((resolve, reject) => {
+          finish = resolve;
+          fail = () => reject(new Error('disk full'));
+        });
+        gate.catch(() => undefined);
+        const slow = setup({ save: () => gate });
+        const invokeSlow = (channel: string, ...args: unknown[]) =>
+          slow.ipc.invoke(CONTROLLER_ID, channel, ...args) as CommandResult;
+        expect(invokeSlow(IpcChannel.editSlideshow, { type: 'create', name: 'Sponsors' })).toEqual(ok);
+        const collectionId = slow.store.getSnapshot().slideshow.activeId;
+        if (!collectionId) throw new Error('No collection was created.');
+        const image = entry('cccccccc-cccc-4ccc-8ccc-cccccccccccc');
+        expect(slow.store.addSlideshowImages(collectionId, [image])).toEqual(ok);
+        return { slow, invokeSlow, collectionId, image, finish, fail };
+      }
+
+      it('still deletes the files when the save finishes long after the old two second limit', async () => {
+        vi.useFakeTimers();
+        const { slow, invokeSlow, collectionId, image, finish } = slowDisk();
+        expect(
+          invokeSlow(IpcChannel.editSlideshow, { type: 'removeSlide', collectionId, mediaId: image.id }),
+        ).toEqual(ok);
+
+        await vi.advanceTimersByTimeAsync(10_000);
+        expect(slow.deps.media.deleteFile).not.toHaveBeenCalled(); // the save has not finished: the files stay
+
+        finish(); // the disk finally finishes, well past two seconds
+        await vi.advanceTimersByTimeAsync(2_000);
+        expect(slow.deps.media.deleteFile).toHaveBeenCalledTimes(1);
+        expect(slow.deps.media.deleteFile).toHaveBeenCalledWith(image);
+      });
+
+      it('keeps the files when the save fails, because the saved state on disk still lists them', async () => {
+        vi.useFakeTimers();
+        const { slow, invokeSlow, collectionId, image, fail } = slowDisk();
+        expect(
+          invokeSlow(IpcChannel.editSlideshow, { type: 'removeSlide', collectionId, mediaId: image.id }),
+        ).toEqual(ok);
+        fail();
+        await vi.advanceTimersByTimeAsync(10_000);
+        expect(slow.deps.media.deleteFile).not.toHaveBeenCalled();
+        // And it has stopped waiting: no timers are left running.
+        expect(vi.getTimerCount()).toBe(0);
+      });
+
+      it('gives up after about a minute when a save never finishes, and says so', async () => {
+        vi.useFakeTimers();
+        const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+        const { slow, invokeSlow, collectionId, image } = slowDisk();
+        expect(
+          invokeSlow(IpcChannel.editSlideshow, { type: 'removeSlide', collectionId, mediaId: image.id }),
+        ).toEqual(ok);
+        await vi.advanceTimersByTimeAsync(61_000);
+        expect(slow.deps.media.deleteFile).not.toHaveBeenCalled();
+        expect(warn).toHaveBeenCalledWith(expect.stringContaining('gave up waiting for a save'));
+        expect(vi.getTimerCount()).toBe(0);
+        warn.mockRestore();
+      });
+    });
 
     it('edits imported slides and removes only their app-owned copies after saving', async () => {
       expect(edit({ type: 'create', name: 'Sponsors' })).toEqual(ok);

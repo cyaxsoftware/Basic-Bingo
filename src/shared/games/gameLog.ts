@@ -37,6 +37,8 @@ export interface GameClock {
   readonly resumedAt: number | null;
   /** Milliseconds the clock was held for presses that turned out to be false bingos. */
   readonly pausedMs: number;
+  /** The pattern being played when that press was made: the game's name if the press turns out to be its end. */
+  readonly bingoTitle: string | null;
 }
 
 export interface GameLogState {
@@ -54,6 +56,7 @@ const NO_CLOCK: GameClock = Object.freeze({
   lastBingoAt: null,
   resumedAt: null,
   pausedMs: 0,
+  bingoTitle: null,
 });
 
 export const EMPTY_GAME_LOG: GameLogState = Object.freeze({
@@ -81,14 +84,15 @@ const clockIsEmpty = (clock: GameClock) =>
   clock.firstBallAt === null &&
   clock.lastBingoAt === null &&
   clock.resumedAt === null &&
-  clock.pausedMs === 0;
+  clock.pausedMs === 0 &&
+  clock.bingoTitle === null;
 
 /** The log after one game command was applied. Returns the same object when nothing about the log changes. */
 export function applyGameChange(log: GameLogState, change: GameChange): GameLogState {
   const { command, before, after, now } = change;
 
   if (command.type === 'newGame') {
-    const { firstBallAt, lastBingoAt, pausedMs } = log.current;
+    const { firstBallAt, lastBingoAt, pausedMs, bingoTitle } = log.current;
     // A game with calls but no recorded start (a save from before the log existed) cannot be timed, so it is skipped.
     if (before.calledNumbers.length === 0 || firstBallAt === null) {
       return clockIsEmpty(log.current) ? log : { ...log, current: NO_CLOCK };
@@ -99,8 +103,11 @@ export function applyGameChange(log: GameLogState, change: GameChange): GameLogS
       id: change.newId(),
       number: nextGameNumber(log),
       startedAt: firstBallAt,
-      title: cleanTitle(change.patternTitle),
-      durationSeconds: Math.max(0, Math.round((endedAt - firstBallAt - pausedMs) / 1000)),
+      // A game that ended at a BINGO CALLED press is named for the pattern at that press, even if the operator has
+      // already picked the next pattern by the time they confirm New Game.
+      title: lastBingoAt !== null && bingoTitle !== null ? bingoTitle : cleanTitle(change.patternTitle),
+      // Whole seconds, rounded down, exactly as the game clock shows them, so the log never disagrees with it.
+      durationSeconds: Math.max(0, Math.floor((endedAt - firstBallAt - pausedMs) / 1000)),
     };
     return { records: [...log.records, record].slice(-MAX_GAME_RECORDS), current: NO_CLOCK };
   }
@@ -120,7 +127,13 @@ export function applyGameChange(log: GameLogState, change: GameChange): GameLogS
     const held = (resumedAt ?? now) - lastBingoAt;
     return {
       ...log,
-      current: { ...log.current, lastBingoAt: null, resumedAt: null, pausedMs: pausedMs + Math.max(0, held) },
+      current: {
+        ...log.current,
+        lastBingoAt: null,
+        resumedAt: null,
+        bingoTitle: null,
+        pausedMs: pausedMs + Math.max(0, held),
+      },
     };
   }
 
@@ -131,7 +144,13 @@ export function applyGameChange(log: GameLogState, change: GameChange): GameLogS
       const earlier = lastBingoAt !== null && resumedAt !== null ? Math.max(0, resumedAt - lastBingoAt) : 0;
       return {
         ...log,
-        current: { ...log.current, lastBingoAt: now, resumedAt: null, pausedMs: pausedMs + earlier },
+        current: {
+          ...log.current,
+          lastBingoAt: now,
+          resumedAt: null,
+          pausedMs: pausedMs + earlier,
+          bingoTitle: cleanTitle(change.patternTitle),
+        },
       };
     }
     return log;
@@ -187,13 +206,15 @@ export function clearGameRecords(log: GameLogState): GameLogState {
 // ---------------------------------------------------------------------------
 
 const isEpoch = (value: unknown): value is number =>
-  typeof value === 'number' && Number.isFinite(value) && value >= 0;
+  typeof value === 'number' && Number.isFinite(value) && value >= 0 && value <= Number.MAX_SAFE_INTEGER;
 
 function toRecord(raw: unknown): GameRecord | null {
   if (typeof raw !== 'object' || raw === null) return null;
   const { id, number, startedAt, title, durationSeconds } = raw as Record<string, unknown>;
   if (typeof id !== 'string' || id === '' || id.length > 64) return null;
+  // Safe with room for +1: at the top of the range adding one gives the same number back and numbering stalls.
   if (typeof number !== 'number' || !Number.isInteger(number) || number < 1) return null;
+  if (!Number.isSafeInteger(number + 1)) return null;
   if (!isEpoch(startedAt)) return null;
   if (typeof title !== 'string') return null;
   if (!isEpoch(durationSeconds) || !Number.isInteger(durationSeconds)) return null;
@@ -227,7 +248,7 @@ export function normalizeGameLog(raw: unknown): NormalizedGameLog {
   let current: GameClock = NO_CLOCK;
   if (typeof rawCurrent === 'object' && rawCurrent !== null) {
     const clock = rawCurrent as Record<string, unknown>;
-    const { firstBallAt, lastBingoAt, resumedAt, pausedMs } = clock;
+    const { firstBallAt, lastBingoAt, resumedAt, pausedMs, bingoTitle } = clock;
     if (isEpoch(firstBallAt)) {
       const last = isEpoch(lastBingoAt) && lastBingoAt >= firstBallAt ? lastBingoAt : null;
       const resumed = last !== null && isEpoch(resumedAt) && resumedAt >= last ? resumedAt : null;
@@ -236,6 +257,8 @@ export function normalizeGameLog(raw: unknown): NormalizedGameLog {
         lastBingoAt: last,
         resumedAt: resumed,
         pausedMs: isEpoch(pausedMs) ? Math.round(pausedMs) : 0,
+        // Only meaningful with a live press; without it the New Game title is used.
+        bingoTitle: last !== null && typeof bingoTitle === 'string' ? cleanTitle(bingoTitle) : null,
       };
     }
   }

@@ -30,6 +30,7 @@ import type { MediaService } from '../ipc/registerIpcHandlers';
 import { slideshowImages } from '../../shared/media/slideshow';
 import type { AppStore } from '../state/appStore';
 import { readImageInfo, type ImageInfo } from './imageInfo';
+import { networkSourceProblem } from './sourceLocation';
 
 export const NOTICE_IMPORT_SKIPPED = 'media-import-skipped';
 export const NOTICE_MISSING_FILES = 'media-missing-files';
@@ -147,6 +148,9 @@ export class ImageLibraryService implements MediaService {
 
   /** Returns the new library entry, or the reason the file was skipped. */
   private async importOne(source: string, name: string, expected?: ImageInfo): Promise<MediaItem | string> {
+    // Before anything reads the file: the app is offline, so a file on a network share is refused.
+    const problem = await networkSourceProblem(source);
+    if (problem !== null) return problem;
     const info = await stat(source);
     if (!info.isFile()) return 'it is not a file';
     if (info.size === 0) return 'it is empty';

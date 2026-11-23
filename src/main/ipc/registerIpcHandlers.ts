@@ -75,6 +75,10 @@ export interface IpcDependencies {
 
 const MAX_NOTICE_ID_LENGTH = 100;
 
+/** How long removed slide images wait for the save that drops them: 30 waits of 2 s, about a minute. */
+const SAVE_WAIT_MS = 2000;
+const SAVE_WAIT_ATTEMPTS = 30;
+
 /** A command handler threw (or its promise rejected): log it, and answer with a failed result, never an IPC error. */
 function failedCommand(channel: string, error: unknown): CommandResult {
   console.error(`[ipc] ${channel} failed`, error);
@@ -112,6 +116,26 @@ export function registerIpcHandlers(ipc: IpcMainLike, deps: IpcDependencies): vo
         return failedCommand(channel, error);
       }
     });
+  };
+
+  /**
+   * Delete images a collection no longer uses, but only once the save that dropped them is on disk: until then the
+   * last saved collection still needs the files. A slow disk is waited out (up to about a minute) instead of giving
+   * up after a couple of seconds, which would leave every removed picture behind for good. If the save FAILS the
+   * files are kept, because the saved state on disk still lists them.
+   */
+  const deleteWhenSaved = async (removed: readonly MediaItem[]): Promise<void> => {
+    for (let attempt = 0; attempt < SAVE_WAIT_ATTEMPTS; attempt += 1) {
+      const status = await store.settleSaves(SAVE_WAIT_MS);
+      if (status === 'saved') {
+        await Promise.all(removed.map((image) => media.deleteFile(image)));
+        return;
+      }
+      if (status === 'failed') return;
+    }
+    console.warn(
+      `[media] gave up waiting for a save; ${removed.length} removed image file(s) were left in place`,
+    );
   };
 
   query<AppSnapshot>(IpcChannel.getSnapshot, () => store.getSnapshot());
@@ -295,12 +319,7 @@ export function registerIpcHandlers(ipc: IpcMainLike, deps: IpcDependencies): vo
     if (before.collections === after.collections) return result;
     const remaining = new Set(slideshowImages(after).map(({ id }) => id));
     const removed = slideshowImages(before).filter(({ id }) => !remaining.has(id));
-    if (removed.length > 0) {
-      // If the save fails, the last on-disk collection still needs its images.
-      void store.settleSaves(2000).then(async (status) => {
-        if (status === 'saved') await Promise.all(removed.map((image) => media.deleteFile(image)));
-      });
-    }
+    if (removed.length > 0) void deleteWhenSaved(removed);
     return result;
   });
 

@@ -220,6 +220,7 @@ interface PersistedGameLogV4 {
     readonly lastBingoAt: number | null;
     readonly resumedAt: number | null;
     readonly pausedMs: number;
+    readonly bingoTitle: string | null;
   };
 }
 

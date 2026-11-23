@@ -231,6 +231,7 @@ describe('AppStore', () => {
         lastBingoAt: null,
         resumedAt: null,
         pausedMs: 0,
+        bingoTitle: null,
       });
       expect(persister.saved.at(-1)?.gameLog.records).toHaveLength(1);
     });

@@ -176,7 +176,7 @@ describe('V1 save format is frozen (audit finding 5, #22)', () => {
           slideshow: EMPTY_SLIDESHOW,
           gameLog: {
             records: [],
-            current: { firstBallAt: null, lastBingoAt: null, resumedAt: null, pausedMs: 0 },
+            current: { firstBallAt: null, lastBingoAt: null, resumedAt: null, pausedMs: 0, bingoTitle: null },
           },
           settings: { preferredDisplayId: null, controllerTheme: 'light' },
         },
@@ -318,7 +318,7 @@ describe('V3 save format is frozen (released in milestone 3)', () => {
       settings: { ...stateV3Fixture.settings, controllerTheme: 'light' },
       gameLog: {
         records: [],
-        current: { firstBallAt: null, lastBingoAt: null, resumedAt: null, pausedMs: 0 },
+        current: { firstBallAt: null, lastBingoAt: null, resumedAt: null, pausedMs: 0, bingoTitle: null },
       },
       media: { library: [], singleImage: { imageId: null } },
       timer: DEFAULT_TIMER,
@@ -631,7 +631,7 @@ describe('parsePersistedState', () => {
         slideshow: EMPTY_SLIDESHOW,
         gameLog: {
           records: [],
-          current: { firstBallAt: null, lastBingoAt: null, resumedAt: null, pausedMs: 0 },
+          current: { firstBallAt: null, lastBingoAt: null, resumedAt: null, pausedMs: 0, bingoTitle: null },
         },
         settings: { preferredDisplayId: 12, controllerTheme: 'light' },
       },
@@ -654,7 +654,7 @@ describe('parsePersistedState', () => {
       expect(result.warnings).toEqual([]);
       expect(fromPersistedState(result.state).gameLog).toEqual({
         records: [],
-        current: { firstBallAt: null, lastBingoAt: null, resumedAt: null, pausedMs: 0 },
+        current: { firstBallAt: null, lastBingoAt: null, resumedAt: null, pausedMs: 0, bingoTitle: null },
       });
     });
 
@@ -667,6 +667,7 @@ describe('parsePersistedState', () => {
           lastBingoAt: 1_700_000_160_000,
           resumedAt: 1_700_000_190_000,
           pausedMs: 12_000,
+          bingoTitle: 'Letter X',
         },
       };
       const saved = toPersistedState({ ...data, gameLog: log });
@@ -880,7 +881,7 @@ describe('V4 save format (milestone 4: the media library)', () => {
       settings: { ...stateV4Fixture.settings, controllerTheme: 'light' },
       gameLog: {
         records: [],
-        current: { firstBallAt: null, lastBingoAt: null, resumedAt: null, pausedMs: 0 },
+        current: { firstBallAt: null, lastBingoAt: null, resumedAt: null, pausedMs: 0, bingoTitle: null },
       },
       timer: DEFAULT_TIMER,
       slideshow: EMPTY_SLIDESHOW,

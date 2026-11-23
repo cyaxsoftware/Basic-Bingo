@@ -19,7 +19,7 @@ const played = (number: number, title = 'Four Corners') => ({
   title,
   durationSeconds: 600,
 });
-const NO_CLOCK = { firstBallAt: null, lastBingoAt: null, resumedAt: null, pausedMs: 0 };
+const NO_CLOCK = { firstBallAt: null, lastBingoAt: null, resumedAt: null, pausedMs: 0, bingoTitle: null };
 
 describe('PresentationApp banner band', () => {
   it('keeps the band on the Game Board with no banner in it, so there is nothing to move later', async () => {

@@ -16,7 +16,13 @@ import {
 } from './gameLog';
 
 const SECOND = 1000;
-const NO_CLOCK: GameClock = { firstBallAt: null, lastBingoAt: null, resumedAt: null, pausedMs: 0 };
+const NO_CLOCK: GameClock = {
+  firstBallAt: null,
+  lastBingoAt: null,
+  resumedAt: null,
+  pausedMs: 0,
+  bingoTitle: null,
+};
 const START = Date.UTC(2026, 10, 22, 19, 5, 0);
 
 /** Drives the log the way the store does: apply the game command, then tell the log what changed. */
@@ -74,6 +80,7 @@ describe('a game in the log', () => {
       lastBingoAt: START + 90 * SECOND,
       resumedAt: null,
       pausedMs: 0,
+      bingoTitle: 'Four Corners',
     });
   });
 
@@ -113,11 +120,45 @@ describe('a game in the log', () => {
     expect(night.log.current.lastBingoAt).toBe(START + 10 * SECOND);
   });
 
-  it('uses the pattern being played when the game ends', () => {
-    const night = new Night().ball(5).bingo(10);
+  it('uses the pattern being played when New Game ends a game that no BINGO CALLED ended', () => {
+    const night = new Night().ball(5).ball(6, 10);
     night.title = '  Big L  ';
     night.newGame();
     expect(night.log.records[0]?.title).toBe('Big L');
+  });
+
+  it('names a game that ended at BINGO CALLED for the pattern at that press, not the next one picked', () => {
+    // Four Corners wins; the operator dismisses the banner and picks Big L for the next game, then confirms New Game.
+    const night = new Night().ball(5).ball(6, 30).bingo(30).dismiss(5);
+    night.title = 'Big L';
+    night.newGame(20);
+    expect(night.log.records[0]).toMatchObject({ title: 'Four Corners', durationSeconds: 60 });
+  });
+
+  it('forgets the press title with the press: a false bingo does not name the game', () => {
+    // A false bingo under Four Corners, then play carries on under Big L and the real bingo is never pressed.
+    const night = new Night().ball(5).bingo(10).dismiss(5);
+    night.title = 'Big L';
+    night.ball(6, 5).newGame(10);
+    expect(night.log.current).toEqual(NO_CLOCK);
+    expect(night.log.records[0]?.title).toBe('Big L');
+  });
+
+  it('takes the title from the latest press when the banner is raised again', () => {
+    const night = new Night().ball(5).bingo(10).dismiss(5);
+    night.title = 'Big L';
+    night.bingo(5).newGame();
+    expect(night.log.records[0]?.title).toBe('Big L');
+  });
+
+  it('shows the same whole seconds on the held clock and in the log (no 0:10 held, 0:11 logged)', () => {
+    const night = new Night().ball(5);
+    night.now += 10_750; // 10.750 s after the first ball
+    night.do({ type: 'showBingoBanner' });
+    const shown = Math.floor(gameElapsedMs(night.log.current, night.now) / 1000);
+    night.newGame();
+    expect(shown).toBe(10);
+    expect(night.log.records[0]?.durationSeconds).toBe(shown);
   });
 
   it('falls back to a name for a blank title and trims an over-long one', () => {
@@ -192,6 +233,7 @@ describe('a game in the log', () => {
       lastBingoAt: START + 10 * SECOND,
       resumedAt: START + 30 * SECOND,
       pausedMs: 0,
+      bingoTitle: 'Four Corners',
     });
     expect(isClockHeld(night.log.current)).toBe(false);
   });
@@ -217,6 +259,7 @@ describe('a game in the log', () => {
       lastBingoAt: START + 10 * SECOND,
       resumedAt: null,
       pausedMs: 0,
+      bingoTitle: 'Four Corners',
     });
   });
 
@@ -283,7 +326,13 @@ describe('normalizeGameLog', () => {
   it('keeps a good log and a good clock', () => {
     const { state, dropped } = normalizeGameLog({
       records: [good, { ...good, id: 'b', number: 2, durationSeconds: 0 }],
-      current: { firstBallAt: START, lastBingoAt: START + 5000, resumedAt: START + 9000, pausedMs: 1500 },
+      current: {
+        firstBallAt: START,
+        lastBingoAt: START + 5000,
+        resumedAt: START + 9000,
+        pausedMs: 1500,
+        bingoTitle: '  Big L ',
+      },
     });
     expect(dropped).toBe(0);
     expect(state.records).toHaveLength(2);
@@ -292,7 +341,38 @@ describe('normalizeGameLog', () => {
       lastBingoAt: START + 5000,
       resumedAt: START + 9000,
       pausedMs: 1500,
+      bingoTitle: 'Big L',
     });
+  });
+
+  it('keeps a press title only with a live press, and falls back to no title otherwise', () => {
+    const at = (current: unknown) => normalizeGameLog({ current }).state.current.bingoTitle;
+    expect(at({ firstBallAt: START, lastBingoAt: START + 5, bingoTitle: 'Big L' })).toBe('Big L');
+    expect(at({ firstBallAt: START, bingoTitle: 'Big L' })).toBeNull();
+    for (const bad of [7, null, undefined, {}]) {
+      expect(at({ firstBallAt: START, lastBingoAt: START + 5, bingoTitle: bad })).toBeNull();
+    }
+    expect(at({ firstBallAt: START, lastBingoAt: START + 5, bingoTitle: '   ' })).toBe('Untitled pattern');
+  });
+
+  it('refuses a game number so large that adding one would give the same number back', () => {
+    const top = Number.MAX_SAFE_INTEGER;
+    const result = normalizeGameLog({
+      records: [good, { ...good, id: 'top', number: top }, { ...good, id: 'next', number: top - 1 }],
+    });
+    // MAX and MAX-1 both leave no room for a +1 that is a different number, so numbering could not go on.
+    expect(result.state.records.map((r) => r.id)).toEqual(['a', 'next']);
+    expect(result.dropped).toBe(1);
+    expect(nextGameNumber({ ...result.state })).toBe(top);
+    expect(Number.isSafeInteger(nextGameNumber(result.state))).toBe(true);
+  });
+
+  it('refuses start times and durations too large to be real', () => {
+    const { state, dropped } = normalizeGameLog({
+      records: [good, { ...good, id: 'x', startedAt: 1e300 }, { ...good, id: 'y', durationSeconds: 2 ** 60 }],
+    });
+    expect(state.records.map((r) => r.id)).toEqual(['a']);
+    expect(dropped).toBe(2);
   });
 
   it.each([undefined, null, 'x', 7, [], { records: 'nope' }])('falls back to empty for %j', (raw) => {

@@ -16,6 +16,8 @@ import { jpegBytes, pngBytes } from './testImages';
 const ID_1 = '00000000-0000-4000-8000-000000000001';
 const ID_2 = '00000000-0000-4000-8000-000000000002';
 const ID_3 = '00000000-0000-4000-8000-000000000003';
+// A file on a network share, the text \\fileserver\events\slide.png (backslashes doubled in source).
+const UNC_SLIDE = '\\\\fileserver\\events\\slide.png';
 
 let root: string;
 let usb: string;
@@ -182,6 +184,24 @@ describe('importing images', () => {
     expect(store.getSnapshot().mediaLibrary).toHaveLength(2);
     // Only the two good images were written.
     expect((await readdir(mediaDirectory)).toSorted()).toEqual([`${ID_1}.png`, `${ID_2}.png`]);
+  });
+
+  it('refuses a file on a network share without reading it, and says why', async () => {
+    const { service } = setup();
+    const report = await service.importFiles([UNC_SLIDE]);
+    expect(report.added).toEqual([]);
+    expect(report.skipped).toEqual([
+      { name: 'slide.png', reason: expect.stringMatching(/network location/) },
+    ]);
+    expect(await readdir(mediaDirectory).catch(() => [])).toEqual([]);
+  });
+
+  it('still imports the local files in the same batch as a refused network one', async () => {
+    const { service } = setup();
+    const good = await usbFile('ok.png', pngBytes(10, 10));
+    const report = await service.importFiles([UNC_SLIDE, good]);
+    expect(report.added).toHaveLength(1);
+    expect(report.skipped).toHaveLength(1);
   });
 
   it('does nothing when the operator cancels the dialog', async () => {

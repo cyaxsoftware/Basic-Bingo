@@ -206,7 +206,12 @@ if someone modified its page.
 - `stateRepository.ts`: storage under `%APPDATA%\Basic Bingo\bingo-data\`.
 - `dataDirectory.ts`: the app used to be called "Offline Bingo Display", and Electron names the data folder after the
   app. On startup `migrateLegacyDataDirectory` copies the old `bingo-data` to the new location once (never over
-  existing data, and skipped when `BINGO_USER_DATA_DIR` redirects userData). The old folder stays as a backup.
+  existing data, and skipped only when `BINGO_USER_DATA_DIR` really redirects userData: that is an unpackaged run,
+  see `isTestDataRedirect`, which the redirect and the copy both use). The old folder stays as a backup. It copies
+  into `bingo-data.migrating` (cleared first, so an interrupted earlier copy cannot leak stale files) and renames
+  it into place. If the copy fails the app still starts, with an error notice naming where the old data is and where
+  to copy it; the copy is only attempted when the new folder does not exist, so it is not retried by itself once
+  the app has saved there.
 
 Save sequence: write `state.json.tmp` → `fsync` → **re-validate** the current `state.json` and copy it to
 `state.json.bak` only if it is valid (an invalid primary is moved aside instead, and the backup is left

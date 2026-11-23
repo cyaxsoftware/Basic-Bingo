@@ -19,7 +19,13 @@ import { confirmClose, describeUnsavedGame, type CloseChoice } from './app/close
 import { registerIpcHandlers } from './ipc/registerIpcHandlers';
 import { answerMediaRequest, ImageLibraryService } from './media/mediaService';
 import { PowerPointImportService } from './media/powerPointImport';
-import { migrateLegacyDataDirectory, resolveDataDirectory } from './persistence/dataDirectory';
+import {
+  isTestDataRedirect,
+  legacyCopyFailedNotice,
+  legacyDataDirectory,
+  migrateLegacyDataDirectory,
+  resolveDataDirectory,
+} from './persistence/dataDirectory';
 import { fromPersistedState } from './persistence/persistedState';
 import { JsonStateRepository, type LoadResult } from './persistence/stateRepository';
 import { installOfflinePolicy } from './security/offlinePolicy';
@@ -56,7 +62,7 @@ function main(): void {
   // Automated tests run against a throwaway data folder. Ignored in packaged builds
   // so it can never redirect a real installation's saved game.
   const testUserData = process.env['BINGO_USER_DATA_DIR'];
-  if (testUserData && !app.isPackaged) app.setPath('userData', testUserData);
+  if (testUserData && isTestDataRedirect(process.env, app.isPackaged)) app.setPath('userData', testUserData);
 
   // A second copy would fight over the state file and the projector.
   if (!app.requestSingleInstanceLock()) {
@@ -85,10 +91,15 @@ async function startApplication(registry: WindowRegistry): Promise<void> {
   if (app.isPackaged) Menu.setApplicationMenu(null);
   installOfflinePolicy(session.defaultSession, app.isPackaged ? [] : devServerOrigins());
 
-  // Not when tests redirect userData: appData is the real one and must not leak into a throwaway folder.
-  if (!process.env['BINGO_USER_DATA_DIR']) {
+  // Not when tests redirect userData: appData is the real one and must not leak into a throwaway folder. (Tied to
+  // the same check as the redirect itself, so a packaged app with the variable set still gets its data copied.)
+  let migrationFailure: unknown;
+  if (!isTestDataRedirect(process.env, app.isPackaged)) {
     await migrateLegacyDataDirectory(app.getPath('appData'), app.getPath('userData')).catch(
-      (error: unknown) => console.warn('[startup] could not carry over data from the old app folder:', error),
+      (error: unknown) => {
+        migrationFailure = error ?? new Error('unknown error');
+        console.warn('[startup] could not carry over data from the old app folder:', error);
+      },
     );
   }
   const dataDirectory = resolveDataDirectory(app.getPath('userData'));
@@ -97,7 +108,19 @@ async function startApplication(registry: WindowRegistry): Promise<void> {
   const store = new AppStore({
     initialData: fromPersistedState(loaded.state),
     persister: repository,
-    initialNotices: recoveryNotices(loaded),
+    initialNotices: [
+      ...recoveryNotices(loaded),
+      // If the old data could not be copied, say so (and where it is) instead of quietly starting from nothing.
+      ...(migrationFailure === undefined
+        ? []
+        : [
+            legacyCopyFailedNotice(
+              migrationFailure,
+              legacyDataDirectory(app.getPath('appData')),
+              dataDirectory,
+            ),
+          ]),
+    ],
   });
   if (loaded.issues.length > 0) console.warn('[startup] state load issues:', loaded.issues);
 

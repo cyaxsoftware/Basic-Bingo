@@ -187,7 +187,11 @@ The Game Board tab keeps a log of the night's games in a grid under the board: *
 - **Duration** = first ball to that end, as `m:ss` (`h:mm:ss` past an hour), so every logged game has one. **Game** is the working pattern's title when the game ended.
 - The game is **logged when New Game is confirmed** with at least one ball called. New Game on an empty game logs nothing. The game in progress is not in the list.
 - Stored by the main process, saved with the game and kept across restarts and New Game; the last 200 games are kept. **Clear history…** (with a confirmation) empties the list and nothing else.
-- Limits: a false bingo that play simply stopped after (nothing called, then New Game) looks like a true one and is timed as the end of that game. Taking a ball back after a true BINGO CALLED press counts as play carrying on, so the game then ends at New Game instead.
+- **Name:** a game that ended at a BINGO CALLED press is named for the pattern that was being played at that press, so picking the next pattern before confirming New Game does not rename the game just won. A game that ended at New Game (no press) is named for the pattern at New Game. Both durations are whole seconds rounded down, the same as the game clock shows.
+- Limits (known, accepted):
+  - A false bingo that play simply stopped after (nothing called, then New Game) looks like a true one and is timed as the end of that game. Taking a ball back after a true BINGO CALLED press counts as play carrying on, so the game then ends at New Game instead.
+  - Times come from the computer's clock. Setting the Windows clock forwards or back in the middle of a game changes that game's duration by the same amount (ordinary automatic time sync adjusts by seconds and is not noticeable).
+  - A game that was already under way when the app was first updated to a version with this log has no recorded first-ball time, so it cannot be timed and is not logged when it ends. Every game after that is.
 - The grid needs room: it appears where there are at least 150 px under the board (the wide layouts) and hides itself otherwise, for example on short or compact windows. Wide window sizes show it; the compact layout never does.
 
 ### 5.2a Blacked-out rows
