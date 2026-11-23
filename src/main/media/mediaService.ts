@@ -13,7 +13,7 @@
  * Nothing here imports Electron (the file dialog is passed in), so it is fully unit-testable.
  */
 import { randomUUID } from 'node:crypto';
-import { mkdir, readFile, rename, stat, unlink, writeFile, access } from 'node:fs/promises';
+import { mkdir, readFile, rename, rm, stat, unlink, writeFile, access } from 'node:fs/promises';
 import path from 'node:path';
 import { fail, ok, type CommandResult } from '../../shared/ipc/contract';
 import {
@@ -29,7 +29,7 @@ import {
 import type { MediaService } from '../ipc/registerIpcHandlers';
 import { slideshowImages } from '../../shared/media/slideshow';
 import type { AppStore } from '../state/appStore';
-import { readImageInfo } from './imageInfo';
+import { readImageInfo, type ImageInfo } from './imageInfo';
 
 export const NOTICE_IMPORT_SKIPPED = 'media-import-skipped';
 export const NOTICE_MISSING_FILES = 'media-missing-files';
@@ -53,6 +53,11 @@ interface Skipped {
 export interface ImportReport {
   readonly added: readonly MediaItem[];
   readonly skipped: readonly Skipped[];
+}
+
+interface GeneratedImageBatch {
+  readonly image: ImageInfo;
+  readonly nameAt: (index: number) => string;
 }
 
 export class ImageLibraryService implements MediaService {
@@ -90,18 +95,27 @@ export class ImageLibraryService implements MediaService {
   }
 
   /** Copy selected files for the gallery or a collection. One bad file never stops the others. */
-  async importFiles(paths: readonly string[], collectionId?: string): Promise<ImportReport> {
+  async importFiles(
+    paths: readonly string[],
+    collectionId?: string,
+    batch?: GeneratedImageBatch,
+  ): Promise<ImportReport> {
     const added: MediaItem[] = [];
     const skipped: Skipped[] = [];
-    for (const source of paths) {
-      const name = cleanMediaName(source);
+    for (const [index, source] of paths.entries()) {
+      const name = cleanMediaName(batch?.nameAt(index) ?? source);
       try {
-        const item = await this.importOne(source, name);
+        const item = await this.importOne(source, name, batch?.image);
         if (typeof item === 'string') skipped.push({ name, reason: item });
         else added.push(item);
       } catch (error) {
         console.error(`[media] could not import ${source}`, error);
         skipped.push({ name, reason: 'it could not be read or copied' });
+      }
+      if (batch && skipped.length > 0) {
+        // A presentation is one import: a missing slide must not leave half a deck in the collection.
+        await Promise.all(added.map((item) => this.deleteFile(item)));
+        return { added: [], skipped };
       }
     }
     if (added.length > 0) {
@@ -132,7 +146,7 @@ export class ImageLibraryService implements MediaService {
   }
 
   /** Returns the new library entry, or the reason the file was skipped. */
-  private async importOne(source: string, name: string): Promise<MediaItem | string> {
+  private async importOne(source: string, name: string, expected?: ImageInfo): Promise<MediaItem | string> {
     const info = await stat(source);
     if (!info.isFile()) return 'it is not a file';
     if (info.size === 0) return 'it is empty';
@@ -141,6 +155,12 @@ export class ImageLibraryService implements MediaService {
     const data = await readFile(source);
     const image = readImageInfo(data);
     if (!image) return 'it is not a PNG, JPEG, WebP or GIF image';
+    if (
+      expected &&
+      (image.format !== expected.format || image.width !== expected.width || image.height !== expected.height)
+    ) {
+      return 'PowerPoint exported an unexpected image size or format';
+    }
 
     const id = this.newId();
     if (!isValidMediaId(id) || this.allocatedIds.has(id) || findMedia(this.storedImages(), id)) {
@@ -161,8 +181,15 @@ export class ImageLibraryService implements MediaService {
     await mkdir(this.directory, { recursive: true });
     const target = path.join(this.directory, mediaFileName(item));
     const temporary = `${target}.tmp`;
-    await writeFile(temporary, data);
-    await rename(temporary, target);
+    try {
+      await writeFile(temporary, data);
+      await rename(temporary, target);
+    } catch (error) {
+      await rm(temporary, { force: true }).catch((cleanupError: unknown) => {
+        console.error('[media] could not remove an incomplete copy', cleanupError);
+      });
+      throw error;
+    }
     return item;
   }
 

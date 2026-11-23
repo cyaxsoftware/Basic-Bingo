@@ -157,6 +157,8 @@ export function ControllerApp({ api, store }: ControllerAppProps) {
               onEdit={actions.editSlideshow}
               onPlayback={actions.controlSlideshow}
               onImport={actions.importSlideshowImages}
+              onImportPowerPoint={actions.importPowerPoint}
+              importingPowerPoint={actions.importingPowerPoint}
             />
           )}
         </div>

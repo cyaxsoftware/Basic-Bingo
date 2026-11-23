@@ -118,6 +118,18 @@ Images the operator imports (PNG, JPEG, WebP, GIF, up to 20 MB each) are copied 
   (the default). The Controller's slideshow dialog reuses the standalone countdown controls.
   Playback deadlines and countdown expiry are independent of overlay visibility.
 
+### PowerPoint import
+
+The Controller sends the destination collection ID. Main opens the local `.pptx` picker and calls
+`PowerPointImportService`, which runs Windows PowerShell with a fixed script and passes file paths
+through the child environment. The script copies the deck to a private workspace, refuses content
+that requires linked files, and opens the copy read-only with macros disabled. Desktop PowerPoint
+exports slides in index order at 1920 pixels on the long edge. [Open a presentation](https://learn.microsoft.com/en-us/office/vba/api/powerpoint.presentations.open) · [Export a slide](https://learn.microsoft.com/en-us/office/vba/api/powerpoint.slide.export) · [Automation security](https://learn.microsoft.com/en-us/office/vba/api/powerpoint.application.automationsecurity)
+
+The image importer verifies each PNG's dimensions and appends the batch in one update after every slide
+is valid. Failure discards any copies from that batch, and the workspace is removed on completion. Slides
+use the same collection-owned file storage as imported images. Repeated imports append independent copies.
+
 ## Countdown timer
 
 - `src/shared/timer/timerState.ts` has the pure rules. A running timer has an epoch-millisecond deadline

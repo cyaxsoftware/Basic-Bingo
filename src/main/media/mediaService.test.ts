@@ -1,7 +1,7 @@
 import { mkdir, mkdtemp, readdir, readFile, rm, writeFile } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { MAX_IMAGE_BYTES, mediaFileName } from '../../shared/media';
 import { createDefaultAppData } from '../persistence/persistedState';
 import { AppStore } from '../state/appStore';
@@ -61,6 +61,21 @@ const usbFile = async (name: string, data: Buffer | string) => {
 };
 
 describe('importing images', () => {
+  it('removes the temporary copy when the final image cannot be saved', async () => {
+    const { store, service } = setup();
+    const target = `${ID_1}.png`;
+    await mkdir(path.join(mediaDirectory, target), { recursive: true });
+    const source = await usbFile('Sponsor.png', pngBytes(1920, 1080));
+    const log = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+    try {
+      const report = await service.importFiles([source]);
+      expect(report.added).toEqual([]);
+    } finally {
+      log.mockRestore();
+    }
+    expect(store.getSnapshot().mediaLibrary).toEqual([]);
+    expect(await readdir(mediaDirectory)).toEqual([target]);
+  });
   it('appends picked files only to the requested collection and serves their thumbnails', async () => {
     const logo = await usbFile('Logo.png', pngBytes(640, 480));
     const menu = await usbFile('Menu.jpg', jpegBytes(800, 600));

@@ -77,6 +77,10 @@ full interval. **Stop** leaves the current slide on screen. Open **Countdown set
 the shared timer and toggle its upper-right overlay during projection. When a visible timer reaches
 **Time to Play!**, slides keep rotating.
 
+**Import PowerPoint…** appends every slide from a local `.pptx` to the selected collection as a PNG.
+It uses desktop Microsoft PowerPoint on Windows during conversion. The imported slides play from
+local images after PowerPoint is closed. Importing the same file again adds a second set of slides.
+
 ### BINGO called and starting a new game
 
 - **BINGO CALLED** (under the call summary) raises the BINGO verification banner. While it is up, the same

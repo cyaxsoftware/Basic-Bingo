@@ -1,8 +1,8 @@
-import { fireEvent, render, screen, within } from '@testing-library/react';
+import { act, fireEvent, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 import { mediaUrl, type MediaItem } from '../../../shared/media';
-import { ok } from '../../../shared/ipc/contract';
+import { fail, ok, type CommandResult } from '../../../shared/ipc/contract';
 import { appendSlideshowImages } from '../../../shared/media/slideshow';
 import { createSnapshotStore } from '../../shared/snapshotStore';
 import { createFakeBingoApi, makeSnapshot } from '../../test/fakeBingoApi';
@@ -48,6 +48,24 @@ async function setup(library: readonly MediaItem[] = [], pickedImages: readonly 
 }
 
 describe('Break Slideshow collection management', () => {
+  it('imports a deck into the active collection and shows busy and failure states', async () => {
+    const { api, view, create, user } = await setup();
+    expect(view.queryByRole('button', { name: 'Import PowerPoint…' })).toBeNull();
+    await create('Sponsors');
+    const collectionId = api.current().slideshow.activeId;
+    let finishImport: ((result: CommandResult) => void) | undefined;
+    const pendingImport = new Promise<CommandResult>((resolve) => {
+      finishImport = resolve;
+    });
+    vi.mocked(api.importPowerPoint).mockImplementationOnce(() => pendingImport);
+    await user.click(view.getByRole('button', { name: 'Import PowerPoint…' }));
+    expect(api.importPowerPoint).toHaveBeenCalledExactlyOnceWith(collectionId);
+    expect(view.getByRole('button', { name: 'Importing PowerPoint…' })).toBeDisabled();
+    await act(async () => finishImport?.(fail('Desktop PowerPoint is unavailable.')));
+    expect(view.getByRole('button', { name: 'Import PowerPoint…' })).toBeEnabled();
+    expect(screen.getByText('Desktop PowerPoint is unavailable.')).toBeInTheDocument();
+  });
+
   it('edits the shared countdown and toggles its overlay while playing without leaving slideshow', async () => {
     const { api, view, create, user } = await setup([], [image(A, 'Logo.png')]);
     await create('Sponsors');

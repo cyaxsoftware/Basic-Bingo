@@ -248,6 +248,7 @@ export function createFakeBingoApi(initial: AppSnapshot = makeSnapshot()): FakeB
     hidePatternOnProjector: vi.fn(async () => dispatchPattern({ type: 'hidePatternOnProjector' })),
     // Importing needs the file dialog, which tests do not have: they put images in with api.push(makeSnapshot({...})).
     importImages: vi.fn(async () => ok),
+    importPowerPoint: vi.fn(async (_collectionId: string) => ok),
     importSlideshowImages: vi.fn(async (_collectionId: string) => ok),
     selectSingleImage: vi.fn(async (mediaId: string | null) =>
       dispatchMedia({ type: 'selectSingleImage', mediaId }),

@@ -96,6 +96,10 @@ No internet connection, cloud database, user account, local HTTP server, or sepa
 - **Add images…** opens the local file picker for the selected collection and appends each chosen file
   as a slide. The app keeps its own copies so slides survive removal of the source USB drive.
   Single Image has a separate gallery.
+- **Import PowerPoint…** appends the slides of a local `.pptx` to the selected collection as numbered
+  PNGs in deck order. Installed desktop PowerPoint is required during import. Widescreen decks export
+  at 1920 × 1080 and other sizes preserve their proportions. PowerPoint animations and embedded media
+  appear only as static content. Importing the same deck again appends a second set of slides.
 - Numbered thumbnails show playback order. Move each slide earlier or later, remove it, or set its
   fit to **Original**, **Fit**, **Fill**, or **Use collection fit**. Each collection defaults to Fit
   with 10 seconds per slide and supports intervals of 1–300 seconds.

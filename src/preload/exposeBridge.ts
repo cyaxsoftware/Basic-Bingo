@@ -47,6 +47,7 @@ export function createControllerApi(): ControllerApi {
     showPatternOnProjector: () => ipcRenderer.invoke(IpcChannel.showPatternOnProjector),
     hidePatternOnProjector: () => ipcRenderer.invoke(IpcChannel.hidePatternOnProjector),
     importImages: () => ipcRenderer.invoke(IpcChannel.importImages),
+    importPowerPoint: (collectionId) => ipcRenderer.invoke(IpcChannel.importPowerPoint, collectionId),
     importSlideshowImages: (collectionId) =>
       ipcRenderer.invoke(IpcChannel.importSlideshowImages, collectionId),
     selectSingleImage: (mediaId) => ipcRenderer.invoke(IpcChannel.selectSingleImage, mediaId),

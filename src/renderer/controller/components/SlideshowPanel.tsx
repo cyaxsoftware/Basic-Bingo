@@ -29,6 +29,8 @@ interface SlideshowPanelProps {
   readonly library: readonly MediaItem[];
   readonly onEdit: (command: SlideshowCommand) => void;
   readonly onImport: (collectionId: string) => void;
+  readonly onImportPowerPoint: (collectionId: string) => void;
+  readonly importingPowerPoint: boolean;
   readonly onPlayback: (command: SlideshowPlaybackCommand) => void;
 }
 
@@ -65,6 +67,8 @@ function CollectionEditor({
   library,
   onEdit,
   onImport,
+  onImportPowerPoint,
+  importingPowerPoint,
   playback,
   onPlayback,
   onOpenCountdown,
@@ -86,6 +90,9 @@ function CollectionEditor({
       <div className={styles.slideBar}>
         <button className={styles.primary} type="button" onClick={() => onImport(collectionId)}>
           Add images…
+        </button>
+        <button type="button" disabled={importingPowerPoint} onClick={() => onImportPowerPoint(collectionId)}>
+          {importingPowerPoint ? 'Importing PowerPoint…' : 'Import PowerPoint…'}
         </button>
         <span>
           {slides.length} {slides.length === 1 ? 'slide' : 'slides'}
@@ -270,6 +277,8 @@ export function SlideshowPanel({
   library,
   onEdit,
   onImport,
+  onImportPowerPoint,
+  importingPowerPoint,
   onPlayback,
 }: SlideshowPanelProps) {
   const [creating, setCreating] = useState(false);
@@ -329,6 +338,8 @@ export function SlideshowPanel({
             library={library}
             onEdit={onEdit}
             onImport={onImport}
+            onImportPowerPoint={onImportPowerPoint}
+            importingPowerPoint={importingPowerPoint}
             playback={playback}
             onPlayback={onPlayback}
             onOpenCountdown={() => setCountdownOpen(true)}

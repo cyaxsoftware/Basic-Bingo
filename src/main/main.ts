@@ -18,6 +18,7 @@ import { MEDIA_PROTOCOL } from '../shared/media';
 import { confirmClose, describeUnsavedGame, type CloseChoice } from './app/closeGuard';
 import { registerIpcHandlers } from './ipc/registerIpcHandlers';
 import { answerMediaRequest, ImageLibraryService } from './media/mediaService';
+import { PowerPointImportService } from './media/powerPointImport';
 import { resolveDataDirectory } from './persistence/dataDirectory';
 import { fromPersistedState } from './persistence/persistedState';
 import { JsonStateRepository, type LoadResult } from './persistence/stateRepository';
@@ -100,6 +101,10 @@ async function startApplication(registry: WindowRegistry): Promise<void> {
     directory: path.join(dataDirectory, 'media'),
     pickFiles: () => pickImageFiles(registry.getController()),
   });
+  const powerPoint = new PowerPointImportService({
+    media,
+    pickDeck: () => pickPowerPointFile(registry.getController()),
+  });
   protocol.handle(MEDIA_PROTOCOL, async (request) => {
     const answer = await answerMediaRequest(media, request.url);
     if (answer.status !== 200 || !answer.data) return new Response(null, { status: answer.status });
@@ -125,7 +130,7 @@ async function startApplication(registry: WindowRegistry): Promise<void> {
     createWindow: (options) => createAppWindow('presentation', options),
   });
 
-  registerIpcHandlers(ipcMain, { store, media, presentation, displays, senders: registry });
+  registerIpcHandlers(ipcMain, { store, media, powerPoint, presentation, displays, senders: registry });
   store.subscribe((snapshot) => registry.broadcast(snapshot));
   const stopTimerService = startTimerService(store);
   const stopSlideshowService = startSlideshowService(store);
@@ -159,6 +164,16 @@ async function pickImageFiles(parent: BrowserWindow | null): Promise<string[]> {
   };
   const result = parent ? await dialog.showOpenDialog(parent, options) : await dialog.showOpenDialog(options);
   return result.canceled ? [] : result.filePaths;
+}
+
+async function pickPowerPointFile(parent: BrowserWindow | null): Promise<string | null> {
+  const options: Electron.OpenDialogOptions = {
+    title: 'Import PowerPoint',
+    properties: ['openFile'],
+    filters: [{ name: 'PowerPoint presentation', extensions: ['pptx'] }],
+  };
+  const result = parent ? await dialog.showOpenDialog(parent, options) : await dialog.showOpenDialog(options);
+  return result.canceled ? null : (result.filePaths[0] ?? null);
 }
 
 /**

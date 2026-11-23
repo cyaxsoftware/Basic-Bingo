@@ -66,6 +66,7 @@ export interface MediaService {
 export interface IpcDependencies {
   readonly store: AppStore;
   readonly media: MediaService;
+  readonly powerPoint: { importDeck(collectionId: string): Promise<CommandResult> };
   readonly presentation: PresentationService;
   readonly displays: DisplayService;
   readonly senders: SenderPolicy;
@@ -80,7 +81,7 @@ function failedCommand(channel: string, error: unknown): CommandResult {
 }
 
 export function registerIpcHandlers(ipc: IpcMainLike, deps: IpcDependencies): void {
-  const { store, media, presentation, displays, senders } = deps;
+  const { store, media, powerPoint, presentation, displays, senders } = deps;
 
   const query = <T>(channel: string, handler: () => T) => {
     ipc.removeHandler(channel);
@@ -204,14 +205,24 @@ export function registerIpcHandlers(ipc: IpcMainLike, deps: IpcDependencies): vo
   command(IpcChannel.hidePatternOnProjector, () => store.dispatchPattern({ type: 'hidePatternOnProjector' }));
 
   command(IpcChannel.importImages, () => media.importImages());
-  command(IpcChannel.importSlideshowImages, (...args) => {
-    const [collectionId] = args;
-    if (args.length !== 1 || !isValidMediaId(collectionId)) return fail('Choose a slideshow collection.');
-    if (!store.getSnapshot().slideshow.collections.some(({ id }) => id === collectionId)) {
-      return fail('That slideshow collection no longer exists.');
-    }
-    return media.importImages(collectionId);
-  });
+  const importToCollection =
+    (importFiles: (collectionId: string) => Promise<CommandResult>) =>
+    (...args: unknown[]) => {
+      const [collectionId] = args;
+      if (args.length !== 1 || !isValidMediaId(collectionId)) return fail('Choose a slideshow collection.');
+      if (!store.getSnapshot().slideshow.collections.some(({ id }) => id === collectionId)) {
+        return fail('That slideshow collection no longer exists.');
+      }
+      return importFiles(collectionId);
+    };
+  command(
+    IpcChannel.importSlideshowImages,
+    importToCollection((id) => media.importImages(id)),
+  );
+  command(
+    IpcChannel.importPowerPoint,
+    importToCollection((id) => powerPoint.importDeck(id)),
+  );
 
   command(IpcChannel.selectSingleImage, (mediaId) =>
     mediaId === null || isValidMediaId(mediaId)

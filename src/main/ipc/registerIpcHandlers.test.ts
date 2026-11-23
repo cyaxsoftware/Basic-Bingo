@@ -43,6 +43,7 @@ function setup() {
       importImages: vi.fn(async (): Promise<CommandResult> => ok),
       deleteFile: vi.fn(async () => undefined),
     },
+    powerPoint: { importDeck: vi.fn(async (): Promise<CommandResult> => ok) },
     presentation: {
       openOnDisplay: vi.fn((): CommandResult => ok),
       openPreview: vi.fn((): CommandResult => ok),
@@ -569,6 +570,22 @@ describe('image commands over IPC', () => {
     expect(ctx.deps.media.importImages).not.toHaveBeenCalled();
     expect(await invoke(IpcChannel.importSlideshowImages, collectionId)).toEqual(ok);
     expect(ctx.deps.media.importImages).toHaveBeenCalledExactlyOnceWith(collectionId);
+  });
+
+  it('routes PowerPoint import only from the Controller with a valid destination collection', async () => {
+    expect(invoke(IpcChannel.editSlideshow, { type: 'create', name: 'Sponsors' })).toEqual(ok);
+    const collectionId = ctx.store.getSnapshot().slideshow.activeId;
+    expect(ctx.ipc.invoke(PRESENTATION_ID, IpcChannel.importPowerPoint, collectionId)).toMatchObject({
+      ok: false,
+    });
+    expect(invoke(IpcChannel.importPowerPoint, ID_A).ok).toBe(false);
+    expect(invoke(IpcChannel.importPowerPoint, 'C:\\File.pptx').ok).toBe(false);
+    expect(invoke(IpcChannel.importPowerPoint, collectionId, 'C:\\File.pptx').ok).toBe(false);
+    expect(ctx.deps.powerPoint.importDeck).not.toHaveBeenCalled();
+    const failure = { ok: false, error: 'Desktop PowerPoint is unavailable.' } as const;
+    vi.mocked(ctx.deps.powerPoint.importDeck).mockResolvedValueOnce(failure);
+    expect(await invoke(IpcChannel.importPowerPoint, collectionId)).toEqual(failure);
+    expect(ctx.deps.powerPoint.importDeck).toHaveBeenCalledExactlyOnceWith(collectionId);
   });
 
   describe('importImages', () => {
