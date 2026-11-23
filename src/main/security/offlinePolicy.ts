@@ -7,8 +7,17 @@
  * during development instead of silently at a bingo hall with no Wi-Fi.
  */
 import type { Session, WebContents } from 'electron';
+import { MEDIA_PROTOCOL } from '../../shared/media';
 
-const ALWAYS_ALLOWED_PROTOCOLS = new Set(['file:', 'devtools:', 'data:', 'blob:', 'chrome-extension:']);
+// bingo-media: is the app's own read-only image protocol (answered from the media folder by the main process).
+const ALWAYS_ALLOWED_PROTOCOLS = new Set([
+  'file:',
+  'devtools:',
+  'data:',
+  'blob:',
+  'chrome-extension:',
+  `${MEDIA_PROTOCOL}:`,
+]);
 
 /**
  * Pure decision function. `devOrigins` are http origins of the Vite dev

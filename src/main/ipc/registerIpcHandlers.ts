@@ -11,6 +11,7 @@
  * cannot throw "Attempted to register a second handler".
  */
 import { isBingoLetter, isValidBall } from '../../shared/game/balls';
+import { findMedia, isFitMode, isValidMediaId, type MediaItem } from '../../shared/media';
 import { isValidPatternId } from '../../shared/patterns';
 import { isPresentationMode } from '../../shared/presentation/presentationMode';
 import {
@@ -52,8 +53,17 @@ export interface DisplayService {
   refresh(): readonly DisplayInfo[];
 }
 
+/** Importing and deleting image files, which the main process does (renderers never touch the disk). */
+export interface MediaService {
+  /** Ask the operator to choose images, copy them into the library, and say how it went. */
+  importImages(): Promise<CommandResult>;
+  /** Delete a removed image's stored file. Best effort: the library entry is already gone. */
+  deleteFile(item: MediaItem): Promise<void>;
+}
+
 export interface IpcDependencies {
   readonly store: AppStore;
+  readonly media: MediaService;
   readonly presentation: PresentationService;
   readonly displays: DisplayService;
   readonly senders: SenderPolicy;
@@ -62,7 +72,7 @@ export interface IpcDependencies {
 const MAX_NOTICE_ID_LENGTH = 100;
 
 export function registerIpcHandlers(ipc: IpcMainLike, deps: IpcDependencies): void {
-  const { store, presentation, displays, senders } = deps;
+  const { store, media, presentation, displays, senders } = deps;
 
   const query = <T>(channel: string, handler: () => T) => {
     ipc.removeHandler(channel);
@@ -74,17 +84,26 @@ export function registerIpcHandlers(ipc: IpcMainLike, deps: IpcDependencies): vo
     });
   };
 
-  const command = (channel: string, handler: (...args: unknown[]) => CommandResult) => {
+  // Most commands answer at once. One that has to wait (importing images opens a file dialog) may return a
+  // promise; a synchronous handler still answers synchronously.
+  const command = (
+    channel: string,
+    handler: (...args: unknown[]) => CommandResult | Promise<CommandResult>,
+  ) => {
     ipc.removeHandler(channel);
-    ipc.handle(channel, (event, ...args): CommandResult => {
+    ipc.handle(channel, (event, ...args): CommandResult | Promise<CommandResult> => {
       if (!senders.isController(event.sender.id)) {
         return fail('Only the Controller window can change the game.');
       }
-      try {
-        return handler(...args);
-      } catch (error) {
+      const failed = (error: unknown) => {
         console.error(`[ipc] ${channel} failed`, error);
         return fail(error instanceof Error ? error.message : 'Unexpected error.');
+      };
+      try {
+        const result = handler(...args);
+        return result instanceof Promise ? result.catch(failed) : result;
+      } catch (error) {
+        return failed(error);
       }
     });
   };
@@ -179,6 +198,29 @@ export function registerIpcHandlers(ipc: IpcMainLike, deps: IpcDependencies): vo
   // No arguments: it pushes whatever the working pattern is right now.
   command(IpcChannel.showPatternOnProjector, () => store.dispatchPattern({ type: 'showPatternOnProjector' }));
   command(IpcChannel.hidePatternOnProjector, () => store.dispatchPattern({ type: 'hidePatternOnProjector' }));
+
+  command(IpcChannel.importImages, () => media.importImages());
+
+  command(IpcChannel.selectSingleImage, (mediaId) =>
+    mediaId === null || isValidMediaId(mediaId)
+      ? store.dispatchMedia({ type: 'selectSingleImage', mediaId })
+      : fail('Invalid image id.'),
+  );
+
+  command(IpcChannel.setSingleImageFit, (fit) =>
+    isFitMode(fit)
+      ? store.dispatchMedia({ type: 'setSingleImageFit', fit })
+      : fail('Fit mode must be fit or fill.'),
+  );
+
+  command(IpcChannel.removeImage, (mediaId) => {
+    if (!isValidMediaId(mediaId)) return fail('Invalid image id.');
+    const item = findMedia(store.getSnapshot().mediaLibrary, mediaId);
+    const result = store.dispatchMedia({ type: 'removeMedia', mediaId });
+    // The entry is gone; delete its file too. A file that cannot be deleted is only logged by the service.
+    if (result.ok && item) void media.deleteFile(item);
+    return result;
+  });
 
   command(IpcChannel.openPresentation, (displayId) => {
     if (typeof displayId !== 'number' || !Number.isSafeInteger(displayId)) {

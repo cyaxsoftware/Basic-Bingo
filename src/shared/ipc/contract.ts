@@ -14,6 +14,8 @@
  *  - Command handlers return {@link CommandResult}; they never throw across IPC.
  */
 import type { BallNumber, BingoLetter } from '../game/balls';
+import type { MediaItem } from '../media/media';
+import type { FitMode, SingleImageState } from '../media/mediaState';
 import type { GameState } from '../game/gameState';
 import type { ActivePattern, Pattern, PatternCells, ShownPattern } from '../patterns/pattern';
 import type { PresentationMode } from '../presentation/presentationMode';
@@ -78,6 +80,10 @@ export interface AppSnapshot {
   readonly activePattern: ActivePattern;
   /** Persisted: the pattern the operator last pushed to the projector (a snapshot, not the working copy), or null. */
   readonly shownPattern: ShownPattern | null;
+  /** Persisted: the imported images (metadata; the files are in the media folder, shown through bingo-media://). */
+  readonly mediaLibrary: readonly MediaItem[];
+  /** Persisted: which library image the Single Image mode shows, and how it fits the screen. */
+  readonly singleImage: SingleImageState;
   /** Runtime-only: what the Presentation window is doing. Never persisted. */
   readonly presentation: PresentationStatus;
   /** Runtime-only: currently connected displays. */
@@ -115,6 +121,10 @@ export const IpcChannel = {
   deletePattern: 'bingo:delete-pattern',
   showPatternOnProjector: 'bingo:show-pattern-on-projector',
   hidePatternOnProjector: 'bingo:hide-pattern-on-projector',
+  importImages: 'bingo:import-images',
+  selectSingleImage: 'bingo:select-single-image',
+  setSingleImageFit: 'bingo:set-single-image-fit',
+  removeImage: 'bingo:remove-image',
   listDisplays: 'bingo:list-displays',
   openPresentation: 'bingo:open-presentation',
   openPreview: 'bingo:open-preview',
@@ -166,6 +176,13 @@ export interface ControllerApi extends PresentationApi {
   showPatternOnProjector(): Promise<CommandResult>;
   /** Remove the pattern from the projector. */
   hidePatternOnProjector(): Promise<CommandResult>;
+  /** Open the file dialog and copy the chosen images into the media library. Resolves when it is done. */
+  importImages(): Promise<CommandResult>;
+  /** Show a library image in Single Image mode (null: none). */
+  selectSingleImage(mediaId: string | null): Promise<CommandResult>;
+  setSingleImageFit(fit: FitMode): Promise<CommandResult>;
+  /** Delete an image from the library and its stored file. */
+  removeImage(mediaId: string): Promise<CommandResult>;
   /** Re-reads displays from Windows and returns them (the snapshot updates too). */
   listDisplays(): Promise<readonly DisplayInfo[]>;
   openPresentation(displayId: number): Promise<CommandResult>;

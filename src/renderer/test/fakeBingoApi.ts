@@ -5,6 +5,7 @@
 import { vi } from 'vitest';
 import type { BingoLetter } from '../../shared/game/balls';
 import { reduceGame, type GameCommand } from '../../shared/game/gameState';
+import { reduceMedia, type FitMode, type MediaCommand } from '../../shared/media';
 import {
   blankActivePattern,
   createDefaultLibrary,
@@ -50,6 +51,8 @@ export function makeSnapshot(overrides: Partial<AppSnapshot> = {}): AppSnapshot 
     patternLibrary: createDefaultLibrary(),
     activePattern: blankActivePattern(),
     shownPattern: null,
+    mediaLibrary: [],
+    singleImage: { imageId: null, fit: 'fit' },
     presentation: { kind: 'closed' },
     displays: [LAPTOP, PROJECTOR],
     preferredDisplayId: null,
@@ -78,6 +81,17 @@ export function createFakeBingoApi(initial: AppSnapshot = makeSnapshot()): FakeB
       const game = reduceGame(snapshot.game, command);
       // Like the real store: a no-op command publishes nothing.
       if (game !== snapshot.game) publish({ game });
+      return ok;
+    } catch (error) {
+      return fail((error as Error).message);
+    }
+  };
+
+  const dispatchMedia = (command: MediaCommand): CommandResult => {
+    try {
+      const current = { library: snapshot.mediaLibrary, singleImage: snapshot.singleImage };
+      const next = reduceMedia(current, command);
+      if (next !== current) publish({ mediaLibrary: next.library, singleImage: next.singleImage });
       return ok;
     } catch (error) {
       return fail((error as Error).message);
@@ -154,6 +168,13 @@ export function createFakeBingoApi(initial: AppSnapshot = makeSnapshot()): FakeB
     deletePattern: vi.fn(async (patternId: string) => dispatchPattern({ type: 'deletePattern', patternId })),
     showPatternOnProjector: vi.fn(async () => dispatchPattern({ type: 'showPatternOnProjector' })),
     hidePatternOnProjector: vi.fn(async () => dispatchPattern({ type: 'hidePatternOnProjector' })),
+    // Importing needs the file dialog, which tests do not have: they put images in with api.push(makeSnapshot({...})).
+    importImages: vi.fn(async () => ok),
+    selectSingleImage: vi.fn(async (mediaId: string | null) =>
+      dispatchMedia({ type: 'selectSingleImage', mediaId }),
+    ),
+    setSingleImageFit: vi.fn(async (fit: FitMode) => dispatchMedia({ type: 'setSingleImageFit', fit })),
+    removeImage: vi.fn(async (mediaId: string) => dispatchMedia({ type: 'removeMedia', mediaId })),
     listDisplays: vi.fn(async () => snapshot.displays),
     openPresentation: vi.fn(async (displayId: number) => {
       const display = snapshot.displays.find((d) => d.id === displayId);

@@ -1,5 +1,6 @@
 import { useCallback, useMemo, useState } from 'react';
 import type { BingoLetter } from '../../shared/game/balls';
+import type { FitMode } from '../../shared/media';
 import type { CommandResult, ControllerApi } from '../../shared/ipc/contract';
 import type { PresentationMode } from '../../shared/presentation/presentationMode';
 
@@ -34,6 +35,11 @@ export interface ControllerActions {
   /** Push the working pattern to the projector (a snapshot; later edits wait for the next push). */
   showPatternOnProjector(): void;
   hidePatternOnProjector(): void;
+  /** Open the file dialog and add the chosen images to the library. */
+  importImages(): void;
+  selectSingleImage(mediaId: string | null): void;
+  setSingleImageFit(fit: FitMode): void;
+  removeImage(mediaId: string): void;
   openPresentation(displayId: number): void;
   openPreview(): void;
   closePresentation(): void;
@@ -105,6 +111,10 @@ export function useControllerActions(api: ControllerApi): ControllerActions {
       deletePattern: (patternId: string) => run(() => api.deletePattern(patternId)),
       showPatternOnProjector: () => run(() => api.showPatternOnProjector()),
       hidePatternOnProjector: () => run(() => api.hidePatternOnProjector()),
+      importImages: () => run(() => api.importImages()),
+      selectSingleImage: (mediaId: string | null) => run(() => api.selectSingleImage(mediaId)),
+      setSingleImageFit: (fit: FitMode) => run(() => api.setSingleImageFit(fit)),
+      removeImage: (mediaId: string) => run(() => api.removeImage(mediaId)),
       openPresentation: (displayId: number) => run(() => api.openPresentation(displayId)),
       openPreview: () => run(() => api.openPreview()),
       closePresentation: () => run(() => api.closePresentation()),

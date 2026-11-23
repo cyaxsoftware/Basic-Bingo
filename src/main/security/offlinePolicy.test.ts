@@ -23,3 +23,14 @@ describe('isRequestAllowed', () => {
     expect(isRequestAllowed('not a url', dev)).toBe(false);
   });
 });
+
+describe('the app image protocol', () => {
+  it('lets the windows load library images through bingo-media://, and only that custom scheme', () => {
+    const id = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
+    expect(isRequestAllowed(`bingo-media://${id}`, [])).toBe(true);
+    // Remote and look-alike addresses stay blocked.
+    expect(isRequestAllowed(`https://bingo-media.example.com/${id}`, [])).toBe(false);
+    expect(isRequestAllowed(`bingo-media-evil://${id}`, [])).toBe(false);
+    expect(isRequestAllowed(`http://${id}`, [])).toBe(false);
+  });
+});

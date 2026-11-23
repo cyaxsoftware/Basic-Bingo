@@ -1,0 +1,206 @@
+{
+  "schemaVersion": 4,
+  "savedAt": "2026-12-01T10:00:00.000Z",
+  "game": {
+    "calledNumbers": [3, 17, 9, 31, 52, 75],
+    "bingoBannerVisible": true,
+    "disabledRows": ["N"]
+  },
+  "presentation": {
+    "mode": "slideshow"
+  },
+  "patterns": {
+    "library": [
+      {
+        "id": "seed-four-corners",
+        "title": "Four Corners",
+        "cells": [
+          true,
+          false,
+          false,
+          false,
+          true,
+          false,
+          false,
+          false,
+          false,
+          false,
+          false,
+          false,
+          false,
+          false,
+          false,
+          false,
+          false,
+          false,
+          false,
+          false,
+          true,
+          false,
+          false,
+          false,
+          true
+        ],
+        "createdAt": "2026-01-01T00:00:00.000Z",
+        "updatedAt": "2026-01-01T00:00:00.000Z"
+      },
+      {
+        "id": "seed-big-l",
+        "title": "Big L",
+        "cells": [
+          true,
+          false,
+          false,
+          false,
+          false,
+          true,
+          false,
+          false,
+          false,
+          false,
+          true,
+          false,
+          false,
+          false,
+          false,
+          true,
+          false,
+          false,
+          false,
+          false,
+          true,
+          true,
+          true,
+          true,
+          true
+        ],
+        "createdAt": "2026-01-01T00:00:00.000Z",
+        "updatedAt": "2026-01-01T00:00:00.000Z"
+      },
+      {
+        "id": "mine-plus",
+        "title": "Plus Sign",
+        "cells": [
+          false,
+          false,
+          true,
+          false,
+          false,
+          false,
+          false,
+          true,
+          false,
+          false,
+          true,
+          true,
+          true,
+          true,
+          true,
+          false,
+          false,
+          true,
+          false,
+          false,
+          false,
+          false,
+          true,
+          false,
+          false
+        ],
+        "createdAt": "2026-11-22T20:00:00.000Z",
+        "updatedAt": "2026-11-22T20:00:00.000Z"
+      }
+    ],
+    "active": {
+      "sourcePatternId": "seed-big-l",
+      "title": "Big L plus",
+      "cells": [
+        true,
+        false,
+        false,
+        false,
+        false,
+        true,
+        false,
+        false,
+        false,
+        false,
+        true,
+        false,
+        true,
+        false,
+        false,
+        true,
+        false,
+        false,
+        false,
+        false,
+        true,
+        true,
+        true,
+        true,
+        true
+      ],
+      "editedFromLibrary": true
+    },
+    "shown": {
+      "title": "Big L",
+      "cells": [
+        true,
+        false,
+        false,
+        false,
+        false,
+        true,
+        false,
+        false,
+        false,
+        false,
+        true,
+        false,
+        false,
+        false,
+        false,
+        true,
+        false,
+        false,
+        false,
+        false,
+        true,
+        true,
+        true,
+        true,
+        true
+      ]
+    }
+  },
+  "settings": {
+    "preferredDisplayId": 2779098405
+  },
+  "media": {
+    "library": [
+      {
+        "id": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+        "name": "Legion Sponsors.png",
+        "format": "png",
+        "bytes": 48213,
+        "width": 1200,
+        "height": 600,
+        "addedAt": "2026-12-01T09:00:00.000Z"
+      },
+      {
+        "id": "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb",
+        "name": "Menu.jpg",
+        "format": "jpeg",
+        "bytes": 912345,
+        "width": 1920,
+        "height": 1080,
+        "addedAt": "2026-12-01T09:05:00.000Z"
+      }
+    ],
+    "singleImage": {
+      "imageId": "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb",
+      "fit": "fill"
+    }
+  }
+}
