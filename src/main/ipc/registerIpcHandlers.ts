@@ -250,6 +250,10 @@ export function registerIpcHandlers(ipc: IpcMainLike, deps: IpcDependencies): vo
     );
   }
 
+  command(IpcChannel.editSlideshow, (...args) =>
+    args.length === 1 ? store.dispatchSlideshow(args[0]) : fail('Expected one slideshow command.'),
+  );
+
   command(IpcChannel.openPresentation, (displayId) => {
     if (typeof displayId !== 'number' || !Number.isSafeInteger(displayId)) {
       return fail('Choose a display to project to.');

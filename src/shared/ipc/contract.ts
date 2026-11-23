@@ -20,6 +20,7 @@ import type { GameState } from '../game/gameState';
 import type { ActivePattern, Pattern, PatternCells, ShownPattern } from '../patterns/pattern';
 import type { PresentationMode } from '../presentation/presentationMode';
 import type { TimerState } from '../timer/timerState';
+import type { SlideshowCommand, SlideshowState } from '../media/slideshow';
 
 // ---------------------------------------------------------------------------
 // Snapshot (main -> renderers)
@@ -86,6 +87,7 @@ export interface AppSnapshot {
   /** Persisted: which library image the Single Image mode shows (each image has its own Fit / Fill). */
   readonly singleImage: SingleImageState;
   readonly timer: TimerState;
+  readonly slideshow: SlideshowState;
   /** Runtime-only: what the Presentation window is doing. Never persisted. */
   readonly presentation: PresentationStatus;
   /** Runtime-only: currently connected displays. */
@@ -133,6 +135,7 @@ export const IpcChannel = {
   pauseTimer: 'bingo:pause-timer',
   resumeTimer: 'bingo:resume-timer',
   resetTimer: 'bingo:reset-timer',
+  editSlideshow: 'bingo:edit-slideshow',
   listDisplays: 'bingo:list-displays',
   openPresentation: 'bingo:open-presentation',
   openPreview: 'bingo:open-preview',
@@ -198,6 +201,7 @@ export interface ControllerApi extends PresentationApi {
   pauseTimer(): Promise<CommandResult>;
   resumeTimer(): Promise<CommandResult>;
   resetTimer(): Promise<CommandResult>;
+  editSlideshow(command: SlideshowCommand): Promise<CommandResult>;
   /** Re-reads displays from Windows and returns them (the snapshot updates too). */
   listDisplays(): Promise<readonly DisplayInfo[]>;
   openPresentation(displayId: number): Promise<CommandResult>;

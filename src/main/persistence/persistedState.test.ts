@@ -10,6 +10,7 @@ import {
   reducePatterns,
 } from '../../shared/patterns';
 import { DEFAULT_TIMER } from '../../shared/timer/timerState';
+import { EMPTY_SLIDESHOW, type SlideshowState } from '../../shared/media/slideshow';
 import stateV1Fixture from './fixtures/state-v1.json';
 import stateV2Fixture from './fixtures/state-v2.json';
 import stateV3Fixture from './fixtures/state-v3.json';
@@ -100,6 +101,7 @@ const V1_FIXTURE_APP_DATA: AppData = {
   patterns: DEFAULT_PATTERNS,
   media: DEFAULT_MEDIA,
   timer: DEFAULT_TIMER,
+  slideshow: EMPTY_SLIDESHOW,
   settings: { preferredDisplayId: 2779098405 },
 };
 
@@ -109,6 +111,7 @@ const V2_FIXTURE_APP_DATA: AppData = {
   patterns: DEFAULT_PATTERNS,
   media: DEFAULT_MEDIA,
   timer: DEFAULT_TIMER,
+  slideshow: EMPTY_SLIDESHOW,
   settings: { preferredDisplayId: 2779098405 },
 };
 
@@ -167,6 +170,7 @@ describe('V1 save format is frozen (audit finding 5, #22)', () => {
           patterns: createDefaultPersistedState().patterns,
           media: createDefaultPersistedState().media,
           timer: DEFAULT_TIMER,
+          slideshow: EMPTY_SLIDESHOW,
           settings: { preferredDisplayId: null },
         },
       });
@@ -305,6 +309,7 @@ describe('V3 save format is frozen (released in milestone 3)', () => {
       schemaVersion: 4,
       media: { library: [], singleImage: { imageId: null } },
       timer: DEFAULT_TIMER,
+      slideshow: EMPTY_SLIDESHOW,
     });
   });
 
@@ -610,6 +615,7 @@ describe('parsePersistedState', () => {
         patterns: createDefaultPersistedState().patterns,
         media: createDefaultPersistedState().media,
         timer: DEFAULT_TIMER,
+        slideshow: EMPTY_SLIDESHOW,
         settings: { preferredDisplayId: 12 },
       },
     });
@@ -656,6 +662,67 @@ describe('parsePersistedState', () => {
 describe('V4 save format (milestone 4: the media library)', () => {
   const ID_A = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
   const ID_B = 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb';
+  const COLLECTION_ID = 'dddddddd-dddd-4ddd-8ddd-dddddddddddd';
+  const slideshow: SlideshowState = {
+    activeId: COLLECTION_ID,
+    collections: [
+      {
+        id: COLLECTION_ID,
+        name: 'Sponsors',
+        secondsPerSlide: 22,
+        fit: 'fill',
+        slides: [
+          { mediaId: ID_B, fit: 'fit' },
+          { mediaId: ID_A, fit: null },
+        ],
+      },
+    ],
+  };
+
+  it('restores slideshow order, active collection and fit preferences from disk', async () => {
+    const parsed = parsePersistedState(stateV4Fixture);
+    if (!parsed.ok) throw new Error(parsed.error);
+    expect(parsed.state.slideshow).toEqual(EMPTY_SLIDESHOW);
+    const dir = await mkdtemp(path.join(os.tmpdir(), 'bingo-slideshow-'));
+    try {
+      await new JsonStateRepository(dir).save(
+        toPersistedState({ ...fromPersistedState(parsed.state), slideshow }),
+      );
+      const loaded = await new JsonStateRepository(dir).load();
+      expect(loaded.source).toBe('primary');
+      expect(loaded.issues).toEqual([]);
+      expect(fromPersistedState(loaded.state).slideshow).toEqual(slideshow);
+    } finally {
+      await rm(dir, { recursive: true, force: true });
+    }
+  });
+
+  it('recovers damaged and dangling entries while preserving surviving slide order and game data', () => {
+    const [collection] = slideshow.collections;
+    const parsed = parsePersistedState({
+      ...stateV4Fixture,
+      slideshow: {
+        activeId: 'missing',
+        collections: [
+          {
+            ...collection,
+            slides: [
+              { mediaId: COLLECTION_ID, fit: 'fit' },
+              { mediaId: ID_B, fit: 'fit' },
+              { mediaId: ID_B, fit: 'fill' },
+              { mediaId: ID_A, fit: null },
+            ],
+          },
+          { ...collection, name: 'Duplicate' },
+          { ...collection, id: 'bad-id' },
+        ],
+      },
+    });
+    if (!parsed.ok) throw new Error(parsed.error);
+    expect(parsed.state.game).toEqual(stateV4Fixture.game);
+    expect(parsed.state.slideshow).toEqual({ ...slideshow, activeId: null });
+    expect(parsed.warnings).toHaveLength(2);
+  });
   const image = (id: string, overrides: Record<string, unknown> = {}) => ({
     id,
     name: 'Logo.png',
@@ -698,6 +765,7 @@ describe('V4 save format (milestone 4: the media library)', () => {
     expect({ ...written, savedAt: stateV4Fixture.savedAt }).toEqual({
       ...stateV4Fixture,
       timer: DEFAULT_TIMER,
+      slideshow: EMPTY_SLIDESHOW,
     });
   });
 

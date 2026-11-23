@@ -16,6 +16,12 @@ import {
 import { isPresentationMode, type PresentationMode } from '../../shared/presentation/presentationMode';
 import { DEFAULT_TIMER, reduceTimer, type TimerCommand } from '../../shared/timer/timerState';
 import {
+  EMPTY_SLIDESHOW,
+  reduceSlideshow,
+  removeImageFromSlideshows,
+  type SlideshowCommand,
+} from '../../shared/media/slideshow';
+import {
   fail,
   ok,
   type AppSnapshot,
@@ -55,6 +61,7 @@ export function makeSnapshot(overrides: Partial<AppSnapshot> = {}): AppSnapshot 
     mediaLibrary: [],
     singleImage: { imageId: null },
     timer: DEFAULT_TIMER,
+    slideshow: EMPTY_SLIDESHOW,
     presentation: { kind: 'closed' },
     displays: [LAPTOP, PROJECTOR],
     preferredDisplayId: null,
@@ -103,7 +110,15 @@ export function createFakeBingoApi(initial: AppSnapshot = makeSnapshot()): FakeB
     try {
       const current = { library: snapshot.mediaLibrary, singleImage: snapshot.singleImage };
       const next = reduceMedia(current, command);
-      if (next !== current) publish({ mediaLibrary: next.library, singleImage: next.singleImage });
+      if (next !== current)
+        publish({
+          mediaLibrary: next.library,
+          singleImage: next.singleImage,
+          slideshow:
+            command.type === 'removeMedia'
+              ? removeImageFromSlideshows(snapshot.slideshow, command.mediaId)
+              : snapshot.slideshow,
+        });
       return ok;
     } catch (error) {
       return fail((error as Error).message);
@@ -112,6 +127,20 @@ export function createFakeBingoApi(initial: AppSnapshot = makeSnapshot()): FakeB
 
   // Same shared rules as the real store; ids and time are predictable.
   let patternIds = 0;
+  let collectionIds = 0;
+  const dispatchSlideshow = (command: SlideshowCommand): CommandResult => {
+    try {
+      const slideshow = reduceSlideshow(snapshot.slideshow, command, {
+        library: snapshot.mediaLibrary,
+        newId: () => `00000000-0000-4000-8000-${String(++collectionIds).padStart(12, '0')}`,
+      });
+      if (slideshow !== snapshot.slideshow) publish({ slideshow });
+      return ok;
+    } catch (error) {
+      return fail((error as Error).message);
+    }
+  };
+
   const dispatchPattern = (command: PatternCommand): CommandResult => {
     try {
       const current = {
@@ -197,6 +226,7 @@ export function createFakeBingoApi(initial: AppSnapshot = makeSnapshot()): FakeB
     pauseTimer: vi.fn(async () => dispatchTimer({ type: 'pause' })),
     resumeTimer: vi.fn(async () => dispatchTimer({ type: 'resume' })),
     resetTimer: vi.fn(async () => dispatchTimer({ type: 'reset' })),
+    editSlideshow: vi.fn(async (command: SlideshowCommand) => dispatchSlideshow(command)),
     listDisplays: vi.fn(async () => snapshot.displays),
     openPresentation: vi.fn(async (displayId: number) => {
       const display = snapshot.displays.find((d) => d.id === displayId);

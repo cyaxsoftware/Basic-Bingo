@@ -93,6 +93,18 @@ Images the operator imports (PNG, JPEG, WebP, GIF, up to 20 MB each) are copied 
   ("Image unavailable" on the projector, "This image cannot be shown" in the Controller), never a broken-image
   icon, and the Controller gets a notice at startup.
 
+## Slideshow collections
+
+- `src/shared/media/slideshow.ts` owns collection rules. A collection stores a name, a slide interval,
+  a default Fit or Fill setting, and an ordered list of image IDs. Each image may appear once in a
+  collection and may override that collection's fit. The same image can belong to multiple collections.
+- The Controller's `editSlideshow` bridge method sends a typed command. The handler checks the sender
+  and arity, and `AppStore.dispatchSlideshow` applies the shared payload and state validation before
+  publishing or saving. Deleting an image from the library drops its slide references in the same snapshot.
+- V4 persists `slideshow` alongside media and timer settings. Earlier files start with no collections.
+  Recovery skips damaged collections and invalid slide references while preserving the order of the
+  surviving entries. A lost active collection clears the selection.
+
 ## Countdown timer
 
 - `src/shared/timer/timerState.ts` has the pure rules. A running timer has an epoch-millisecond deadline
@@ -151,7 +163,7 @@ if someone modified its page.
 `src/main/persistence/`:
 
 - `persistedState.ts`: the on-disk documents (`PersistedStateV1`, `V2` and `V3` are frozen; `PersistedStateV4`
-  adds the media library, Single Image choice and countdown timer, and stays open to M4 changes until M4 ships), zod
+  adds the media library, Single Image choice, slideshow collections and countdown timer, and stays open to M4 changes until M4 ships), zod
   validation, the migration table, and explicit conversion between the current document and
   `AppData` (the durable state the app uses). Documents never reference live domain types such as
   `GameState`, so growing the game model cannot change what an existing file means.

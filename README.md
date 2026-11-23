@@ -68,9 +68,10 @@ is remembered across restarts. Tapping a tab switches immediately; with a keyboa
 move between tabs and Enter or Space switches. Switching modes never changes the called numbers or the BINGO
 banner, and **New Game** leaves the mode alone.
 
-Only Game Board is built so far. The other three show a "Coming soon" screen on the projector and a short
-note in the Controller (the call summary and the BINGO button stay available), until their controls arrive
-in milestone 4. The ball grid is only shown in Game Board mode.
+Game Board contains the ball grid and game controls. Single Image displays a chosen library image,
+and Countdown shows the shared timer. The Break Slideshow tab manages named collections and their
+ordered slides. Choose an active collection, add images from the library, and set the interval and
+image fit. The projector shows "Coming soon" for Break Slideshow while playback is in development.
 
 ### BINGO called and starting a new game
 

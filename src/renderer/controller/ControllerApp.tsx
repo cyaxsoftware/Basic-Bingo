@@ -7,7 +7,6 @@ import { BallGrid } from './components/BallGrid';
 import { CallSummaryPanel } from './components/CallSummaryPanel';
 import { CountdownPanel } from './components/CountdownPanel';
 import { BingoBannerControl, NewGameControl } from './components/GameControls';
-import { ModePlaceholder } from './components/ModePlaceholder';
 import { modeTabId, ModeTabs } from './components/ModeTabs';
 import { NoticeArea } from './components/NoticeArea';
 import { PatternCard } from './components/PatternCard';
@@ -15,6 +14,7 @@ import { PatternWidget } from './components/PatternWidget';
 import { PatternsView } from './components/PatternsView';
 import { PresentationControls } from './components/PresentationControls';
 import { SingleImagePanel } from './components/SingleImagePanel';
+import { SlideshowPanel } from './components/SlideshowPanel';
 import styles from './ControllerApp.module.css';
 import { useControllerActions } from './useControllerActions';
 
@@ -148,7 +148,12 @@ export function ControllerApp({ api, store }: ControllerAppProps) {
               onReset={actions.resetTimer}
             />
           ) : (
-            <ModePlaceholder mode={mode} />
+            <SlideshowPanel
+              slideshow={snapshot.slideshow}
+              library={snapshot.mediaLibrary}
+              onEdit={actions.editSlideshow}
+              onImport={actions.importImages}
+            />
           )}
         </div>
       ) : (

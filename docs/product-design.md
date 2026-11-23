@@ -91,12 +91,17 @@ No internet connection, cloud database, user account, local HTTP server, or sepa
 ### 4.3 Break Slideshow
 - Create, rename, and delete **multiple collections** (e.g., Legion Sponsors, VFW Announcements, Scout Fundraiser).
 - Import images from local storage; app copies imported files to a managed application media folder so they remain available after the original USB/device is removed.
-- Each collection supports image ordering, removal from collection, and a configurable time per slide.
-- Images display in sequence and loop until manually stopped. Choose **Fit** (no cropping, may letterbox) or **Fill/Crop** per image or collection; default to Fit for sponsor logos.
+- The Break Slideshow tab creates, renames, deletes and selects the active collection. The first collection
+  becomes active automatically. Choose an active collection to edit its slides. Deleting the active
+  collection clears the selection and keeps its images in the library.
+- Add an image once per collection, move it up or down, or remove its slide. Each collection has a
+  configurable 1–300 second interval, defaulting to 10 seconds. Set **Fit** or **Fill/Crop** for the
+  whole collection and override it for individual slides. New collections default to Fit for sponsor logos.
+- Images will display in sequence and loop until the operator chooses another presentation mode.
 - A conspicuous break countdown is visible to the audience, with remaining minutes/seconds. Operator can set duration, start, pause/resume, and reset it. Countdown must be derived from an absolute timestamp while running to avoid drift.
 - At zero, replace the timer copy with **Time to Play!** and continue rotating slides. Do **not** automatically switch to the game board.
 - The countdown continues across mode changes and New Game. The timer controls are on the Countdown tab.
-  Break Slideshow uses the Coming soon placeholder until the slideshow slice adds the corner countdown.
+  Break Slideshow uses the Coming soon projector placeholder until playback and the corner countdown are built.
 - Handle empty collections gracefully with an operator-facing explanation and a clean presentation placeholder, never a broken image icon.
 
 ### 4.4 Single Image

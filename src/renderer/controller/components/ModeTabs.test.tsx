@@ -113,7 +113,7 @@ describe('mode tabs in the Controller', () => {
 
     const panel = screen.getByRole('tabpanel', { name: 'Break Slideshow' });
     expect(within(panel).getByRole('heading', { name: 'Break Slideshow' })).toBeInTheDocument();
-    expect(within(panel).getByText(/Your game is untouched/)).toBeInTheDocument();
+    expect(within(panel).getByRole('region', { name: 'Slideshow collections' })).toBeInTheDocument();
     expect(screen.queryByRole('group', { name: 'B row' })).not.toBeInTheDocument();
   });
 

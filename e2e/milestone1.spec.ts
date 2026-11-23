@@ -87,6 +87,7 @@ test('renderers are sandboxed and the Presentation bridge is read-only', { tag: 
     'dismissBingoBanner',
     'dismissNotice',
     'duplicatePattern',
+    'editSlideshow',
     'getSnapshot',
     'hidePatternOnProjector',
     'importImages',

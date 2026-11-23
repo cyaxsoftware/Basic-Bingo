@@ -25,6 +25,11 @@ import {
 import type { PresentationMode } from '../../shared/presentation/presentationMode';
 import { toPersistedState, type AppData } from '../persistence/persistedState';
 import { reduceMedia, type MediaCommand } from '../../shared/media';
+import {
+  reduceSlideshow,
+  removeImageFromSlideshows,
+  type SlideshowState,
+} from '../../shared/media/slideshow';
 import { reducePatterns, type PatternCommand } from '../../shared/patterns';
 import { reduceTimer, type TimerCommand, type TimerState } from '../../shared/timer/timerState';
 import type { StatePersister } from '../persistence/stateRepository';
@@ -74,6 +79,7 @@ export class AppStore {
       mediaLibrary: options.initialData.media.library,
       singleImage: options.initialData.media.singleImage,
       timer: options.initialData.timer,
+      slideshow: options.initialData.slideshow,
       presentation: { kind: 'closed' },
       displays: [],
       preferredDisplayId: options.initialData.settings.preferredDisplayId,
@@ -143,7 +149,28 @@ export class AppStore {
       return fail(error instanceof Error ? error.message : String(error));
     }
     if (next !== current) {
-      this.update({ mediaLibrary: next.library, singleImage: next.singleImage });
+      const slideshow =
+        command.type === 'removeMedia'
+          ? removeImageFromSlideshows(this.snapshot.slideshow, command.mediaId)
+          : this.snapshot.slideshow;
+      this.update({ mediaLibrary: next.library, singleImage: next.singleImage, slideshow });
+      this.persist();
+    }
+    return ok;
+  }
+
+  dispatchSlideshow(command: unknown): CommandResult {
+    let slideshow: SlideshowState;
+    try {
+      slideshow = reduceSlideshow(this.snapshot.slideshow, command, {
+        library: this.snapshot.mediaLibrary,
+        newId: this.newId,
+      });
+    } catch (error) {
+      return fail(error instanceof Error ? error.message : String(error));
+    }
+    if (slideshow !== this.snapshot.slideshow) {
+      this.update({ slideshow });
       this.persist();
     }
     return ok;
@@ -250,6 +277,7 @@ export class AppStore {
       },
       media: { library: this.snapshot.mediaLibrary, singleImage: this.snapshot.singleImage },
       timer: this.snapshot.timer,
+      slideshow: this.snapshot.slideshow,
       settings: { preferredDisplayId: this.snapshot.preferredDisplayId },
     };
   }

@@ -40,6 +40,14 @@ import {
   type PatternsState,
 } from '../../shared/patterns';
 import { isFitMode, isMediaItem, type FitMode, type ImageFormat, type MediaState } from '../../shared/media';
+import { isValidMediaId } from '../../shared/media/media';
+import {
+  collectionName,
+  EMPTY_SLIDESHOW,
+  slideshowFit,
+  slideSeconds,
+  type SlideshowState,
+} from '../../shared/media/slideshow';
 import { DEFAULT_PRESENTATION_MODE, type PresentationMode } from '../../shared/presentation/presentationMode';
 import {
   DEFAULT_TIMER,
@@ -186,6 +194,18 @@ export interface PersistedStateV4 extends Omit<PersistedStateV3, 'schemaVersion'
   readonly schemaVersion: 4;
   readonly media: PersistedMediaV4;
   readonly timer: PersistedTimerV4;
+  readonly slideshow: PersistedSlideshowV4;
+}
+
+interface PersistedSlideshowV4 {
+  readonly activeId: string | null;
+  readonly collections: readonly {
+    readonly id: string;
+    readonly name: string;
+    readonly secondsPerSlide: number;
+    readonly fit: 'fit' | 'fill';
+    readonly slides: readonly { readonly mediaId: string; readonly fit: 'fit' | 'fill' | null }[];
+  }[];
 }
 
 type PersistedTimerV4 = {
@@ -221,6 +241,7 @@ const PersistedStateV4Schema = z.object({
   // Checked entry by entry in normalizeMedia, so one damaged image cannot cost the game or the rest of the library.
   media: z.unknown(),
   timer: z.unknown().optional(),
+  slideshow: z.unknown().optional(),
   settings: z
     .object({
       preferredDisplayId: z.number().int().nullable().catch(null),
@@ -244,6 +265,7 @@ export interface AppData {
   /** The imported images and the Single Image choice. */
   readonly media: MediaState;
   readonly timer: TimerState;
+  readonly slideshow: SlideshowState;
   readonly settings: {
     readonly preferredDisplayId: number | null;
   };
@@ -256,6 +278,19 @@ function defaultPersistedPatterns(): PersistedStateV3['patterns'] {
 
 function defaultPersistedMedia(): PersistedMediaV4 {
   return { library: [], singleImage: { imageId: null } };
+}
+
+function toPersistedSlideshow(state: SlideshowState): PersistedSlideshowV4 {
+  return {
+    activeId: state.activeId,
+    collections: state.collections.map(({ id, name, secondsPerSlide, fit, slides }) => ({
+      id,
+      name,
+      secondsPerSlide,
+      fit,
+      slides: slides.map(({ mediaId, fit: slideFit }) => ({ mediaId, fit: slideFit })),
+    })),
+  };
 }
 
 function toPersistedTimer(timer: TimerState): PersistedTimerV4 {
@@ -315,6 +350,7 @@ export function createDefaultPersistedState(now: Date = new Date()): PersistedSt
     patterns: defaultPersistedPatterns(),
     media: defaultPersistedMedia(),
     timer: toPersistedTimer(DEFAULT_TIMER),
+    slideshow: toPersistedSlideshow(EMPTY_SLIDESHOW),
     settings: { preferredDisplayId: null },
   };
 }
@@ -338,6 +374,7 @@ export function toPersistedState(data: AppData, now: Date = new Date()): Persist
     patterns: toPersistedPatterns(data.patterns),
     media: toPersistedMedia(data.media),
     timer: toPersistedTimer(data.timer),
+    slideshow: toPersistedSlideshow(data.slideshow),
     settings: { preferredDisplayId: data.settings.preferredDisplayId },
   };
 }
@@ -364,6 +401,7 @@ export function fromPersistedState(document: PersistedState, now: Date = new Dat
       singleImage: { ...document.media.singleImage },
     },
     timer: reduceTimer({ ...document.timer }, { type: 'expire' }, now.getTime()),
+    slideshow: toPersistedSlideshow(document.slideshow),
     settings: { preferredDisplayId: document.settings.preferredDisplayId },
   };
 }
@@ -392,7 +430,13 @@ const MIGRATIONS: Record<number, (raw: Record<string, unknown>) => Record<string
   // migrated after that.)
   2: (raw) => ({ ...raw, schemaVersion: 3, patterns: defaultPersistedPatterns() }),
   // V3 -> V4: the media library and timer start with their defaults.
-  3: (raw) => ({ ...raw, schemaVersion: 4, media: defaultPersistedMedia(), timer: undefined }),
+  3: (raw) => ({
+    ...raw,
+    schemaVersion: 4,
+    media: defaultPersistedMedia(),
+    timer: undefined,
+    slideshow: undefined,
+  }),
 };
 
 export type ParseResult =
@@ -561,6 +605,58 @@ function isPositiveSafeInteger(value: unknown): value is number {
   return typeof value === 'number' && Number.isSafeInteger(value) && value > 0;
 }
 
+const savedCollection = z.object({
+  id: z.string().refine(isValidMediaId),
+  name: collectionName,
+  secondsPerSlide: slideSeconds,
+  fit: slideshowFit,
+  slides: z.array(z.unknown()),
+});
+const savedSlide = z.object({ mediaId: z.string(), fit: slideshowFit.nullable() });
+
+function normalizeSlideshow(
+  raw: unknown,
+  library: PersistedMediaV4['library'],
+  warnings: string[],
+): PersistedSlideshowV4 {
+  if (raw === undefined) return toPersistedSlideshow(EMPTY_SLIDESHOW);
+  if (!isRecord(raw) || !Array.isArray(raw['collections'])) {
+    warnings.push('Saved slideshow collections were damaged and cleared.');
+    return toPersistedSlideshow(EMPTY_SLIDESHOW);
+  }
+
+  const collections: PersistedSlideshowV4['collections'][number][] = [];
+  const libraryIds = new Set(library.map((image) => image.id));
+  const ids = new Set<string>();
+  let damaged = 0;
+  for (const entry of raw['collections']) {
+    const parsed = savedCollection.safeParse(entry);
+    if (!parsed.success || ids.has(parsed.data.id)) {
+      damaged += 1;
+      continue;
+    }
+    ids.add(parsed.data.id);
+    const slideIds = new Set<string>();
+    const slides: PersistedSlideshowV4['collections'][number]['slides'][number][] = [];
+    for (const rawSlide of parsed.data.slides) {
+      const slide = savedSlide.safeParse(rawSlide);
+      if (!slide.success || !libraryIds.has(slide.data.mediaId) || slideIds.has(slide.data.mediaId)) {
+        damaged += 1;
+        continue;
+      }
+      slideIds.add(slide.data.mediaId);
+      slides.push(slide.data);
+    }
+    collections.push({ ...parsed.data, slides });
+  }
+  const savedActiveId = raw['activeId'];
+  const activeId = typeof savedActiveId === 'string' && ids.has(savedActiveId) ? savedActiveId : null;
+  if (damaged > 0) warnings.push('Skipped damaged, duplicate or missing slideshow entries.');
+  if (activeId === null && savedActiveId !== null && savedActiveId !== undefined)
+    warnings.push('Cleared the unavailable active slideshow.');
+  return { collections, activeId };
+}
+
 function normalizeTimer(raw: unknown, warnings: string[]): PersistedTimerV4 {
   if (raw === undefined) return toPersistedTimer(DEFAULT_TIMER);
   if (isRecord(raw)) {
@@ -631,6 +727,7 @@ export function parsePersistedState(raw: unknown): ParseResult {
       patterns,
       media,
       timer: normalizeTimer(parsed.data.timer, warnings),
+      slideshow: normalizeSlideshow(parsed.data.slideshow, media.library, warnings),
       settings: { preferredDisplayId: parsed.data.settings.preferredDisplayId },
     },
   };

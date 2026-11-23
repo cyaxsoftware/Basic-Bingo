@@ -460,6 +460,68 @@ describe('image commands over IPC', () => {
   const invoke = (channel: string, ...args: unknown[]) =>
     ctx.ipc.invoke(CONTROLLER_ID, channel, ...args) as CommandResult;
 
+  describe('editSlideshow', () => {
+    const edit = (command: unknown) => invoke(IpcChannel.editSlideshow, command);
+
+    it('applies every collection operation and publishes library deletion atomically', () => {
+      expect(edit({ type: 'create', name: 'Sponsors' })).toEqual(ok);
+      const collectionId = ctx.store.getSnapshot().slideshow.activeId;
+      for (const command of [
+        { type: 'rename', name: 'Announcements' },
+        { type: 'select', collectionId: null },
+        { type: 'select' },
+        { type: 'setInterval', secondsPerSlide: 15 },
+        { type: 'setFit', fit: 'fill' },
+        { type: 'addSlide', mediaId: ID_A },
+        { type: 'addSlide', mediaId: ID_B },
+        { type: 'moveSlide', mediaId: ID_B, direction: 'up' },
+        { type: 'setSlideFit', mediaId: ID_B, fit: 'fit' },
+        { type: 'removeSlide', mediaId: ID_A },
+      ]) {
+        expect(edit({ collectionId, ...command })).toEqual(ok);
+      }
+      expect(ctx.store.getSnapshot().slideshow).toEqual({
+        activeId: collectionId,
+        collections: [
+          {
+            id: collectionId,
+            name: 'Announcements',
+            secondsPerSlide: 15,
+            fit: 'fill',
+            slides: [{ mediaId: ID_B, fit: 'fit' }],
+          },
+        ],
+      });
+      const published = vi.fn();
+      ctx.store.subscribe(published);
+      expect(invoke(IpcChannel.removeImage, ID_B)).toEqual(ok);
+      expect(published).toHaveBeenCalledExactlyOnceWith(ctx.store.getSnapshot());
+      expect(ctx.store.getSnapshot().mediaLibrary.map(({ id }) => id)).toEqual([ID_A]);
+      expect(ctx.store.getSnapshot().slideshow.collections[0]?.slides).toEqual([]);
+      expect(edit({ type: 'delete', collectionId })).toEqual(ok);
+      expect(ctx.store.getAppData().slideshow).toEqual({ activeId: null, collections: [] });
+    });
+
+    it('refuses non-Controller senders, wrong arity and malformed payloads', () => {
+      const before = ctx.store.getSnapshot();
+      const command = { type: 'create', name: 'Sponsors' };
+      for (const sender of [PRESENTATION_ID, STRANGER_ID]) {
+        expect(ctx.ipc.invoke(sender, IpcChannel.editSlideshow, command)).toMatchObject({ ok: false });
+      }
+      expect(invoke(IpcChannel.editSlideshow).ok).toBe(false);
+      expect(invoke(IpcChannel.editSlideshow, command, null).ok).toBe(false);
+      for (const invalid of [
+        null,
+        {},
+        { ...command, extra: true },
+        { type: 'setInterval', collectionId: ID_A, secondsPerSlide: '10' },
+      ]) {
+        expect(edit(invalid).ok).toBe(false);
+      }
+      expect(ctx.store.getSnapshot()).toBe(before);
+    });
+  });
+
   describe('importImages', () => {
     it('hands over to the media service from the Controller and returns its answer', async () => {
       const answer = await (ctx.ipc.invoke(CONTROLLER_ID, IpcChannel.importImages) as Promise<CommandResult>);

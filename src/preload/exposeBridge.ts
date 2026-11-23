@@ -56,6 +56,7 @@ export function createControllerApi(): ControllerApi {
     pauseTimer: () => ipcRenderer.invoke(IpcChannel.pauseTimer),
     resumeTimer: () => ipcRenderer.invoke(IpcChannel.resumeTimer),
     resetTimer: () => ipcRenderer.invoke(IpcChannel.resetTimer),
+    editSlideshow: (command) => ipcRenderer.invoke(IpcChannel.editSlideshow, command),
     listDisplays: () => ipcRenderer.invoke(IpcChannel.listDisplays),
     openPresentation: (displayId) => ipcRenderer.invoke(IpcChannel.openPresentation, displayId),
     openPreview: () => ipcRenderer.invoke(IpcChannel.openPreview),

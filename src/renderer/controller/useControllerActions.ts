@@ -1,6 +1,7 @@
 import { useCallback, useMemo, useState } from 'react';
 import type { BingoLetter } from '../../shared/game/balls';
 import type { FitMode } from '../../shared/media';
+import type { SlideshowCommand } from '../../shared/media/slideshow';
 import type { CommandResult, ControllerApi } from '../../shared/ipc/contract';
 import type { PresentationMode } from '../../shared/presentation/presentationMode';
 
@@ -47,6 +48,7 @@ export interface ControllerActions {
   pauseTimer(): void;
   resumeTimer(): void;
   resetTimer(): void;
+  editSlideshow(command: SlideshowCommand): void;
   openPresentation(displayId: number): void;
   openPreview(): void;
   closePresentation(): void;
@@ -128,6 +130,7 @@ export function useControllerActions(api: ControllerApi): ControllerActions {
       pauseTimer: () => run(() => api.pauseTimer()),
       resumeTimer: () => run(() => api.resumeTimer()),
       resetTimer: () => run(() => api.resetTimer()),
+      editSlideshow: (command: SlideshowCommand) => run(() => api.editSlideshow(command)),
       openPresentation: (displayId: number) => run(() => api.openPresentation(displayId)),
       openPreview: () => run(() => api.openPreview()),
       closePresentation: () => run(() => api.closePresentation()),
