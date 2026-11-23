@@ -131,12 +131,10 @@ export function SingleImagePanel({
           <h3 className={styles.eyebrow}>
             Image library · {library.length} {library.length === 1 ? 'image' : 'images'}
           </h3>
-          <div className={styles.libraryActions}>
-            {library.length > 0 ? <span className={styles.hint}>Tap an image to show it</span> : null}
-            <button type="button" className={styles.primary} onClick={onImport}>
-              Add images…
-            </button>
-          </div>
+          <button type="button" className={styles.primary} onClick={onImport}>
+            Add images…
+          </button>
+          {library.length > 0 ? <span className={styles.hint}>Tap an image to show it</span> : null}
         </div>
 
         {library.length === 0 ? (
