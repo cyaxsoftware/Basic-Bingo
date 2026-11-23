@@ -75,6 +75,14 @@
   color: var(--text);
 }
 
+/* Stop turns red while projecting (the border stays so the button does not change size). */
+.secondary[data-live='true'] {
+  border-color: var(--danger);
+  background: var(--danger);
+  color: var(--accent-text);
+  font-weight: 700;
+}
+
 .primary:disabled,
 .secondary:disabled {
   opacity: 0.45;

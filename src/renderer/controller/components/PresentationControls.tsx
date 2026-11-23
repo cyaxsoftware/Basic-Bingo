@@ -94,6 +94,8 @@ export function PresentationControls({
       <button
         type="button"
         className={styles.secondary}
+        // Red while the audience is looking at the projector, so it is obvious what Stop will end.
+        data-live={presentation.kind === 'projecting'}
         disabled={presentation.kind === 'closed'}
         onClick={onStop}
       >
