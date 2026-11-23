@@ -115,9 +115,6 @@ export function SingleImagePanel({
               : 'Choose an image to set how it fits the screen.'}
           </p>
 
-          <button type="button" className={styles.primary} onClick={onImport}>
-            Add images…
-          </button>
           <button
             type="button"
             className={styles.danger}
@@ -134,7 +131,12 @@ export function SingleImagePanel({
           <h3 className={styles.eyebrow}>
             Image library · {library.length} {library.length === 1 ? 'image' : 'images'}
           </h3>
-          {library.length > 0 ? <span className={styles.hint}>Tap an image to show it</span> : null}
+          <div className={styles.libraryActions}>
+            {library.length > 0 ? <span className={styles.hint}>Tap an image to show it</span> : null}
+            <button type="button" className={styles.primary} onClick={onImport}>
+              Add images…
+            </button>
+          </div>
         </div>
 
         {library.length === 0 ? (

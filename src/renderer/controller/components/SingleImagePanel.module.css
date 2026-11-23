@@ -177,10 +177,17 @@
 
 .libraryHead {
   display: flex;
-  align-items: baseline;
+  align-items: center;
   justify-content: space-between;
   gap: var(--space-3);
   margin-bottom: var(--space-2);
+}
+
+/* The hint and Add images sit at the right end of the library's header row. */
+.libraryActions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
 }
 
 .hint {
