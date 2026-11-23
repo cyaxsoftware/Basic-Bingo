@@ -232,7 +232,10 @@ async function expectLayoutFits(
   }
 
   // Every other control is touchable too: tabs, top bar, BINGO and New Game (never below 44).
-  const controls = await rects(controller.locator('button:not([aria-pressed]), select'));
+  // Only controls that are on screen: the games-played log hides itself (display: none) when it has no room.
+  const controls = await rects(
+    controller.locator('button:not([aria-pressed]), select').filter({ visible: true }),
+  );
   expect(controls.length, 'tabs, top bar buttons, BINGO and New Game').toBeGreaterThanOrEqual(8);
   for (const [index, control] of controls.entries()) {
     expect(control.height, `control ${index} height`).toBeGreaterThanOrEqual(44);

@@ -155,7 +155,16 @@ test('a running countdown keeps its original deadline across mode changes and a 
       await second.app.close();
     }
   } finally {
-    if (first.app.process().exitCode === null) await first.app.close();
+    // Only close it if it is still running: process() throws once the app has been closed, and that would hide
+    // the real failure.
+    const stillRunning = (() => {
+      try {
+        return first.app.process().exitCode === null;
+      } catch {
+        return false;
+      }
+    })();
+    if (stillRunning) await first.app.close();
   }
 });
 
@@ -328,9 +337,9 @@ test('slideshow holds a chosen slide, continues from it, and loops after the cou
     ).toEqual({ ok: true });
     await controller.getByRole('button', { name: 'Preview' }).click();
     const projector = await findPresentationWindow(app);
-    await controller.getByRole('tab', { name: 'Slideshow' }).click();
+    await controller.getByRole('tab', { name: 'Slideshow', exact: true }).click();
     const panel = controller.getByRole('region', { name: 'Slideshow collections' });
-    const stage = projector.getByRole('region', { name: 'Slideshow' });
+    const stage = projector.getByRole('region', { name: 'Slideshow', exact: true });
     await expect(stage.getByText('No slideshow selected')).toBeVisible();
     await panel.getByRole('button', { name: 'New collection' }).click();
     const create = panel.getByRole('form', { name: 'New collection' });
