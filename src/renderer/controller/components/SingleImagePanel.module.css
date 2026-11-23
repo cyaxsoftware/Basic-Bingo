@@ -23,7 +23,9 @@
 
 .show {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(240px, 340px);
+  /* The preview column stops where the preview does (720 px), so the controls sit right beside it. */
+  grid-template-columns: minmax(0, 720px) minmax(240px, 340px);
+  justify-content: start;
   gap: var(--space-4);
   align-items: start;
 }
