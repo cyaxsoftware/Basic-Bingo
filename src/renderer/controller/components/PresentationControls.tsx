@@ -102,8 +102,9 @@ export function PresentationControls({
         Preview
       </button>
 
-      {/* Only for closing the Preview window (or a window still opening); there is nothing to stop otherwise. */}
-      {presentation.kind === 'preview' || presentation.kind === 'opening' ? (
+      {/* Only for closing the Preview window. Not while 'opening': a Stop that appears next to Project for a moment
+          and then vanishes when the window goes live reads as a flicker (and Project/Preview can retry anyway). */}
+      {presentation.kind === 'preview' ? (
         <button type="button" className={styles.secondary} onClick={onStop}>
           Stop
         </button>

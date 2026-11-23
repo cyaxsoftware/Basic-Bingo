@@ -41,9 +41,10 @@ describe('PresentationControls Project / Stop toggle', () => {
     expect(stop()).not.toHaveAttribute('data-live');
   });
 
-  it('can still be stopped while the window is opening', () => {
+  it('does not flash a Stop while the window is still opening (Project stays until it is live)', () => {
     renderControls({ kind: 'opening' });
-    expect(stop()).toBeEnabled();
+    expect(project()).toBeEnabled();
+    expect(stop()).not.toBeInTheDocument();
   });
 
   it('still shows Stop while projecting if the display list has gone empty', () => {
