@@ -10,7 +10,7 @@
 .overlay {
   position: absolute;
   inset-inline-end: min(3cqw, 4cqh);
-  inset-block-end: min(3cqw, 4cqh);
+  inset-block-start: min(3cqw, 4cqh);
   padding: min(2cqw, 2cqh) min(3cqw, 3cqh);
   border-radius: var(--radius-md);
   background: var(--stage);

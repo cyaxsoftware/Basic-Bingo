@@ -74,7 +74,7 @@ ordered slides. Choose a collection and use **Add images…** to append files di
 thumbnails show slide order and let you set Original, Fit, or Fill for each image. **Start** loops
 from the first slide. Tap a thumbnail to hold it on screen, then press **Continue** to resume after a
 full interval. **Stop** leaves the current slide on screen. Open **Countdown settings** to control
-the shared timer and toggle its corner overlay during projection. When a visible timer reaches
+the shared timer and toggle its upper-right overlay during projection. When a visible timer reaches
 **Time to Play!**, slides keep rotating.
 
 ### BINGO called and starting a new game
