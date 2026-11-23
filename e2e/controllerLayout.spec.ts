@@ -108,11 +108,11 @@ const LONG_MONITOR_NAME = 'Epson EB-PU1008W Projector (Main Hall, Stage Left)';
 const LONG_DISPLAY_LABEL = `${LONG_MONITOR_NAME} — 1920×1080`;
 
 /**
- * Where things are, by size. From 1141 px the side column is, top to bottom: the Current Call widget, BINGO CALLED
- * and New Game directly under it; the column ends level with the ball board, and the projector controls are one
- * widget in the top bar. From 1440 x 780 the left rail holds the pattern widget (tappable cells); in a
- * wider-but-shorter or narrower window the pattern widget is a strip above the board. Below 1141 the compact
- * layout keeps New Game in the top bar and a small Pattern card.
+ * Where things are, by size. From 1141 px: BINGO CALLED tops the side column over the Current Call widget, which
+ * ends level with the ball board; the projector controls are one widget in the top bar. From 1440 x 780 the left
+ * rail holds New Game and the pattern widget (tappable cells); in a wider-but-shorter or narrower window New Game
+ * is in the top bar and the pattern widget is a strip above the board. Below 1141 the compact layout keeps New
+ * Game in the top bar and a small Pattern card.
  */
 async function expectArrangement(
   controller: Page,
@@ -136,26 +136,9 @@ async function expectArrangement(
   const [bingo] = await rects(controller.getByRole('button', { name: /BINGO CALLED|Dismiss BINGO/ }));
   const [first] = await rects(controller.getByRole('button', { name: /^B-1,/ }));
 
-  // The side column, top to bottom: Current Call, BINGO CALLED, then New Game directly under it, as wide as BINGO.
-  expect(bingo?.top ?? 0, 'BINGO CALLED is under the Current Call widget').toBeGreaterThanOrEqual(
-    (summary?.bottom ?? 99) - 1,
-  );
-  expect(newGame?.top ?? 0, 'New Game is under BINGO CALLED').toBeGreaterThanOrEqual(
-    (bingo?.bottom ?? 99) - 1,
-  );
-  expect(
-    Math.abs((newGame?.left ?? 0) - (bingo?.left ?? 99)),
-    'New Game lines up with BINGO CALLED',
-  ).toBeLessThan(3);
-  expect(
-    Math.abs((newGame?.width ?? 0) - (bingo?.width ?? 99)),
-    'New Game is as wide as BINGO CALLED',
-  ).toBeLessThan(3);
-  expect(newGame?.left ?? 0, 'New Game is in the side column, right of the board').toBeGreaterThanOrEqual(
-    board?.right ?? 0,
-  );
-
   if (rail) {
+    expect(newGame?.right ?? 0, 'New Game is in the left rail').toBeLessThanOrEqual(board?.left ?? 0);
+    expect(newGame?.top ?? 0, 'New Game is below the top bar').toBeGreaterThan(70);
     expect(pattern?.right ?? 0, 'the pattern widget is in the left rail').toBeLessThanOrEqual(
       board?.left ?? 0,
     );
@@ -166,6 +149,7 @@ async function expectArrangement(
       expect(cell.height, `pattern cell ${index} height`).toBeGreaterThanOrEqual(44);
     }
   } else {
+    expect(newGame?.top ?? 99, 'New Game is in the top bar').toBeLessThan(70);
     expect(pattern?.bottom ?? 99, 'the pattern strip is above the board').toBeLessThanOrEqual(
       (board?.top ?? 0) + 1,
     );
@@ -174,17 +158,20 @@ async function expectArrangement(
     );
   }
 
-  // The side column ends level with the board's bottom: the buttons are at the foot of the column, with the
-  // Current Call widget stretching down to them.
+  expect(bingo?.bottom ?? 0, 'BINGO CALLED is above the Current Call widget').toBeLessThanOrEqual(
+    (summary?.top ?? 0) + 1,
+  );
+  // The side column ends level with the board's bottom: the Current Call widget stretches down to it.
   expect(
-    Math.abs((newGame?.bottom ?? 0) - (board?.bottom ?? 99)),
-    'New Game ends level with the board',
+    Math.abs((summary?.bottom ?? 0) - (board?.bottom ?? 99)),
+    'call widget ends level with the board',
   ).toBeLessThanOrEqual(1);
-  // The Current Call widget is level with the top of the content beside it (the rail, or the strip, or the board).
+  // BINGO is level with the top of the content beside it (the rail, or the strip, or the board), or one status
+  // line lower while the banner is up ("BINGO banner enabled").
   const contentTop = rail ? (board?.top ?? 0) : (pattern?.top ?? 0);
-  const drop = (summary?.top ?? 0) - contentTop;
-  expect(drop, 'the Current Call widget sits at the top of the side column').toBeGreaterThanOrEqual(-1);
-  expect(drop, 'the Current Call widget sits at the top of the side column').toBeLessThanOrEqual(4);
+  const drop = (bingo?.top ?? 0) - contentTop;
+  expect(drop, 'BINGO sits at the top of the side column').toBeGreaterThanOrEqual(-1);
+  expect(drop, 'BINGO sits at the top of the side column').toBeLessThanOrEqual(32);
   // The board starts at the top of its area, not centered in spare height.
   expect((first?.top ?? 99) - (board?.top ?? 0), 'first row is at the top of the board').toBeLessThanOrEqual(
     16,

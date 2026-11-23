@@ -166,19 +166,8 @@ describe('PatternWidget in the left rail (from 1440 px)', () => {
   });
 });
 
-/** From 1141 px New Game is in the side column, after BINGO CALLED, and no longer in the top bar. */
-function expectNewGameUnderBingo() {
-  expect(within(screen.getByRole('banner')).queryByRole('button', { name: 'New Game' })).toBeNull();
-  const bingo = screen.getByRole('button', { name: 'BINGO CALLED' });
-  const newGame = screen.getByRole('button', { name: 'New Game' });
-  expect(bingo.compareDocumentPosition(newGame) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
-  const column = bingo.closest('[class*="side"]');
-  expect(column).not.toBeNull();
-  expect(newGame.closest('[class*="side"]')).toBe(column);
-}
-
 describe('PatternWidget as a strip (1141 to 1439 px, or wide but short)', () => {
-  it('shows the name, the saved-pattern choice and the buttons, with New Game under BINGO CALLED', async () => {
+  it('shows the name, the saved-pattern choice and the buttons, with New Game in the top bar', async () => {
     await renderController(1280);
     expect(within(widget()).getByRole('textbox', { name: /Pattern name/ })).toBeInTheDocument();
     expect(within(widget()).getByRole('combobox')).toBeInTheDocument();
@@ -186,13 +175,13 @@ describe('PatternWidget as a strip (1141 to 1439 px, or wide but short)', () => 
     // The squares are a picture here, not 25 tiny buttons.
     expect(within(widget()).queryByRole('button', { name: /^Row \d, column \d$/ })).toBeNull();
     expect(within(widget()).getByRole('img', { name: /squares/ })).toBeInTheDocument();
-    expectNewGameUnderBingo();
+    expect(within(screen.getByRole('banner')).getByRole('button', { name: 'New Game' })).toBeInTheDocument();
   });
 
   it('is also used in a wide window that is too short for the rail', async () => {
     await renderController(1600, 700);
     expect(within(widget()).queryByRole('button', { name: /^Row \d, column \d$/ })).toBeNull();
-    expectNewGameUnderBingo();
+    expect(within(screen.getByRole('banner')).getByRole('button', { name: 'New Game' })).toBeInTheDocument();
   });
 });
 

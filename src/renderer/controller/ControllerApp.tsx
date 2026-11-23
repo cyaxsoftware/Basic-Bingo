@@ -39,9 +39,9 @@ export function ControllerApp({ api, store }: ControllerAppProps) {
   const [view, setView] = useState<'game' | 'patterns'>('game');
   // Which pattern UI there is, and where New Game is, depends on the width: a control cannot be in two places
   // at once, so these choices are made in code. The widths match the breakpoints in ControllerApp.module.css.
-  //   from 1141 wide: New Game in the side column, under BINGO CALLED, which is under the Current Call widget
-  //     from 1440 wide and 780 high: a left rail with the pattern widget (the rail is about 560 px tall, so a
-  //       wide but short window gets the strip above the board instead)
+  //   from 1440 wide and 780 high: a left rail with New Game and the pattern widget (the rail is about 610 px
+  //     tall, so a wide but short window gets the strip instead)
+  //   from 1141 wide otherwise: New Game in the top bar and the pattern widget as a strip above the board
   //   below 1141 (the compact layout): New Game in the top bar and a small Pattern card
   const wideLayout = useMediaQuery('(min-width: 1141px)');
   const railLayout = useMediaQuery('(min-width: 1440px) and (min-height: 780px)');
@@ -139,7 +139,7 @@ export function ControllerApp({ api, store }: ControllerAppProps) {
               onStop={actions.closePresentation}
             />
           </div>
-          {wideLayout || !onBoard ? null : newGame}
+          {railLayout || !onBoard ? null : newGame}
           <ThemeSwitch theme={snapshot.controllerTheme} onChange={actions.setControllerTheme} />
         </header>
 
@@ -209,7 +209,12 @@ export function ControllerApp({ api, store }: ControllerAppProps) {
           </div>
         )}
 
-        {railLayout && onBoard && onGame ? <div className={styles.rail}>{widget('rail')}</div> : null}
+        {railLayout && onBoard ? (
+          <div className={styles.rail}>
+            {newGame}
+            {onGame ? widget('rail') : null}
+          </div>
+        ) : null}
 
         {wideLayout && !railLayout && onGame && onBoard ? (
           <div className={styles.strip}>{widget('strip')}</div>
@@ -218,11 +223,6 @@ export function ControllerApp({ api, store }: ControllerAppProps) {
         {/* Beside the board on wide windows; in the stacked layout its children go to their own grid areas. */}
         {onBoard ? (
           <div className={styles.side}>
-            {/* Current Call on top, then BINGO CALLED, then New Game (where there is a side column; the compact
-                layout keeps New Game in the top bar). The buttons end level with the bottom of the board. */}
-            <div className={styles.summary}>
-              <CallSummaryPanel calledNumbers={calledNumbers} />
-            </div>
             <div className={styles.bingo}>
               <BingoBannerControl
                 bannerVisible={bingoBannerVisible}
@@ -230,7 +230,9 @@ export function ControllerApp({ api, store }: ControllerAppProps) {
                 onDismiss={actions.dismissBingoBanner}
               />
             </div>
-            {wideLayout ? <div className={styles.newGame}>{newGame}</div> : null}
+            <div className={styles.summary}>
+              <CallSummaryPanel calledNumbers={calledNumbers} />
+            </div>
             {wideLayout || !onGame ? null : (
               <div className={styles.pattern}>
                 <PatternCard active={snapshot.activePattern} onOpen={() => setView('patterns')} />

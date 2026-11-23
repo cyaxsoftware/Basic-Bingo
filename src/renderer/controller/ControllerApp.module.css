@@ -7,10 +7,10 @@
  *    gets everything left. This is also the short-window layout: it keeps all 75
  *    balls at 44 px or more down to about 910 x 480 CSS px.
  *  - Two columns (from 1141 px): the ball board on the left, a side column on the
- *    right with the Current Call widget on top, then BINGO CALLED, then New Game. The
+ *    right with BINGO CALLED on top and the Current Call widget below it. The
  *    projector controls form one widget in the top-right corner of the window.
- *  - Three columns (from 1440 x 780 px): a left rail as well, with the pattern widget. Narrower
- *    or shorter windows have the widget as a strip above the board instead (the rail is about 560 px tall).
+ *  - Three columns (from 1440 x 780 px): a left rail as well, with New Game and the pattern widget. Narrower
+ *    or shorter windows have the widget as a strip above the board instead (the rail is about 610 px tall).
  *
  * The board's row is as tall as the board itself needs (five rows of at most --row-cap, plus
  * its padding) and no taller, so the board starts at the top of its area and the side column,
@@ -180,8 +180,8 @@
   grid-area: strip;
 }
 
-/* New Game fills its slot under BINGO CALLED; the dialog it opens is fixed-position and takes no room. */
-.newGame > button {
+/* New Game fills the rail; the dialog it opens is fixed-position and takes no room. */
+.rail > button:first-child {
   width: 100%;
 }
 
@@ -280,7 +280,6 @@
   }
 
   .bingo,
-  .newGame,
   .pattern {
     flex: none;
   }
