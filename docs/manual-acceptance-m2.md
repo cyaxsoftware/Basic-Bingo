@@ -30,7 +30,7 @@ Design doc §9 items, so nothing is left unchecked by accident.
 | Controller and projector fit at the target sizes                  | `controllerLayout.spec.ts`, `projectorLayout.spec.ts` |
 | Numeral contrast on every ball colour                             | `tokens.test.ts`                                      |
 | Restart **without Wi-Fi** (real offline)                          | **Manual: F below**                                   |
-| Restart recovers the **edited active pattern**                    | Milestone 3 (patterns do not exist yet)               |
+| Restart recovers the **edited active pattern**                    | `acceptance-m3.spec.ts`, `milestone3.spec.ts` (M3)    |
 | Touch feel, scaling, projector readability                        | **Manual: B, C, D, E, G below**                       |
 
 ## A. Setup
