@@ -1,0 +1,144 @@
+.panel {
+  display: grid;
+  grid-template-columns: minmax(0, 3fr) minmax(0, 2fr);
+  align-items: start;
+  gap: var(--space-6);
+  height: 100%;
+  min-height: 0;
+  padding: var(--space-6);
+  overflow-y: auto;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+}
+
+.controls {
+  display: grid;
+  gap: var(--space-6);
+  min-width: 0;
+}
+
+.readout {
+  display: grid;
+  justify-items: start;
+  gap: var(--space-1);
+}
+
+.time {
+  margin: 0;
+  font-size: clamp(3.5rem, 10vw, 8rem);
+  font-variant-numeric: tabular-nums;
+  font-weight: 800;
+  line-height: 1;
+}
+
+.status {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 1.1rem;
+}
+
+.actions,
+.presets,
+.custom {
+  display: flex;
+  align-items: end;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.duration {
+  display: grid;
+  gap: var(--space-2);
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.duration legend {
+  margin-bottom: var(--space-2);
+  padding: 0;
+  font-weight: 700;
+}
+
+.custom label,
+.message {
+  display: grid;
+  gap: var(--space-1);
+  font-weight: 600;
+}
+
+.custom input {
+  width: 6rem;
+}
+
+.panel button,
+.panel input {
+  min-height: var(--touch-min);
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--panel);
+  color: var(--text);
+  font: inherit;
+}
+
+.panel button {
+  font-weight: 700;
+}
+
+.actions button {
+  min-width: 6rem;
+}
+
+.panel .primary:not(:disabled) {
+  border-color: var(--accent);
+  background: var(--accent);
+  color: var(--accent-text);
+}
+
+.presets button[aria-pressed='true'] {
+  border-color: var(--accent);
+  background: var(--info-bg);
+  color: var(--accent);
+}
+
+.panel :disabled {
+  opacity: 0.5;
+}
+
+.panel fieldset:disabled {
+  opacity: 1;
+}
+
+.panel :focus-visible {
+  outline: 3px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.error {
+  margin: var(--space-1) 0 0;
+  color: var(--danger);
+}
+
+.preview {
+  display: grid;
+  gap: var(--space-2);
+  width: min(100%, 440px);
+  margin: 0;
+  font-weight: 700;
+}
+
+.previewStage {
+  display: flex;
+  aspect-ratio: 16 / 9;
+  overflow: hidden;
+  border-radius: var(--radius-sm);
+}
+
+@media (max-width: 760px) {
+  .panel {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}

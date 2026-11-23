@@ -14,6 +14,7 @@ import {
   type PatternCommand,
 } from '../../shared/patterns';
 import { isPresentationMode, type PresentationMode } from '../../shared/presentation/presentationMode';
+import { DEFAULT_TIMER, reduceTimer, type TimerCommand } from '../../shared/timer/timerState';
 import {
   fail,
   ok,
@@ -53,6 +54,7 @@ export function makeSnapshot(overrides: Partial<AppSnapshot> = {}): AppSnapshot 
     shownPattern: null,
     mediaLibrary: [],
     singleImage: { imageId: null },
+    timer: DEFAULT_TIMER,
     presentation: { kind: 'closed' },
     displays: [LAPTOP, PROJECTOR],
     preferredDisplayId: null,
@@ -81,6 +83,16 @@ export function createFakeBingoApi(initial: AppSnapshot = makeSnapshot()): FakeB
       const game = reduceGame(snapshot.game, command);
       // Like the real store: a no-op command publishes nothing.
       if (game !== snapshot.game) publish({ game });
+      return ok;
+    } catch (error) {
+      return fail((error as Error).message);
+    }
+  };
+
+  const dispatchTimer = (command: TimerCommand): CommandResult => {
+    try {
+      const timer = reduceTimer(snapshot.timer, command, Date.now());
+      if (timer !== snapshot.timer) publish({ timer });
       return ok;
     } catch (error) {
       return fail((error as Error).message);
@@ -177,6 +189,14 @@ export function createFakeBingoApi(initial: AppSnapshot = makeSnapshot()): FakeB
       dispatchMedia({ type: 'setImageFit', mediaId, fit }),
     ),
     removeImage: vi.fn(async (mediaId: string) => dispatchMedia({ type: 'removeMedia', mediaId })),
+    setTimerDuration: vi.fn(async (durationSeconds: number) =>
+      dispatchTimer({ type: 'setDuration', durationSeconds }),
+    ),
+    setCountdownMessage: vi.fn(async (message: string) => dispatchTimer({ type: 'setMessage', message })),
+    startTimer: vi.fn(async () => dispatchTimer({ type: 'start' })),
+    pauseTimer: vi.fn(async () => dispatchTimer({ type: 'pause' })),
+    resumeTimer: vi.fn(async () => dispatchTimer({ type: 'resume' })),
+    resetTimer: vi.fn(async () => dispatchTimer({ type: 'reset' })),
     listDisplays: vi.fn(async () => snapshot.displays),
     openPresentation: vi.fn(async (displayId: number) => {
       const display = snapshot.displays.find((d) => d.id === displayId);

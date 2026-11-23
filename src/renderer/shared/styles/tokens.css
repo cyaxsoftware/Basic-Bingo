@@ -17,6 +17,11 @@
   --bingo-banner-bg: #b91c1c;
   --bingo-banner-text: #ffffff;
 
+  /* The audience stage and its Controller preview use the same colors. */
+  --stage: #121417;
+  --stage-text: #f3f4f6;
+  --stage-muted: #9ca3af;
+
   --font-sans: 'Segoe UI', system-ui, -apple-system, sans-serif;
 
   --radius-sm: 6px;

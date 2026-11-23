@@ -9,6 +9,7 @@ import {
   isValidPatternId,
   reducePatterns,
 } from '../../shared/patterns';
+import { DEFAULT_TIMER } from '../../shared/timer/timerState';
 import stateV1Fixture from './fixtures/state-v1.json';
 import stateV2Fixture from './fixtures/state-v2.json';
 import stateV3Fixture from './fixtures/state-v3.json';
@@ -29,6 +30,56 @@ import {
 } from './persistedState';
 import { JsonStateRepository } from './stateRepository';
 
+describe('V4 countdown restoration', () => {
+  const targetAt = Date.parse('2026-11-22T12:00:00.000Z');
+  const running = { durationSeconds: 15, message: 'Doors open in…', status: 'running', targetAt } as const;
+
+  it('keeps a future target through a save and restores it as expired at or after the deadline', () => {
+    const written = toPersistedState(
+      { ...createDefaultAppData(), timer: running },
+      new Date(targetAt - 7000),
+    );
+    const parsed = parsePersistedState(written);
+    if (!parsed.ok) throw new Error(parsed.error);
+    expect(fromPersistedState(parsed.state, new Date(targetAt - 1)).timer).toEqual(running);
+    for (const now of [targetAt, targetAt + 1]) {
+      expect(fromPersistedState(parsed.state, new Date(now)).timer).toEqual({
+        durationSeconds: 15,
+        message: 'Doors open in…',
+        status: 'expired',
+      });
+    }
+  });
+
+  it('retains a paused remainder to the millisecond regardless of time away', () => {
+    const timer = {
+      durationSeconds: 15,
+      message: 'Doors open in…',
+      status: 'paused',
+      remainingMs: 7132,
+    } as const;
+    const parsed = parsePersistedState(toPersistedState({ ...createDefaultAppData(), timer }));
+    if (!parsed.ok) throw new Error(parsed.error);
+    expect(fromPersistedState(parsed.state, new Date(targetAt + 86_400_000)).timer).toEqual(timer);
+  });
+
+  it.each([
+    null,
+    'running',
+    { ...running, status: 'invalid' },
+    { ...running, targetAt: 'later' },
+    { ...running, durationSeconds: 0 },
+    { ...running, message: ' ' },
+    { ...running, status: 'paused', remainingMs: -1 },
+  ])('recovers damaged timer %j without losing the game', (timer) => {
+    const parsed = parsePersistedState({ ...stateV4Fixture, timer });
+    if (!parsed.ok) throw new Error(parsed.error);
+    expect(parsed.state.game).toEqual(stateV4Fixture.game);
+    expect(parsed.state.timer).toEqual(DEFAULT_TIMER);
+    expect(parsed.warnings).toEqual([expect.stringContaining('saved countdown was damaged')]);
+  });
+});
+
 const CENTER = 12;
 const CONTEXT = {
   now: '2026-11-22T12:00:00.000Z',
@@ -48,6 +99,7 @@ const V1_FIXTURE_APP_DATA: AppData = {
   presentation: { mode: 'gameBoard' },
   patterns: DEFAULT_PATTERNS,
   media: DEFAULT_MEDIA,
+  timer: DEFAULT_TIMER,
   settings: { preferredDisplayId: 2779098405 },
 };
 
@@ -56,6 +108,7 @@ const V2_FIXTURE_APP_DATA: AppData = {
   presentation: { mode: 'slideshow' },
   patterns: DEFAULT_PATTERNS,
   media: DEFAULT_MEDIA,
+  timer: DEFAULT_TIMER,
   settings: { preferredDisplayId: 2779098405 },
 };
 
@@ -113,6 +166,7 @@ describe('V1 save format is frozen (audit finding 5, #22)', () => {
           presentation: { mode: 'gameBoard' },
           patterns: createDefaultPersistedState().patterns,
           media: createDefaultPersistedState().media,
+          timer: DEFAULT_TIMER,
           settings: { preferredDisplayId: null },
         },
       });
@@ -250,6 +304,7 @@ describe('V3 save format is frozen (released in milestone 3)', () => {
       ...stateV3Fixture,
       schemaVersion: 4,
       media: { library: [], singleImage: { imageId: null } },
+      timer: DEFAULT_TIMER,
     });
   });
 
@@ -554,6 +609,7 @@ describe('parsePersistedState', () => {
         presentation: { mode: 'singleImage' },
         patterns: createDefaultPersistedState().patterns,
         media: createDefaultPersistedState().media,
+        timer: DEFAULT_TIMER,
         settings: { preferredDisplayId: 12 },
       },
     });
@@ -635,11 +691,14 @@ describe('V4 save format (milestone 4: the media library)', () => {
     expect(patterns.active.title).toBe('Big L plus');
   });
 
-  it('round-trips the V4 fixture exactly (apart from the save time)', () => {
+  it('round-trips the early V4 fixture, adding the default countdown', () => {
     const parsed = parsePersistedState(stateV4Fixture);
     if (!parsed.ok) throw new Error(parsed.error);
     const written = toPersistedState(fromPersistedState(parsed.state));
-    expect({ ...written, savedAt: stateV4Fixture.savedAt }).toEqual(stateV4Fixture);
+    expect({ ...written, savedAt: stateV4Fixture.savedAt }).toEqual({
+      ...stateV4Fixture,
+      timer: DEFAULT_TIMER,
+    });
   });
 
   it('loads the V4 fixture from disk through the repository', async () => {
@@ -650,7 +709,13 @@ describe('V4 save format (milestone 4: the media library)', () => {
       const loaded = await repo.load();
       expect(loaded.source).toBe('primary');
       expect(loaded.issues).toEqual([]);
-      expect(fromPersistedState(loaded.state).media.library).toHaveLength(2);
+      const restored = fromPersistedState(loaded.state);
+      expect(restored.media.library).toHaveLength(2);
+      expect(restored.timer).toEqual({
+        durationSeconds: 300,
+        message: 'Next Game Begins In…',
+        status: 'idle',
+      });
     } finally {
       await rm(dir, { recursive: true, force: true });
     }

@@ -1,5 +1,6 @@
 import { act, fireEvent, render, screen, within } from '@testing-library/react';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
+import { DEFAULT_TIMER } from '../../shared/timer/timerState';
 import { createSnapshotStore } from '../shared/snapshotStore';
 import { createFakeBingoApi, makeSnapshot } from '../test/fakeBingoApi';
 import { PresentationApp } from './PresentationApp';
@@ -47,14 +48,73 @@ describe('PresentationApp', () => {
     expect(screen.queryByText('Ready for first call')).not.toBeInTheDocument();
   });
 
-  it('shows a calm placeholder, not a blank screen, for modes that arrive in milestone 4', async () => {
-    const { api } = renderPresentation(makeSnapshot({ presentationMode: 'slideshow' }));
+  it('shows the Break Slideshow placeholder', async () => {
+    renderPresentation(makeSnapshot({ presentationMode: 'slideshow' }));
     expect(await screen.findByRole('heading', { name: 'Break Slideshow' })).toBeInTheDocument();
     expect(screen.getByText('Coming soon')).toBeInTheDocument();
     expect(screen.queryByLabelText('Bingo board')).not.toBeInTheDocument();
+  });
 
-    act(() => api.push(makeSnapshot({ revision: 2, presentationMode: 'countdown' })));
-    expect(screen.getByRole('heading', { name: 'Countdown' })).toBeInTheDocument();
+  describe('Countdown', () => {
+    it('shows the idle duration and message, with a read-only stage', async () => {
+      renderPresentation(makeSnapshot({ presentationMode: 'countdown' }));
+      const stage = within(await screen.findByRole('region', { name: 'Countdown' }));
+      expect(stage.getByText(DEFAULT_TIMER.message)).toBeInTheDocument();
+      expect(stage.getByRole('timer')).toHaveTextContent('05:00');
+      expect(stage.queryByText('Paused')).toBeNull();
+      expect(screen.queryAllByRole('button')).toHaveLength(0);
+      expect(document.querySelectorAll('input, select, textarea, a[href], [tabindex]')).toHaveLength(0);
+    });
+
+    it('holds the paused remainder and hides the timer on every other mode', async () => {
+      const timer = {
+        ...DEFAULT_TIMER,
+        message: 'Next round',
+        status: 'paused',
+        remainingMs: 59_801,
+      } as const;
+      const { api } = renderPresentation(makeSnapshot({ presentationMode: 'countdown', timer }));
+      expect(await screen.findByRole('timer')).toHaveTextContent('01:00');
+      expect(screen.getByText('Next round')).toBeInTheDocument();
+      expect(screen.getByText('Paused')).toBeInTheDocument();
+
+      for (const mode of ['gameBoard', 'singleImage', 'slideshow'] as const) {
+        act(() =>
+          api.push({ ...api.current(), revision: api.current().revision + 1, presentationMode: mode }),
+        );
+        expect(screen.queryByRole('timer')).toBeNull();
+      }
+      act(() =>
+        api.push({ ...api.current(), revision: api.current().revision + 1, presentationMode: 'countdown' }),
+      );
+      expect(screen.getByRole('timer')).toHaveTextContent('01:00');
+      expect(screen.getByText('Paused')).toBeInTheDocument();
+    });
+
+    it('ticks from the running target and shows Time to Play at zero and on later expired snapshots', async () => {
+      vi.useFakeTimers();
+      try {
+        const { api } = renderPresentation(
+          makeSnapshot({
+            presentationMode: 'countdown',
+            timer: { ...DEFAULT_TIMER, durationSeconds: 2, status: 'running', targetAt: Date.now() + 2000 },
+          }),
+        );
+        await act(async () => {});
+        expect(screen.getByRole('timer')).toHaveTextContent('00:02');
+        act(() => vi.advanceTimersByTime(1750));
+        expect(screen.getByRole('timer')).toHaveTextContent('00:01');
+        act(() => vi.advanceTimersByTime(250));
+        expect(screen.getByText('Time to Play!')).toBeInTheDocument();
+        expect(screen.queryByRole('timer')).toBeNull();
+        act(() =>
+          api.push({ ...api.current(), revision: 2, timer: { ...DEFAULT_TIMER, status: 'expired' } }),
+        );
+        expect(screen.getByText('Time to Play!')).toBeInTheDocument();
+      } finally {
+        vi.useRealTimers();
+      }
+    });
   });
 
   it('returns to the board with the game intact after a mode change', async () => {

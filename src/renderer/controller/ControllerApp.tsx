@@ -5,6 +5,7 @@ import { useMediaQuery } from '../shared/useMediaQuery';
 import { useSnapshotState } from '../shared/useSnapshotState';
 import { BallGrid } from './components/BallGrid';
 import { CallSummaryPanel } from './components/CallSummaryPanel';
+import { CountdownPanel } from './components/CountdownPanel';
 import { BingoBannerControl, NewGameControl } from './components/GameControls';
 import { ModePlaceholder } from './components/ModePlaceholder';
 import { modeTabId, ModeTabs } from './components/ModeTabs';
@@ -135,6 +136,16 @@ export function ControllerApp({ api, store }: ControllerAppProps) {
               onFit={actions.setImageFit}
               onImport={actions.importImages}
               onRemove={actions.removeImage}
+            />
+          ) : mode === 'countdown' ? (
+            <CountdownPanel
+              timer={snapshot.timer}
+              onDuration={actions.setTimerDuration}
+              onMessage={actions.setCountdownMessage}
+              onStart={actions.startTimer}
+              onPause={actions.pauseTimer}
+              onResume={actions.resumeTimer}
+              onReset={actions.resetTimer}
             />
           ) : (
             <ModePlaceholder mode={mode} />

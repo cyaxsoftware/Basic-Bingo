@@ -9,7 +9,14 @@ import { mkdir, rm, writeFile } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import { expect, test, type ElectronApplication, type Locator, type Page } from '@playwright/test';
-import { createUserDataDir, launchApp, removeUserDataDir, waitForPresentationWindow } from './appHarness';
+import type { PresentationApi } from '../src/shared/ipc/contract';
+import {
+  createUserDataDir,
+  findPresentationWindow,
+  launchApp,
+  removeUserDataDir,
+  waitForPresentationWindow,
+} from './appHarness';
 
 let userDataDir: string;
 let usbDir: string;
@@ -68,6 +75,89 @@ async function openSingleImageTab(controller: Page): Promise<Locator> {
   await controller.getByRole('tab', { name: 'Single Image' }).click();
   return controller.getByRole('region', { name: 'Single image' });
 }
+
+async function openCountdownTab(controller: Page): Promise<Locator> {
+  await controller.getByRole('tab', { name: 'Countdown' }).click();
+  return controller.getByRole('region', { name: 'Countdown controls' });
+}
+
+test('the countdown starts, holds while paused, resumes and shows Time to Play at zero', async () => {
+  const { app, controller } = await launchApp(userDataDir);
+  try {
+    const panel = await openCountdownTab(controller);
+    await panel.getByRole('spinbutton', { name: 'Minutes' }).fill('0');
+    await panel.getByRole('spinbutton', { name: 'Seconds' }).fill('7');
+    await panel.getByRole('button', { name: 'Set duration' }).click();
+    await controller.getByRole('button', { name: 'Preview' }).click();
+    const projector = await findPresentationWindow(app);
+    const stage = projector.getByRole('region', { name: 'Countdown' });
+    const readout = stage.getByRole('timer');
+    await expect(readout).toHaveText('00:07');
+    await panel.getByRole('button', { name: 'Start' }).click();
+    await expect(readout).toHaveText('00:06');
+    await panel.getByRole('button', { name: 'Pause' }).click();
+    await expect(stage.getByText('Paused')).toBeVisible();
+    const held = await readout.innerText();
+    // Observe a whole second without advancing the countdown while paused.
+    await new Promise((resolve) => setTimeout(resolve, 1100));
+    await expect(readout).toHaveText(held);
+    await panel.getByRole('button', { name: 'Resume' }).click();
+    await expect(stage.getByText('Paused')).toHaveCount(0);
+    await expect(stage.getByText('Time to Play!')).toBeVisible({ timeout: 10_000 });
+    await expect(panel.getByRole('status')).toHaveText("Time's up");
+    await expect(projector.getByRole('button')).toHaveCount(0);
+    await controller.getByRole('tab', { name: 'Game Board' }).click();
+    await expect(projector.getByText('Time to Play!')).toHaveCount(0);
+    await openCountdownTab(controller);
+    await expect(stage.getByText('Time to Play!')).toBeVisible();
+  } finally {
+    await app.close();
+  }
+});
+
+const readTimer = (page: Page) =>
+  page.evaluate(async () => {
+    const { bingo } = globalThis as unknown as { bingo: PresentationApi };
+    return (await bingo.getSnapshot()).timer;
+  });
+
+test('a running countdown keeps its original deadline across mode changes and a restart', async () => {
+  const first = await launchApp(userDataDir);
+  try {
+    const panel = await openCountdownTab(first.controller);
+    await panel.getByRole('button', { name: '2 min' }).click();
+    const message = panel.getByRole('textbox', { name: 'Countdown message' });
+    await message.fill('Next round');
+    await message.press('Enter');
+    await panel.getByRole('button', { name: 'Start' }).click();
+    await expect(panel.getByRole('status')).toHaveText('Running');
+    const running = await readTimer(first.controller);
+    expect(running).toMatchObject({ status: 'running', durationSeconds: 120, message: 'Next round' });
+    await first.controller.getByRole('button', { name: 'Preview' }).click();
+    const projector = await findPresentationWindow(first.app);
+    await expect(projector.getByText('Next round')).toBeVisible();
+    await first.controller.getByRole('tab', { name: 'Single Image' }).click();
+    await expect(projector.getByText('No image selected')).toBeVisible();
+    await expect(projector.getByRole('timer')).toHaveCount(0);
+    expect(await readTimer(projector)).toEqual(running);
+    await first.app.close();
+
+    const second = await launchApp(userDataDir);
+    try {
+      expect(await readTimer(second.controller)).toEqual(running);
+      const restored = await openCountdownTab(second.controller);
+      await expect(restored.getByRole('status')).toHaveText('Running');
+      await second.controller.getByRole('button', { name: 'Preview' }).click();
+      const resumed = await findPresentationWindow(second.app);
+      await expect(resumed.getByText('Next round')).toBeVisible();
+      await expect(resumed.getByRole('timer')).toBeVisible();
+    } finally {
+      await second.app.close();
+    }
+  } finally {
+    if (first.app.process().exitCode === null) await first.app.close();
+  }
+});
 
 test('an imported image is kept: it shows on the projector after the original is deleted and the app restarted', async () => {
   const source = path.join(usbDir, 'Legion Sponsors.png');

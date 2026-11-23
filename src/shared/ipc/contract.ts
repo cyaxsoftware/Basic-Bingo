@@ -19,6 +19,7 @@ import type { SingleImageState } from '../media/mediaState';
 import type { GameState } from '../game/gameState';
 import type { ActivePattern, Pattern, PatternCells, ShownPattern } from '../patterns/pattern';
 import type { PresentationMode } from '../presentation/presentationMode';
+import type { TimerState } from '../timer/timerState';
 
 // ---------------------------------------------------------------------------
 // Snapshot (main -> renderers)
@@ -84,6 +85,7 @@ export interface AppSnapshot {
   readonly mediaLibrary: readonly MediaItem[];
   /** Persisted: which library image the Single Image mode shows (each image has its own Fit / Fill). */
   readonly singleImage: SingleImageState;
+  readonly timer: TimerState;
   /** Runtime-only: what the Presentation window is doing. Never persisted. */
   readonly presentation: PresentationStatus;
   /** Runtime-only: currently connected displays. */
@@ -125,6 +127,12 @@ export const IpcChannel = {
   selectSingleImage: 'bingo:select-single-image',
   setImageFit: 'bingo:set-image-fit',
   removeImage: 'bingo:remove-image',
+  setTimerDuration: 'bingo:set-timer-duration',
+  setCountdownMessage: 'bingo:set-countdown-message',
+  startTimer: 'bingo:start-timer',
+  pauseTimer: 'bingo:pause-timer',
+  resumeTimer: 'bingo:resume-timer',
+  resetTimer: 'bingo:reset-timer',
   listDisplays: 'bingo:list-displays',
   openPresentation: 'bingo:open-presentation',
   openPreview: 'bingo:open-preview',
@@ -184,6 +192,12 @@ export interface ControllerApi extends PresentationApi {
   setImageFit(mediaId: string, fit: FitMode): Promise<CommandResult>;
   /** Delete an image from the library and its stored file. */
   removeImage(mediaId: string): Promise<CommandResult>;
+  setTimerDuration(durationSeconds: number): Promise<CommandResult>;
+  setCountdownMessage(message: string): Promise<CommandResult>;
+  startTimer(): Promise<CommandResult>;
+  pauseTimer(): Promise<CommandResult>;
+  resumeTimer(): Promise<CommandResult>;
+  resetTimer(): Promise<CommandResult>;
   /** Re-reads displays from Windows and returns them (the snapshot updates too). */
   listDisplays(): Promise<readonly DisplayInfo[]>;
   openPresentation(displayId: number): Promise<CommandResult>;

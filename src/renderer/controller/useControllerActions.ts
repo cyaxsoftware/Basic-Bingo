@@ -41,6 +41,12 @@ export interface ControllerActions {
   /** Set how one image meets the screen; each image keeps its own. */
   setImageFit(mediaId: string, fit: FitMode): void;
   removeImage(mediaId: string): void;
+  setTimerDuration(durationSeconds: number): void;
+  setCountdownMessage(message: string): void;
+  startTimer(): void;
+  pauseTimer(): void;
+  resumeTimer(): void;
+  resetTimer(): void;
   openPresentation(displayId: number): void;
   openPreview(): void;
   closePresentation(): void;
@@ -116,6 +122,12 @@ export function useControllerActions(api: ControllerApi): ControllerActions {
       selectSingleImage: (mediaId: string | null) => run(() => api.selectSingleImage(mediaId)),
       setImageFit: (mediaId: string, fit: FitMode) => run(() => api.setImageFit(mediaId, fit)),
       removeImage: (mediaId: string) => run(() => api.removeImage(mediaId)),
+      setTimerDuration: (durationSeconds: number) => run(() => api.setTimerDuration(durationSeconds)),
+      setCountdownMessage: (message: string) => run(() => api.setCountdownMessage(message)),
+      startTimer: () => run(() => api.startTimer()),
+      pauseTimer: () => run(() => api.pauseTimer()),
+      resumeTimer: () => run(() => api.resumeTimer()),
+      resetTimer: () => run(() => api.resetTimer()),
       openPresentation: (displayId: number) => run(() => api.openPresentation(displayId)),
       openPreview: () => run(() => api.openPreview()),
       closePresentation: () => run(() => api.closePresentation()),

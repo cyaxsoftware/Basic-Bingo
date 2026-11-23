@@ -49,8 +49,8 @@ Key rules:
 - **Game state is separate from display and runtime state.** `snapshot.game` and
   `snapshot.presentationMode` (which view the audience sees; `src/shared/presentation`) are persisted
   but independent: changing the mode never touches the game, and a new game leaves the mode alone.
-  `presentation` (window status), `displays` and `notices` are runtime-only. Future timers get their
-  own sections rather than being mixed into `game`.
+  `snapshot.timer` is persisted independently of the game and the selected mode.
+  `presentation` (window status), `displays` and `notices` are runtime-only.
 - **Patterns are pure rules in `src/shared/patterns`, applied by one reducer (`reducePatterns`).** The active pattern is a working COPY of a library
   template: selecting and editing change only the copy, and the library changes only on an explicit update or
   save-as-new. Every one of the 25 cells, the center included, is an ordinary editable cell (no free-space
@@ -92,6 +92,22 @@ Images the operator imports (PNG, JPEG, WebP, GIF, up to 20 MB each) are copied 
 - **Missing or damaged files:** a library image whose file cannot be loaded shows a plain placeholder
   ("Image unavailable" on the projector, "This image cannot be shown" in the Controller), never a broken-image
   icon, and the Controller gets a notice at startup.
+
+## Countdown timer
+
+- `src/shared/timer/timerState.ts` has the pure rules. A running timer has an epoch-millisecond deadline
+  (`targetAt`), and a paused timer stores its millisecond remainder. Start uses the full duration, resume
+  makes a deadline from the exact paused remainder, and reset returns to idle with the configured duration.
+- The Controller bridge exposes `setTimerDuration`, `setCountdownMessage`, `startTimer`, `pauseTimer`,
+  `resumeTimer` and `resetTimer`. IPC validates the sender and arguments. `AppStore.dispatchTimer` publishes
+  and saves each changed state, including expiration. New Game and mode switches leave the timer alone.
+- `src/main/timer/timerService.ts` schedules the deadline, cancels it on pause or reset, and dispatches
+  expiration when the deadline is reached. The service receives an injectable clock and scheduler.
+  Countdown renders from snapshots and samples the clock every 250 ms while running. Both windows round
+  remaining milliseconds up to the displayed second and share the dark stage content for the preview.
+- V4 saves include the timer settings and status. Older V4 saves load with an idle five-minute timer and
+  the default message. Invalid timer data falls back to those defaults with a notice. Loading a past
+  deadline restores the expired status, and a future deadline is scheduled as saved.
 
 ## Shared code boundaries
 
@@ -135,7 +151,7 @@ if someone modified its page.
 `src/main/persistence/`:
 
 - `persistedState.ts`: the on-disk documents (`PersistedStateV1`, `V2` and `V3` are frozen; `PersistedStateV4`
-  adds the media library and the Single Image choice and stays open to M4 changes until M4 ships), zod
+  adds the media library, Single Image choice and countdown timer, and stays open to M4 changes until M4 ships), zod
   validation, the migration table, and explicit conversion between the current document and
   `AppData` (the durable state the app uses). Documents never reference live domain types such as
   `GameState`, so growing the game model cannot change what an existing file means.
@@ -221,13 +237,15 @@ Example: `newGame` (added in milestone 2). Touch these files in order:
 6. **Test fake** — `src/renderer/test/fakeBingoApi.ts`: implement the method.
 7. **UI** — `src/renderer/controller/useControllerActions.ts` and a component.
 8. **E2E test** (if the operator would notice a regression) — `e2e/`.
-9. Run `npm run check` and `npm run test:e2e`.
+9. Run `npm run check`. Follow the end-to-end test policy in [AGENTS.md](../AGENTS.md).
 
 If the command changes **persisted** data, follow the steps at the top of `persistedState.ts`: add a new
 document version with its own game shape, a migration from the previous version, updated
 `toPersistedState` / `fromPersistedState`, and a fixture for the new version, while the existing
 `state-v*.json` tests keep passing. The compiler points at `fromPersistedState` as soon as `GameState`
 gains a required field.
+While the current document version is open for a milestone, extend it with backwards-compatible defaults
+as described in [Persistence](#persistence).
 
 ## Why these choices
 

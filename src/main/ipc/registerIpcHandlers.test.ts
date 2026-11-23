@@ -64,6 +64,61 @@ describe('registerIpcHandlers', () => {
     ctx = setup();
   });
 
+  describe('countdown commands', () => {
+    const invoke = (channel: string, ...args: unknown[]) =>
+      ctx.ipc.invoke(CONTROLLER_ID, channel, ...args) as CommandResult;
+
+    it('validates and applies the Controller commands through the store', () => {
+      expect(invoke(IpcChannel.setTimerDuration, 90)).toEqual(ok);
+      expect(invoke(IpcChannel.setCountdownMessage, ' Next round ')).toEqual(ok);
+      expect(invoke(IpcChannel.startTimer)).toEqual(ok);
+      expect(ctx.store.getSnapshot().timer).toMatchObject({
+        status: 'running',
+        durationSeconds: 90,
+        message: 'Next round',
+      });
+      expect(invoke(IpcChannel.setTimerDuration, 60).ok).toBe(false);
+      expect(invoke(IpcChannel.pauseTimer)).toEqual(ok);
+      expect(ctx.store.getSnapshot().timer.status).toBe('paused');
+      expect(invoke(IpcChannel.resumeTimer)).toEqual(ok);
+      expect(ctx.store.getSnapshot().timer.status).toBe('running');
+      expect(invoke(IpcChannel.resetTimer)).toEqual(ok);
+      expect(ctx.store.getSnapshot().timer).toEqual({
+        status: 'idle',
+        durationSeconds: 90,
+        message: 'Next round',
+      });
+    });
+
+    const commands = [
+      [IpcChannel.setTimerDuration, [60]],
+      [IpcChannel.setCountdownMessage, ['Next round']],
+      [IpcChannel.startTimer, []],
+      [IpcChannel.pauseTimer, []],
+      [IpcChannel.resumeTimer, []],
+      [IpcChannel.resetTimer, []],
+    ] as const;
+
+    it.each(commands)('%s is Controller-only and rejects unexpected arguments', (channel, args) => {
+      const before = ctx.store.getSnapshot();
+      for (const sender of [PRESENTATION_ID, STRANGER_ID]) {
+        expect(ctx.ipc.invoke(sender, channel, ...args)).toMatchObject({ ok: false });
+      }
+      expect(invoke(channel, ...args, null).ok).toBe(false);
+      expect(ctx.store.getSnapshot()).toBe(before);
+    });
+
+    it.each([undefined, null, '60', 0, 1.5, 6000, NaN, Infinity])('refuses duration %j', (value) => {
+      expect(invoke(IpcChannel.setTimerDuration, value).ok).toBe(false);
+      expect(ctx.store.getSnapshot().revision).toBe(1);
+    });
+
+    it.each([undefined, null, 42, '', ' ', 'x'.repeat(81)])('refuses message %j', (value) => {
+      expect(invoke(IpcChannel.setCountdownMessage, value).ok).toBe(false);
+      expect(ctx.store.getSnapshot().revision).toBe(1);
+    });
+  });
+
   it('can be registered twice without throwing', () => {
     expect(() => registerIpcHandlers(ctx.ipc, ctx.deps)).not.toThrow();
   });

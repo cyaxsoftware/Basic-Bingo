@@ -41,6 +41,13 @@ import {
 } from '../../shared/patterns';
 import { isFitMode, isMediaItem, type FitMode, type ImageFormat, type MediaState } from '../../shared/media';
 import { DEFAULT_PRESENTATION_MODE, type PresentationMode } from '../../shared/presentation/presentationMode';
+import {
+  DEFAULT_TIMER,
+  isCountdownMessage,
+  isTimerDuration,
+  reduceTimer,
+  type TimerState,
+} from '../../shared/timer/timerState';
 
 export const CURRENT_SCHEMA_VERSION = 4;
 
@@ -151,7 +158,7 @@ export interface PersistedStateV3 {
 }
 
 // ---------------------------------------------------------------------------
-// Version 4 document (milestone 4: the media library). Everything V3 had, plus `media`.
+// Version 4 document (milestone 4: media and countdown).
 // ---------------------------------------------------------------------------
 
 /** One imported image. The file's name is derived from `id` and `format`, never stored. */
@@ -178,7 +185,17 @@ export interface PersistedMediaV4 {
 export interface PersistedStateV4 extends Omit<PersistedStateV3, 'schemaVersion'> {
   readonly schemaVersion: 4;
   readonly media: PersistedMediaV4;
+  readonly timer: PersistedTimerV4;
 }
+
+type PersistedTimerV4 = {
+  readonly durationSeconds: number;
+  readonly message: string;
+} & (
+  | { readonly status: 'idle' | 'expired' }
+  | { readonly status: 'running'; readonly targetAt: number }
+  | { readonly status: 'paused'; readonly remainingMs: number }
+);
 
 // Lenient where safe (bad optional fields fall back to defaults), strict where
 // it matters (unknown version, missing game section). calledNumbers is
@@ -203,6 +220,7 @@ const PersistedStateV4Schema = z.object({
   patterns: z.unknown(),
   // Checked entry by entry in normalizeMedia, so one damaged image cannot cost the game or the rest of the library.
   media: z.unknown(),
+  timer: z.unknown().optional(),
   settings: z
     .object({
       preferredDisplayId: z.number().int().nullable().catch(null),
@@ -225,6 +243,7 @@ export interface AppData {
   readonly patterns: PatternsState;
   /** The imported images and the Single Image choice. */
   readonly media: MediaState;
+  readonly timer: TimerState;
   readonly settings: {
     readonly preferredDisplayId: number | null;
   };
@@ -237,6 +256,19 @@ function defaultPersistedPatterns(): PersistedStateV3['patterns'] {
 
 function defaultPersistedMedia(): PersistedMediaV4 {
   return { library: [], singleImage: { imageId: null } };
+}
+
+function toPersistedTimer(timer: TimerState): PersistedTimerV4 {
+  const { durationSeconds, message, status } = timer;
+  const settings = { durationSeconds, message };
+  switch (status) {
+    case 'running':
+      return { ...settings, status, targetAt: timer.targetAt };
+    case 'paused':
+      return { ...settings, status, remainingMs: timer.remainingMs };
+    default:
+      return { ...settings, status };
+  }
 }
 
 function toPersistedMedia(media: MediaState): PersistedMediaV4 {
@@ -282,6 +314,7 @@ export function createDefaultPersistedState(now: Date = new Date()): PersistedSt
     presentation: { mode: DEFAULT_PRESENTATION_MODE },
     patterns: defaultPersistedPatterns(),
     media: defaultPersistedMedia(),
+    timer: toPersistedTimer(DEFAULT_TIMER),
     settings: { preferredDisplayId: null },
   };
 }
@@ -304,12 +337,13 @@ export function toPersistedState(data: AppData, now: Date = new Date()): Persist
     presentation: { mode: data.presentation.mode },
     patterns: toPersistedPatterns(data.patterns),
     media: toPersistedMedia(data.media),
+    timer: toPersistedTimer(data.timer),
     settings: { preferredDisplayId: data.settings.preferredDisplayId },
   };
 }
 
 /** Convert a validated current document to app data. */
-export function fromPersistedState(document: PersistedState): AppData {
+export function fromPersistedState(document: PersistedState, now: Date = new Date()): AppData {
   const game: GameState = {
     calledNumbers: [...document.game.calledNumbers],
     bingoBannerVisible: document.game.bingoBannerVisible,
@@ -329,6 +363,7 @@ export function fromPersistedState(document: PersistedState): AppData {
       library: document.media.library.map((item) => ({ ...item })),
       singleImage: { ...document.media.singleImage },
     },
+    timer: reduceTimer({ ...document.timer }, { type: 'expire' }, now.getTime()),
     settings: { preferredDisplayId: document.settings.preferredDisplayId },
   };
 }
@@ -356,8 +391,8 @@ const MIGRATIONS: Record<number, (raw: Record<string, unknown>) => Record<string
   // working pattern. (These are what a fresh install gets; changing the seeds later only affects files
   // migrated after that.)
   2: (raw) => ({ ...raw, schemaVersion: 3, patterns: defaultPersistedPatterns() }),
-  // V3 -> V4: there was no media library, so a migrated game starts with none and no image chosen.
-  3: (raw) => ({ ...raw, schemaVersion: 4, media: defaultPersistedMedia() }),
+  // V3 -> V4: the media library and timer start with their defaults.
+  3: (raw) => ({ ...raw, schemaVersion: 4, media: defaultPersistedMedia(), timer: undefined }),
 };
 
 export type ParseResult =
@@ -522,6 +557,26 @@ function normalizeMedia(raw: unknown): { media: PersistedMediaV4; warnings: stri
   return { media: { library, singleImage: { imageId } }, warnings };
 }
 
+function isPositiveSafeInteger(value: unknown): value is number {
+  return typeof value === 'number' && Number.isSafeInteger(value) && value > 0;
+}
+
+function normalizeTimer(raw: unknown, warnings: string[]): PersistedTimerV4 {
+  if (raw === undefined) return toPersistedTimer(DEFAULT_TIMER);
+  if (isRecord(raw)) {
+    const { durationSeconds, message, status, targetAt, remainingMs } = raw;
+    if (isTimerDuration(durationSeconds) && isCountdownMessage(message)) {
+      const settings = { durationSeconds, message: message.trim() };
+      if (status === 'idle' || status === 'expired') return { ...settings, status };
+      if (status === 'running' && isPositiveSafeInteger(targetAt)) return { ...settings, status, targetAt };
+      if (status === 'paused' && isPositiveSafeInteger(remainingMs))
+        return { ...settings, status, remainingMs };
+    }
+  }
+  warnings.push('The saved countdown was damaged, so the default countdown was restored.');
+  return toPersistedTimer(DEFAULT_TIMER);
+}
+
 /** Validate and migrate parsed JSON into the current {@link PersistedState}. */
 export function parsePersistedState(raw: unknown): ParseResult {
   if (typeof raw !== 'object' || raw === null || Array.isArray(raw)) {
@@ -575,6 +630,7 @@ export function parsePersistedState(raw: unknown): ParseResult {
       presentation: { mode: parsed.data.presentation.mode },
       patterns,
       media,
+      timer: normalizeTimer(parsed.data.timer, warnings),
       settings: { preferredDisplayId: parsed.data.settings.preferredDisplayId },
     },
   };

@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import type { AppSnapshot } from '../../shared/ipc/contract';
+import { DEFAULT_TIMER } from '../../shared/timer/timerState';
 import {
   createDefaultAppData,
   fromPersistedState,
@@ -37,6 +38,34 @@ function createStore(calledNumbers: number[] = []) {
 const flushPromises = () => new Promise((resolve) => setTimeout(resolve, 0));
 
 describe('AppStore', () => {
+  it('publishes and persists timer changes independently of New Game and presentation mode', () => {
+    const { store, persister, snapshots } = createStore([3, 9]);
+    expect(store.getSnapshot().timer).toEqual(DEFAULT_TIMER);
+    expect(store.dispatchTimer({ type: 'setMessage', message: 'Next round' })).toEqual({ ok: true });
+    expect(store.dispatchTimer({ type: 'setDuration', durationSeconds: 42 })).toEqual({ ok: true });
+    expect(store.dispatchTimer({ type: 'start' })).toEqual({ ok: true });
+    const running = store.getSnapshot().timer;
+    expect(running).toMatchObject({ status: 'running', message: 'Next round', durationSeconds: 42 });
+    expect(snapshots.map((snapshot) => snapshot.revision)).toEqual([2, 3, 4]);
+    expect(persister.saved.at(-1)?.timer).toEqual(running);
+    expect(store.getSnapshot().game.calledNumbers).toEqual([3, 9]);
+    store.setPresentationMode('countdown');
+    store.dispatch({ type: 'newGame' });
+    expect(store.getSnapshot().timer).toBe(running);
+    expect(persister.saved.at(-1)?.timer).toEqual(running);
+    expect(store.getSnapshot().game.calledNumbers).toEqual([]);
+  });
+
+  it('does not publish or save rejected or unchanged timer commands', () => {
+    const { store, snapshots, persister } = createStore();
+    const initial = store.getSnapshot();
+    expect(store.dispatchTimer({ type: 'reset' })).toEqual({ ok: true });
+    expect(store.dispatchTimer({ type: 'setMessage', message: '' }).ok).toBe(false);
+    expect(store.getSnapshot()).toBe(initial);
+    expect(snapshots).toHaveLength(0);
+    expect(persister.saved).toHaveLength(0);
+  });
+
   it('starts from the loaded state with the presentation closed', () => {
     const { store } = createStore([3, 9]);
     const snapshot = store.getSnapshot();

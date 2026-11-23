@@ -1,0 +1,52 @@
+.stage {
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+  display: grid;
+  place-items: center;
+  container-type: size;
+  background: var(--stage);
+  color: var(--stage-text);
+  text-align: center;
+}
+
+.countdown {
+  display: grid;
+  justify-items: center;
+  gap: 2cqh;
+  width: 92cqw;
+  min-width: 0;
+}
+
+.message,
+.time,
+.paused,
+.expired {
+  margin: 0;
+}
+
+.message {
+  max-width: 100%;
+  overflow-wrap: anywhere;
+  font-size: min(4.8cqw, 7.4cqh);
+  line-height: 1.08;
+}
+
+.time {
+  font-size: min(28cqw, 37cqh);
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+  font-weight: 800;
+}
+
+.paused {
+  color: var(--stage-muted);
+  font-size: min(3.5cqw, 5.5cqh);
+  line-height: 1.2;
+}
+
+.expired {
+  font-size: min(11cqw, 20cqh);
+  font-weight: 800;
+  line-height: 1.1;
+}

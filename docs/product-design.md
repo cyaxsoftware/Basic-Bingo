@@ -95,7 +95,8 @@ No internet connection, cloud database, user account, local HTTP server, or sepa
 - Images display in sequence and loop until manually stopped. Choose **Fit** (no cropping, may letterbox) or **Fill/Crop** per image or collection; default to Fit for sponsor logos.
 - A conspicuous break countdown is visible to the audience, with remaining minutes/seconds. Operator can set duration, start, pause/resume, and reset it. Countdown must be derived from an absolute timestamp while running to avoid drift.
 - At zero, replace the timer copy with **Time to Play!** and continue rotating slides. Do **not** automatically switch to the game board.
-- Allow the operator to leave slideshow mode and resume it without corrupting game state. For MVP, explicitly define the timer lifecycle in code and UI rather than assuming toggling screen mode should restart it. **Proposed default:** the countdown continues across modes unless paused or reset by the operator; the timer is displayed only in the modes that call for it.
+- The countdown continues across mode changes and New Game. The timer controls are on the Countdown tab.
+  Break Slideshow uses the Coming soon placeholder until the slideshow slice adds the corner countdown.
 - Handle empty collections gracefully with an operator-facing explanation and a clean presentation placeholder, never a broken image icon.
 
 ### 4.4 Single Image
@@ -107,9 +108,16 @@ No internet connection, cloud database, user account, local HTTP server, or sepa
 - **The other tabs have the whole window:** New Game, the pattern widget, BINGO CALLED and the Current Call widget appear only on the Game Board tab. A raised BINGO banner is untouched and returns with the board.
 
 ### 4.5 Standalone Countdown
-- Optionally present a minimal countdown with a configurable simple message, such as “Next Game Begins In…”
-- At zero show “Time to Play!” and remain on the screen until manually switched.
-- Can share the same timer state as the Break Slideshow, not a second independent running timer.
+- The Countdown tab fills the Controller panel with a readout, status, Start, Pause, Resume, Reset and a projector preview.
+  The default is five minutes, with 1, 2, 5, 10, 15 and 20 minute presets and a custom range of 0:01–99:59.
+- Confirm a custom duration with **Set duration**. Pause or reset before changing the duration. Selecting a
+  different duration returns the timer to idle with the new full time. The countdown message defaults to
+  “Next Game Begins In…”. Enter or leaving the field saves a message of 1–80 characters after trimming whitespace.
+- The projector centers the message and large minute and second digits. Idle shows the full duration,
+  and paused shows the held time with a small “Paused” label. At zero, the projector shows only
+  “Time to Play!” until the operator switches modes or changes the timer’s status.
+- Countdown uses the shared timer planned for Break Slideshow. Game Board and Single Image omit it.
+  A running timer resumes at its original deadline after a restart and restores as expired if that deadline passed.
 
 ### 4.6 Projection actions
 - **Project:** list Windows displays, choose one, and open a borderless Presentation window on it. Remember selection for convenience but verify it on every launch.

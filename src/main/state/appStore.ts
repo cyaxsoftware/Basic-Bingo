@@ -26,6 +26,7 @@ import type { PresentationMode } from '../../shared/presentation/presentationMod
 import { toPersistedState, type AppData } from '../persistence/persistedState';
 import { reduceMedia, type MediaCommand } from '../../shared/media';
 import { reducePatterns, type PatternCommand } from '../../shared/patterns';
+import { reduceTimer, type TimerCommand, type TimerState } from '../../shared/timer/timerState';
 import type { StatePersister } from '../persistence/stateRepository';
 
 export type SnapshotListener = (snapshot: AppSnapshot) => void;
@@ -72,6 +73,7 @@ export class AppStore {
       shownPattern: options.initialData.patterns.shown,
       mediaLibrary: options.initialData.media.library,
       singleImage: options.initialData.media.singleImage,
+      timer: options.initialData.timer,
       presentation: { kind: 'closed' },
       displays: [],
       preferredDisplayId: options.initialData.settings.preferredDisplayId,
@@ -142,6 +144,20 @@ export class AppStore {
     }
     if (next !== current) {
       this.update({ mediaLibrary: next.library, singleImage: next.singleImage });
+      this.persist();
+    }
+    return ok;
+  }
+
+  dispatchTimer(command: TimerCommand): CommandResult {
+    let timer: TimerState;
+    try {
+      timer = reduceTimer(this.snapshot.timer, command, this.now().getTime());
+    } catch (error) {
+      return fail(error instanceof Error ? error.message : String(error));
+    }
+    if (timer !== this.snapshot.timer) {
+      this.update({ timer });
       this.persist();
     }
     return ok;
@@ -233,6 +249,7 @@ export class AppStore {
         shown: this.snapshot.shownPattern,
       },
       media: { library: this.snapshot.mediaLibrary, singleImage: this.snapshot.singleImage },
+      timer: this.snapshot.timer,
       settings: { preferredDisplayId: this.snapshot.preferredDisplayId },
     };
   }

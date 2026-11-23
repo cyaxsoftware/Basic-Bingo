@@ -5,6 +5,7 @@ import { BingoBanner } from './components/BingoBanner';
 import { CallDisplay } from './components/CallDisplay';
 import { findMedia } from '../../shared/media';
 import { ComingSoon } from './components/ComingSoon';
+import { CountdownView } from './components/CountdownView';
 import { ShownPattern } from './components/ShownPattern';
 import { SingleImageView } from './components/SingleImageView';
 import styles from './PresentationApp.module.css';
@@ -58,6 +59,8 @@ export function PresentationApp({ store }: PresentationAppProps) {
                 : (findMedia(snapshot.mediaLibrary, snapshot.singleImage.imageId) ?? null)
             }
           />
+        ) : snapshot.presentationMode === 'countdown' ? (
+          <CountdownView timer={snapshot.timer} />
         ) : (
           <ComingSoon mode={snapshot.presentationMode} />
         )}

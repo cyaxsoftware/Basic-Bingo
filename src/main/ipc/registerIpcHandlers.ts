@@ -14,6 +14,7 @@ import { isBingoLetter, isValidBall } from '../../shared/game/balls';
 import { findMedia, isFitMode, isValidMediaId, type MediaItem } from '../../shared/media';
 import { isValidPatternId } from '../../shared/patterns';
 import { isPresentationMode } from '../../shared/presentation/presentationMode';
+import { isCountdownMessage, isTimerDuration } from '../../shared/timer/timerState';
 import {
   fail,
   IpcChannel,
@@ -223,6 +224,31 @@ export function registerIpcHandlers(ipc: IpcMainLike, deps: IpcDependencies): vo
     if (result.ok && item) void media.deleteFile(item);
     return result;
   });
+
+  command(IpcChannel.setTimerDuration, (...args) => {
+    const [durationSeconds] = args;
+    return args.length === 1 && isTimerDuration(durationSeconds)
+      ? store.dispatchTimer({ type: 'setDuration', durationSeconds })
+      : fail('Choose a duration from 0:01 to 99:59.');
+  });
+
+  command(IpcChannel.setCountdownMessage, (...args) => {
+    const [message] = args;
+    return args.length === 1 && isCountdownMessage(message)
+      ? store.dispatchTimer({ type: 'setMessage', message })
+      : fail('Enter a countdown message between 1 and 80 characters.');
+  });
+
+  for (const [channel, type] of [
+    [IpcChannel.startTimer, 'start'],
+    [IpcChannel.pauseTimer, 'pause'],
+    [IpcChannel.resumeTimer, 'resume'],
+    [IpcChannel.resetTimer, 'reset'],
+  ] as const) {
+    command(channel, (...args) =>
+      args.length === 0 ? store.dispatchTimer({ type }) : fail('This timer command takes no arguments.'),
+    );
+  }
 
   command(IpcChannel.openPresentation, (displayId) => {
     if (typeof displayId !== 'number' || !Number.isSafeInteger(displayId)) {
