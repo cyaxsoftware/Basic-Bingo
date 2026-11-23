@@ -244,6 +244,16 @@ describe('AppStore', () => {
       expect(store.getSnapshot().gameLog.records[0]?.durationSeconds).toBe(120);
     });
 
+    it('ends the game when New Game is confirmed if BINGO CALLED was never pressed', () => {
+      const { store, wait } = createTimedStore();
+      store.dispatch({ type: 'toggleBall', ball: 5 });
+      wait(90);
+      store.dispatch({ type: 'toggleBall', ball: 17 });
+      wait(45);
+      store.dispatch({ type: 'newGame' });
+      expect(store.getSnapshot().gameLog.records[0]?.durationSeconds).toBe(135);
+    });
+
     it('does not log a New Game with no calls, and a rejected command changes nothing', () => {
       const { store } = createTimedStore();
       const before = store.getSnapshot().gameLog;

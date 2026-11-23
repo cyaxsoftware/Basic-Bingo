@@ -5,12 +5,7 @@ import type { GameRecord } from '../../../shared/games/gameLog';
 import { GamesPlayed } from './GamesPlayed';
 
 const NOW = Date.now();
-const record = (
-  id: string,
-  minutesAgo: number,
-  title: string,
-  durationSeconds: number | null,
-): GameRecord => ({
+const record = (id: string, minutesAgo: number, title: string, durationSeconds: number): GameRecord => ({
   id,
   startedAt: NOW - minutesAgo * 60_000,
   title,
@@ -19,7 +14,7 @@ const record = (
 
 const RECORDS = [
   record('a', 90, 'Four Corners', 754),
-  record('b', 60, 'Big L', null),
+  record('b', 60, 'Big L', 95),
   record('c', 30, 'Blackout', 3730),
 ];
 
@@ -42,16 +37,19 @@ describe('GamesPlayed', () => {
       ),
     ).toEqual([
       ['3', expect.any(String), 'Blackout', '1:02:10'],
-      ['2', expect.any(String), 'Big L', '—'],
+      ['2', expect.any(String), 'Big L', '1:35'],
       ['1', expect.any(String), 'Four Corners', '12:34'],
     ]);
   });
 
-  it('labels its columns, and explains the dash', () => {
+  it('labels its columns', () => {
     renderLog();
-    const headers = screen.getAllByRole('columnheader').map((h) => h.textContent);
-    expect(headers).toEqual(['#', 'First ball', 'Game', 'Duration']);
-    expect(screen.getByTitle('BINGO was not called in this game')).toHaveTextContent('—');
+    expect(screen.getAllByRole('columnheader').map((h) => h.textContent)).toEqual([
+      '#',
+      'First ball',
+      'Game',
+      'Duration',
+    ]);
   });
 
   it('shows the time of the first ball', () => {

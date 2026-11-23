@@ -74,11 +74,32 @@ describe('a game in the log', () => {
     expect(night.log.records[0]?.durationSeconds).toBe(60 + 30 + 20 + 100 + 60 + 90);
   });
 
-  it('records no duration when BINGO was never called', () => {
+  it('ends the game when New Game is confirmed if BINGO CALLED was never pressed', () => {
     const night = new Night().ball(5).ball(17, 30).newGame(10);
     expect(night.log.records).toEqual([
-      { id: 'game-1', startedAt: START, title: 'Four Corners', durationSeconds: null },
+      { id: 'game-1', startedAt: START, title: 'Four Corners', durationSeconds: 40 },
     ]);
+  });
+
+  it('also falls back to New Game when the only press was a false bingo and the real one was forgotten', () => {
+    const night = new Night();
+    night.ball(5).ball(17, 60).bingo(30); // false at 1:30, then play carries on
+    night.dismiss(20).ball(40, 100).ball(52, 60).newGame(90); // the real bingo was never pressed
+    expect(night.log.current.lastBingoAt).toBeNull();
+    expect(night.log.records[0]?.durationSeconds).toBe(60 + 30 + 20 + 100 + 60 + 90);
+  });
+
+  it('forgets a press once any call is made or taken back after it', () => {
+    const afterNewCall = new Night().ball(5).bingo(10).dismiss().ball(6, 5);
+    expect(afterNewCall.log.current.lastBingoAt).toBeNull();
+    const afterCorrection = new Night().ball(5).ball(6, 5).bingo(10).dismiss().ball(6, 5);
+    expect(afterCorrection.log.current.lastBingoAt).toBeNull();
+  });
+
+  it('keeps a press when only the banner is dismissed or a row is blacked out after it', () => {
+    const night = new Night().ball(5).bingo(10).dismiss(5);
+    night.do({ type: 'toggleRowDisabled', letter: 'B' });
+    expect(night.log.current.lastBingoAt).toBe(START + 10 * SECOND);
   });
 
   it('uses the pattern being played when the game ends', () => {
@@ -184,7 +205,7 @@ describe('normalizeGameLog', () => {
 
   it('keeps a good log and a good clock', () => {
     const { state, dropped } = normalizeGameLog({
-      records: [good, { ...good, id: 'b', durationSeconds: null }],
+      records: [good, { ...good, id: 'b', durationSeconds: 0 }],
       current: { firstBallAt: START, lastBingoAt: START + 5000 },
     });
     expect(dropped).toBe(0);
@@ -205,6 +226,7 @@ describe('normalizeGameLog', () => {
         { ...good, id: 'c', startedAt: 'noon' },
         { ...good, id: 'd', startedAt: -1 },
         { ...good, id: 'e', durationSeconds: 1.5 },
+        { ...good, id: 'n', durationSeconds: null },
         { ...good, id: 'f', durationSeconds: -3 },
         { ...good, id: 'g', title: 7 },
         { ...good },
@@ -213,7 +235,7 @@ describe('normalizeGameLog', () => {
       ],
     });
     expect(state.records.map((r) => r.id)).toEqual(['a']);
-    expect(dropped).toBe(9);
+    expect(dropped).toBe(10);
   });
 
   it('repairs a title and ignores a clock that makes no sense', () => {
@@ -239,7 +261,6 @@ describe('normalizeGameLog', () => {
 
 describe('formatting', () => {
   it.each([
-    [null, '—'],
     [0, '0:00'],
     [9, '0:09'],
     [872, '14:32'],

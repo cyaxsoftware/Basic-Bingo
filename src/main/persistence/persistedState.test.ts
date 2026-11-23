@@ -652,7 +652,7 @@ describe('parsePersistedState', () => {
     it('keeps the history and the game in progress through save and load', () => {
       const data = fromPersistedState(createDefaultPersistedState());
       const log = {
-        records: [entry, { ...entry, id: 'g2', durationSeconds: null }],
+        records: [entry, { ...entry, id: 'g2', durationSeconds: 0 }],
         current: { firstBallAt: 1_700_000_100_000, lastBingoAt: 1_700_000_160_000 },
       };
       const saved = toPersistedState({ ...data, gameLog: log });

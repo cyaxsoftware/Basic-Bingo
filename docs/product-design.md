@@ -183,11 +183,11 @@ The projector must reflect a single canonical state transaction. Both windows re
 The Game Board tab keeps a log of the night's games in a grid under the board: **game number, time of the first ball, pattern name, duration**, newest first.
 
 - A game **starts** when the first ball is called (the calls go from none to some). If every call is taken back the game is empty again and its clock starts over.
-- A game **ends** at the last **BINGO CALLED** press before New Game. A false bingo is one that play carried on past (balls were called afterwards), so it is simply not the last press and never counts. If BINGO CALLED was never pressed the duration shows "—".
-- **Duration** = first ball to that last BINGO CALLED press, as `m:ss` (`h:mm:ss` past an hour). **Game** is the working pattern's title when the game ended.
-- The game is **logged when New Game is pressed** with at least one ball called. New Game on an empty game logs nothing. The game in progress is not in the list.
+- A game **ends** at the last **BINGO CALLED** press, provided no ball was called (or taken back) after it. A press that play carried on past was a false bingo and is forgotten. If BINGO CALLED was never pressed, or the operator forgot it for the real bingo, the game ends when **New Game is confirmed**.
+- **Duration** = first ball to that end, as `m:ss` (`h:mm:ss` past an hour), so every logged game has one. **Game** is the working pattern's title when the game ended.
+- The game is **logged when New Game is confirmed** with at least one ball called. New Game on an empty game logs nothing. The game in progress is not in the list.
 - Stored by the main process, saved with the game and kept across restarts and New Game; the last 200 games are kept. **Clear history…** (with a confirmation) empties the list and nothing else.
-- Limit: a false bingo that is the very last BINGO CALLED press before New Game (play stopped without a real win) looks the same as a true one, so it is timed as the end of that game.
+- Limits: a false bingo that play simply stopped after (nothing called, then New Game) looks like a true one and is timed as the end of that game. Taking a ball back after a true BINGO CALLED press counts as play carrying on, so the game then ends at New Game instead.
 - The grid needs room: it appears where there are at least 150 px under the board (the wide layouts) and hides itself otherwise, for example on short or compact windows. Wide window sizes show it; the compact layout never does.
 
 ### 5.2a Blacked-out rows

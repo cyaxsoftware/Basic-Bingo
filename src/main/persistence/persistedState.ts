@@ -212,7 +212,7 @@ interface PersistedGameLogV4 {
     readonly id: string;
     readonly startedAt: number;
     readonly title: string;
-    readonly durationSeconds: number | null;
+    readonly durationSeconds: number;
   }[];
   readonly current: {
     readonly firstBallAt: number | null;

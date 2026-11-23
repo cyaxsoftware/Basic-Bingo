@@ -59,13 +59,7 @@ export function GamesPlayed({ records, onClear, now }: GamesPlayedProps) {
                   <td className={styles.name} title={record.title}>
                     {record.title}
                   </td>
-                  <td className={styles.duration}>
-                    {record.durationSeconds === null ? (
-                      <span title="BINGO was not called in this game">—</span>
-                    ) : (
-                      formatGameDuration(record.durationSeconds)
-                    )}
-                  </td>
+                  <td className={styles.duration}>{formatGameDuration(record.durationSeconds)}</td>
                 </tr>
               ))}
             </tbody>

@@ -6,9 +6,10 @@
  *
  * What counts as a game:
  *  - It starts when the first ball is called (the calls go from none to some).
- *  - It ends at the last BINGO CALLED press before New Game. A false bingo is one that play carried on past, so it
- *    is simply not the last press and never counts; no press at all means no duration.
- *  - It is logged when New Game is pressed with at least one ball called. An empty game is never logged.
+ *  - It ends at the last BINGO CALLED press, provided no ball was called (or taken back) after it. A press that
+ *    play carried on past was a false bingo and is forgotten. If the operator never pressed BINGO CALLED (or
+ *    forgot to for the real bingo) the game ends when New Game is confirmed.
+ *  - It is logged when New Game is confirmed with at least one ball called. An empty game is never logged.
  */
 import type { GameCommand, GameState } from '../game/gameState';
 
@@ -18,8 +19,8 @@ export interface GameRecord {
   readonly startedAt: number;
   /** The pattern being played when the game ended. */
   readonly title: string;
-  /** First ball to the last BINGO CALLED press, in whole seconds; null when BINGO was never called. */
-  readonly durationSeconds: number | null;
+  /** First ball to the end of the game (see above), in whole seconds. */
+  readonly durationSeconds: number;
 }
 
 /** The game in progress. Both are null while no ball is called. */
@@ -73,12 +74,13 @@ export function applyGameChange(log: GameLogState, change: GameChange): GameLogS
     if (before.calledNumbers.length === 0 || firstBallAt === null) {
       return clockIsEmpty(log.current) ? log : { ...log, current: NO_CLOCK };
     }
+    // No valid BINGO CALLED press means the operator forgot it, so the game ended when New Game was confirmed.
+    const endedAt = lastBingoAt ?? now;
     const record: GameRecord = {
       id: change.newId(),
       startedAt: firstBallAt,
       title: cleanTitle(change.patternTitle),
-      durationSeconds:
-        lastBingoAt === null ? null : Math.max(0, Math.round((lastBingoAt - firstBallAt) / 1000)),
+      durationSeconds: Math.max(0, Math.round((endedAt - firstBallAt) / 1000)),
     };
     return { records: [...log.records, record].slice(-MAX_GAME_RECORDS), current: NO_CLOCK };
   }
@@ -91,7 +93,10 @@ export function applyGameChange(log: GameLogState, change: GameChange): GameLogS
     if (before.calledNumbers.length === 0) {
       return { ...log, current: { firstBallAt: now, lastBingoAt: null } };
     }
-    return log;
+    // Play went on after a BINGO CALLED press, so that press was a false bingo (or the card was being corrected).
+    return log.current.lastBingoAt === null
+      ? log
+      : { ...log, current: { ...log.current, lastBingoAt: null } };
   }
 
   if (command.type === 'showBingoBanner') {
@@ -122,9 +127,7 @@ function toRecord(raw: unknown): GameRecord | null {
   if (typeof id !== 'string' || id === '' || id.length > 64) return null;
   if (!isEpoch(startedAt)) return null;
   if (typeof title !== 'string') return null;
-  if (durationSeconds !== null && !(isEpoch(durationSeconds) && Number.isInteger(durationSeconds))) {
-    return null;
-  }
+  if (!isEpoch(durationSeconds) || !Number.isInteger(durationSeconds)) return null;
   return { id, startedAt, title: cleanTitle(title), durationSeconds };
 }
 
@@ -174,9 +177,8 @@ export function normalizeGameLog(raw: unknown): NormalizedGameLog {
 // Showing it
 // ---------------------------------------------------------------------------
 
-/** "14:32", or "1:02:10" past an hour; an em dash when there is no duration. */
-export function formatGameDuration(seconds: number | null): string {
-  if (seconds === null) return '—';
+/** "14:32", or "1:02:10" past an hour. */
+export function formatGameDuration(seconds: number): string {
   const total = Math.max(0, Math.round(seconds));
   const hours = Math.floor(total / 3600);
   const minutes = Math.floor((total % 3600) / 60);

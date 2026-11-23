@@ -63,8 +63,9 @@ count. The current call has a dark ring around it on the grid.
 ### Games played
 
 Under the ball board (when the window has room) a grid lists each finished game: its number, the time the first
-ball was called, the pattern, and how long it took (first ball to the last BINGO CALLED press). A game is added
-when you press **New Game** after calling at least one ball. **Clear history…** empties the list.
+ball was called, the pattern, and how long it took (first ball to the last BINGO CALLED press; if that button
+was not pressed, to the moment New Game is confirmed). A game is added when you confirm **New Game** after
+calling at least one ball. **Clear history…** empties the list.
 
 ### Presentation modes
 
