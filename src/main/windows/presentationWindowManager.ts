@@ -66,7 +66,7 @@ export class PresentationWindowManager implements PresentationService {
     this.destroyWindow();
     const bounds = display.bounds;
     const window = this.deps.createWindow({
-      title: 'Offline Bingo Display — Presentation',
+      title: 'Basic Bingo — Presentation',
       ...bounds,
       frame: false,
       resizable: false,
@@ -95,7 +95,7 @@ export class PresentationWindowManager implements PresentationService {
     const width = Math.min(PREVIEW_SIZE.width, area.width);
     const height = Math.min(PREVIEW_SIZE.height, area.height);
     const window = this.deps.createWindow({
-      title: 'Offline Bingo Display — Presentation Preview',
+      title: 'Basic Bingo — Presentation Preview',
       x: Math.round(area.x + (area.width - width) / 2),
       y: Math.round(area.y + (area.height - height) / 2),
       width,

@@ -1,4 +1,4 @@
-# Offline Bingo Display
+# Basic Bingo
 ## Product Design Document (PDD)
 **Version:** 1.0 draft  
 **Target:** Windows 11 touchscreen laptops with an optional external display or projector  

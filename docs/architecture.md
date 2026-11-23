@@ -67,7 +67,7 @@ Key rules:
 ## Media library
 
 Images the operator imports (PNG, JPEG, WebP, GIF, up to 20 MB each) are copied into the app's own folder,
-`%APPDATA%\Offline Bingo Display\bingo-data\media\`, so they survive the original USB stick being removed.
+`%APPDATA%\Basic Bingo\bingo-data\media\`, so they survive the original USB stick being removed.
 
 - **Rules** (`src/shared/media`, pure): `MediaItem` metadata (id, original name, format, bytes, width, height,
   added date), and `reduceMedia` for the commands `addMedia` (internal: only the main process sends it),
@@ -198,7 +198,10 @@ if someone modified its page.
   damaged pattern is dropped with a warning, and a missing section restores the defaults, never costing the game.
   The media section is checked the same way: a damaged image entry is dropped, and a Single Image choice that no
   longer names a library image falls back to "none". An image entry stores no file path (see Media library below).
-- `stateRepository.ts`: storage under `%APPDATA%\Offline Bingo Display\bingo-data\`.
+- `stateRepository.ts`: storage under `%APPDATA%\Basic Bingo\bingo-data\`.
+- `dataDirectory.ts`: the app used to be called "Offline Bingo Display", and Electron names the data folder after the
+  app. On startup `migrateLegacyDataDirectory` copies the old `bingo-data` to the new location once (never over
+  existing data, and skipped when `BINGO_USER_DATA_DIR` redirects userData). The old folder stays as a backup.
 
 Save sequence: write `state.json.tmp` → `fsync` → **re-validate** the current `state.json` and copy it to
 `state.json.bak` only if it is valid (an invalid primary is moved aside instead, and the backup is left

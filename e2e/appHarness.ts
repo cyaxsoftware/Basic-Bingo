@@ -40,7 +40,7 @@ export async function launchApp(
   const controller = await app.firstWindow();
   // Present in every presentation mode (the ball grid is not: other modes show a placeholder), and
   // rendered only once the first snapshot has arrived, so the whole Controller is ready.
-  await controller.getByRole('heading', { name: 'Offline Bingo' }).waitFor();
+  await controller.getByRole('heading', { name: 'Basic Bingo' }).waitFor();
   return { app, controller };
 }
 

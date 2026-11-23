@@ -1,6 +1,6 @@
 {
-  "name": "offline-bingo-display",
-  "productName": "Offline Bingo Display",
+  "name": "basic-bingo",
+  "productName": "Basic Bingo",
   "version": "0.1.0",
   "private": true,
   "description": "Offline 75-ball bingo controller and projector display for Windows 11.",

@@ -17,21 +17,21 @@ import { FuseV1Options, FuseVersion } from '@electron/fuses';
 const config: ForgeConfig = {
   packagerConfig: {
     asar: true,
-    executableName: 'offline-bingo-display',
+    executableName: 'basic-bingo',
     // No extension: Packager appends .ico on Windows.
     icon: 'build/icon',
     appCopyright: 'Copyright © 2026 Cyax Software',
     win32metadata: {
       CompanyName: 'Cyax Software',
-      ProductName: 'Offline Bingo Display',
+      ProductName: 'Basic Bingo',
     },
   },
   rebuildConfig: {},
   makers: [
     // Windows installer (Setup.exe). Installs per-user, no admin rights required.
     new MakerSquirrel({
-      name: 'offline_bingo_display',
-      setupExe: 'OfflineBingoDisplaySetup.exe',
+      name: 'basic_bingo',
+      setupExe: 'BasicBingoSetup.exe',
       setupIcon: 'build/icon.ico',
     }),
     // Portable zip, useful for rehearsal machines where installing is not allowed.

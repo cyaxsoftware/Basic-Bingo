@@ -263,7 +263,7 @@ function CollectionEditor({
             onEdit({ type: 'delete', collectionId });
           }}
         >
-          <p>This removes the collection and its slides from Offline Bingo. Your original files are kept.</p>
+          <p>This removes the collection and its slides from Basic Bingo. Your original files are kept.</p>
         </ConfirmDialog>
       ) : null}
     </div>

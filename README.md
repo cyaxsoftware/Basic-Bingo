@@ -1,4 +1,4 @@
-# Offline Bingo Display
+# Basic Bingo
 
 A fully offline Windows 11 desktop app for running 75-ball bingo. A touchscreen laptop runs the
 **Controller**; a separate **Presentation** window shows the board to the audience on a second display
@@ -125,7 +125,7 @@ projecting on its own**, including after a restart.
 Every change is saved immediately to:
 
 ```
-%APPDATA%\Offline Bingo Display\bingo-data\state.json
+%APPDATA%\Basic Bingo\bingo-data\state.json
 ```
 
 alongside `state.json.bak` (the previous good save).
@@ -148,8 +148,8 @@ online dependency would fail loudly rather than quietly at a venue.
 
 1. Run `npm run make` (or `npm run package`) while online; this is the only step that needs a network.
 2. Turn off Wi-Fi and unplug Ethernet (or enable Airplane mode).
-3. Start the packaged app from `out\Offline Bingo Display-win32-x64\offline-bingo-display.exe`, or install
-   `out\make\squirrel.windows\x64\OfflineBingoDisplaySetup.exe`.
+3. Start the packaged app from `out\Basic Bingo-win32-x64\basic-bingo.exe`, or install
+   `out\make\squirrel.windows\x64\BasicBingoSetup.exe`.
 4. Call balls, Preview/Project, quit, reopen: everything works and the game is restored.
 
 `npm start` (development) also runs offline once `npm install` has completed; it uses a local Vite dev

@@ -93,7 +93,7 @@ export function ControllerApp({ api, store }: ControllerAppProps) {
   return (
     <main className={styles.layout} data-view={view} data-fill={fill} data-mode={onBoard ? 'board' : 'panel'}>
       <header className={styles.header}>
-        <h1 className={styles.title}>Offline Bingo</h1>
+        <h1 className={styles.title}>Basic Bingo</h1>
         <div className={styles.projector}>
           <PresentationControls
             displays={snapshot.displays}

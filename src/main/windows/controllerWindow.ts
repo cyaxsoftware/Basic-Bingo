@@ -16,7 +16,7 @@ export function createControllerWindow(): BrowserWindow {
   const height = Math.min(PREFERRED_SIZE.height, area.height);
 
   const window = createAppWindow('controller', {
-    title: 'Offline Bingo Display — Controller',
+    title: 'Basic Bingo — Controller',
     x: Math.round(area.x + (area.width - width) / 2),
     y: Math.round(area.y + (area.height - height) / 2),
     width,

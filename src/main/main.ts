@@ -19,7 +19,7 @@ import { confirmClose, describeUnsavedGame, type CloseChoice } from './app/close
 import { registerIpcHandlers } from './ipc/registerIpcHandlers';
 import { answerMediaRequest, ImageLibraryService } from './media/mediaService';
 import { PowerPointImportService } from './media/powerPointImport';
-import { resolveDataDirectory } from './persistence/dataDirectory';
+import { migrateLegacyDataDirectory, resolveDataDirectory } from './persistence/dataDirectory';
 import { fromPersistedState } from './persistence/persistedState';
 import { JsonStateRepository, type LoadResult } from './persistence/stateRepository';
 import { installOfflinePolicy } from './security/offlinePolicy';
@@ -32,7 +32,7 @@ import { PresentationWindowManager } from './windows/presentationWindowManager';
 import { devServerOrigins } from './windows/rendererEntry';
 import { WindowRegistry } from './windows/windowRegistry';
 
-const APP_USER_MODEL_ID = 'com.cyaxsoftware.offlinebingodisplay';
+const APP_USER_MODEL_ID = 'com.cyaxsoftware.basicbingo';
 
 // The windows show library images through bingo-media://<id>. A custom scheme has to be declared before the app is
 // ready; "standard" gives it normal URL handling (the id is the host) and "secure" lets pages use it like https.
@@ -85,6 +85,12 @@ async function startApplication(registry: WindowRegistry): Promise<void> {
   if (app.isPackaged) Menu.setApplicationMenu(null);
   installOfflinePolicy(session.defaultSession, app.isPackaged ? [] : devServerOrigins());
 
+  // Not when tests redirect userData: appData is the real one and must not leak into a throwaway folder.
+  if (!process.env['BINGO_USER_DATA_DIR']) {
+    await migrateLegacyDataDirectory(app.getPath('appData'), app.getPath('userData')).catch(
+      (error: unknown) => console.warn('[startup] could not carry over data from the old app folder:', error),
+    );
+  }
   const dataDirectory = resolveDataDirectory(app.getPath('userData'));
   const repository = new JsonStateRepository(dataDirectory);
   const loaded = await repository.load();
