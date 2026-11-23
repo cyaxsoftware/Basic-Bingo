@@ -1,7 +1,8 @@
 /*
- * Three columns: saved patterns, the editor, and the title and save actions. The editor's cell size is the
- * only thing that changes with the window: 48 px (never below the 44 px touch floor) in the stacked layout,
- * which has to fit a 910 x 480 window, and 64 px in the wide one.
+ * Three equal columns (thirds): saved patterns, the editor, and the title and save actions. The editor's cells
+ * are as big as their column allows, up to 48 px in the stacked layout (which has to fit a 910 x 480 window) and
+ * 64 px in the wide one, and never below the 44 px touch floor (a third of the narrowest window is wide enough
+ * for 44 px cells).
  */
 .view {
   --cell-size: 48px;
@@ -9,7 +10,7 @@
   display: grid;
   height: 100%;
   min-height: 0;
-  grid-template-columns: minmax(150px, 230px) auto minmax(210px, 1fr);
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: var(--space-4);
   padding: var(--space-3);
   border: 1px solid var(--border);
@@ -88,14 +89,21 @@
 .editor {
   display: flex;
   flex-direction: column;
+  min-width: 0;
+  /* The cells are sized from this column's own width (cqw below). */
+  container-type: inline-size;
 }
 
 .cells {
+  /* As big as the column allows (five cells and four 6 px gaps), but no bigger than --cell-size. */
+  --cell: min(var(--cell-size), calc((100cqw - 24px) / 5));
+
   display: grid;
-  grid-template-columns: repeat(5, var(--cell-size));
-  grid-auto-rows: var(--cell-size);
+  grid-template-columns: repeat(5, var(--cell));
+  grid-auto-rows: var(--cell);
   gap: 6px;
   align-content: start;
+  justify-content: center;
 }
 
 .cell {
