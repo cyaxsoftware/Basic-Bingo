@@ -35,6 +35,7 @@ export function createControllerApi(): ControllerApi {
     dismissBingoBanner: () => ipcRenderer.invoke(IpcChannel.dismissBingoBanner),
     newGame: () => ipcRenderer.invoke(IpcChannel.newGame),
     setPresentationMode: (mode) => ipcRenderer.invoke(IpcChannel.setPresentationMode, mode),
+    setControllerTheme: (theme) => ipcRenderer.invoke(IpcChannel.setControllerTheme, theme),
     selectPattern: (patternId) => ipcRenderer.invoke(IpcChannel.selectPattern, patternId),
     setActivePatternCell: (index, on) => ipcRenderer.invoke(IpcChannel.setActivePatternCell, index, on),
     renameActivePattern: (title) => ipcRenderer.invoke(IpcChannel.renameActivePattern, title),

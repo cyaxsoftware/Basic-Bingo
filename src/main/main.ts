@@ -122,7 +122,7 @@ async function startApplication(registry: WindowRegistry): Promise<void> {
   // Tell the operator now (not with a broken picture later) if an image's file has gone missing.
   void media.checkFiles();
 
-  const controller = createControllerWindow();
+  const controller = createControllerWindow(store.getSnapshot().controllerTheme);
   registry.setController(controller);
 
   const displays = new DisplayManager(screen, () => {

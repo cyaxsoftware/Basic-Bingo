@@ -52,7 +52,7 @@
   border: 1px solid var(--danger);
   border-radius: var(--radius-sm);
   background: var(--panel);
-  color: var(--danger);
+  color: var(--danger-fg);
   font-size: 1rem;
   font-weight: 600;
 }

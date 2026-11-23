@@ -23,6 +23,7 @@ import {
   type PresentationStatus,
 } from '../../shared/ipc/contract';
 import type { PresentationMode } from '../../shared/presentation/presentationMode';
+import type { ControllerTheme } from '../../shared/theme/controllerTheme';
 import { toPersistedState, type AppData } from '../persistence/persistedState';
 import { reduceMedia, type MediaCommand, type MediaItem } from '../../shared/media';
 import {
@@ -93,6 +94,7 @@ export class AppStore {
       presentation: { kind: 'closed' },
       displays: [],
       preferredDisplayId: options.initialData.settings.preferredDisplayId,
+      controllerTheme: options.initialData.settings.controllerTheme,
       persistence: { kind: 'ok' },
       notices: options.initialNotices ?? [],
     });
@@ -280,6 +282,13 @@ export class AppStore {
     this.persist();
   }
 
+  /** The Controller's colour theme. Saved, but never affects the game or the projector. */
+  setControllerTheme(theme: ControllerTheme): void {
+    if (theme === this.snapshot.controllerTheme) return;
+    this.update({ controllerTheme: theme });
+    this.persist();
+  }
+
   /** Add or replace (by id) an operator notice. */
   addNotice(notice: Notice): void {
     const others = this.snapshot.notices.filter((n) => n.id !== notice.id);
@@ -343,7 +352,10 @@ export class AppStore {
       media: { library: this.snapshot.mediaLibrary, singleImage: this.snapshot.singleImage },
       timer: this.snapshot.timer,
       slideshow: this.snapshot.slideshow,
-      settings: { preferredDisplayId: this.snapshot.preferredDisplayId },
+      settings: {
+        preferredDisplayId: this.snapshot.preferredDisplayId,
+        controllerTheme: this.snapshot.controllerTheme,
+      },
     };
   }
 

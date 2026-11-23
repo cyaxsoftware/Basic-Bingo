@@ -1,6 +1,6 @@
 import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it } from 'vitest';
 import { createSnapshotStore } from '../shared/snapshotStore';
 import { createFakeBingoApi, LAPTOP, makeSnapshot, PROJECTOR } from '../test/fakeBingoApi';
 import { ControllerApp } from './ControllerApp';
@@ -15,6 +15,10 @@ function renderController(snapshot = makeSnapshot()) {
 const tap = (name: RegExp) => userEvent.click(screen.getByRole('button', { name }));
 
 describe('ControllerApp', () => {
+  afterEach(() => {
+    delete document.documentElement.dataset['theme'];
+  });
+
   it('runs the milestone 1 call sequence end to end', async () => {
     const api = renderController();
     await screen.findByRole('group', { name: 'B row' });
@@ -54,6 +58,39 @@ describe('ControllerApp', () => {
     await userEvent.click(screen.getByRole('button', { name: 'Preview' }));
     expect(api.openPreview).toHaveBeenCalled();
     expect(await screen.findByRole('status')).toHaveTextContent('Preview window open');
+  });
+
+  it('switches the Controller between light and dark and applies the saved theme', async () => {
+    const api = renderController();
+    const toggle = await screen.findByRole('switch', { name: 'Dark mode' });
+    expect(document.documentElement.dataset['theme']).toBe('light');
+
+    await userEvent.click(toggle);
+    expect(api.setControllerTheme).toHaveBeenCalledWith('dark');
+    expect(api.current().controllerTheme).toBe('dark');
+    expect(await screen.findByRole('switch', { name: 'Dark mode' })).toHaveAttribute('aria-checked', 'true');
+    expect(document.documentElement.dataset['theme']).toBe('dark');
+
+    await userEvent.click(screen.getByRole('switch', { name: 'Dark mode' }));
+    expect(api.setControllerTheme).toHaveBeenLastCalledWith('light');
+    expect(document.documentElement.dataset['theme']).toBe('light');
+  });
+
+  it('opens in the theme that was saved', async () => {
+    renderController(makeSnapshot({ controllerTheme: 'dark' }));
+    expect(await screen.findByRole('switch', { name: 'Dark mode' })).toHaveAttribute('aria-checked', 'true');
+    expect(document.documentElement.dataset['theme']).toBe('dark');
+  });
+
+  it('changing the theme leaves the game and the projector alone', async () => {
+    const api = renderController();
+    await screen.findByRole('group', { name: 'B row' });
+    await tap(/^B-3,/);
+    const { game, presentation, presentationMode } = api.current();
+    await userEvent.click(screen.getByRole('switch', { name: 'Dark mode' }));
+    expect(api.current().game).toBe(game);
+    expect(api.current().presentation).toBe(presentation);
+    expect(api.current().presentationMode).toBe(presentationMode);
   });
 
   it('shows notices and save failures', async () => {

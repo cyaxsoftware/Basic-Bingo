@@ -10,8 +10,8 @@
  */
 .grid {
   --floor: 44px;
-  --blackout: #111827;
-  --blackout-text: #6b7280;
+  --blackout: var(--blackout-bg);
+  --blackout-text: var(--blackout-fg);
   --col: max(var(--floor), calc(100cqw / 16));
   /* --row-cap comes from the layout, which sizes the board's grid row from the same number. */
   --row: clamp(var(--floor), calc(100cqh / 5), var(--row-cap, 80px));
@@ -53,6 +53,11 @@
   font-size: calc(var(--chip) * 0.8);
   font-weight: 800;
   cursor: pointer;
+}
+
+/* On the dark panel the darker ring shade is too dim, so the letter uses the ball's own, brighter color. */
+:global([data-theme='dark']) .letter:not([aria-pressed='true']) {
+  color: var(--ball-color);
 }
 
 .letter:active {

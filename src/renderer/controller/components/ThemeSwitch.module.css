@@ -1,0 +1,18 @@
+/* A touch-sized square at the end of the top bar. The icon shows the mode that is on. */
+.switch {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: var(--touch-min);
+  min-height: var(--touch-min);
+  padding: 0;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--panel);
+  color: var(--text);
+}
+
+.switch:focus-visible {
+  outline: 3px solid var(--accent);
+  outline-offset: 2px;
+}

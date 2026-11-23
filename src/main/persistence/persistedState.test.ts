@@ -102,7 +102,7 @@ const V1_FIXTURE_APP_DATA: AppData = {
   media: DEFAULT_MEDIA,
   timer: DEFAULT_TIMER,
   slideshow: EMPTY_SLIDESHOW,
-  settings: { preferredDisplayId: 2779098405 },
+  settings: { preferredDisplayId: 2779098405, controllerTheme: 'light' },
 };
 
 const V2_FIXTURE_APP_DATA: AppData = {
@@ -112,7 +112,7 @@ const V2_FIXTURE_APP_DATA: AppData = {
   media: DEFAULT_MEDIA,
   timer: DEFAULT_TIMER,
   slideshow: EMPTY_SLIDESHOW,
-  settings: { preferredDisplayId: 2779098405 },
+  settings: { preferredDisplayId: 2779098405, controllerTheme: 'light' },
 };
 
 describe('V1 save format is frozen (audit finding 5, #22)', () => {
@@ -171,7 +171,7 @@ describe('V1 save format is frozen (audit finding 5, #22)', () => {
           media: createDefaultPersistedState().media,
           timer: DEFAULT_TIMER,
           slideshow: EMPTY_SLIDESHOW,
-          settings: { preferredDisplayId: null },
+          settings: { preferredDisplayId: null, controllerTheme: 'light' },
         },
       });
     },
@@ -307,6 +307,8 @@ describe('V3 save format is frozen (released in milestone 3)', () => {
     expect({ ...written, savedAt: stateV3Fixture.savedAt }).toEqual({
       ...stateV3Fixture,
       schemaVersion: 4,
+      // A file from before the theme switch existed opens in the light theme.
+      settings: { ...stateV3Fixture.settings, controllerTheme: 'light' },
       media: { library: [], singleImage: { imageId: null } },
       timer: DEFAULT_TIMER,
       slideshow: EMPTY_SLIDESHOW,
@@ -616,8 +618,43 @@ describe('parsePersistedState', () => {
         media: createDefaultPersistedState().media,
         timer: DEFAULT_TIMER,
         slideshow: EMPTY_SLIDESHOW,
-        settings: { preferredDisplayId: 12 },
+        settings: { preferredDisplayId: 12, controllerTheme: 'light' },
       },
+    });
+  });
+
+  describe('the Controller theme setting', () => {
+    const withSettings = (settings: unknown) => ({
+      ...createDefaultPersistedState(),
+      settings,
+    });
+    const themeOf = (raw: unknown) => {
+      const result = parsePersistedState(raw);
+      if (!result.ok) throw new Error(result.error);
+      return fromPersistedState(result.state).settings.controllerTheme;
+    };
+
+    it('is light for a new installation', () => {
+      expect(fromPersistedState(createDefaultPersistedState()).settings.controllerTheme).toBe('light');
+    });
+
+    it('keeps a saved dark choice through save and load', () => {
+      const data = fromPersistedState(createDefaultPersistedState());
+      const saved = toPersistedState({ ...data, settings: { ...data.settings, controllerTheme: 'dark' } });
+      expect(saved.settings.controllerTheme).toBe('dark');
+      expect(themeOf(JSON.parse(JSON.stringify(saved)))).toBe('dark');
+    });
+
+    it('opens an existing file that has no theme in the light theme, keeping its other settings', () => {
+      const raw = withSettings({ preferredDisplayId: 7 });
+      expect(themeOf(raw)).toBe('light');
+      const result = parsePersistedState(raw);
+      expect(result.ok && result.state.settings.preferredDisplayId).toBe(7);
+    });
+
+    it('falls back to light for an unknown value instead of rejecting the file', () => {
+      expect(themeOf(withSettings({ preferredDisplayId: null, controllerTheme: 'sepia' }))).toBe('light');
+      expect(themeOf(withSettings({ preferredDisplayId: null, controllerTheme: 42 }))).toBe('light');
     });
   });
 
@@ -775,6 +812,7 @@ describe('V4 save format (milestone 4: the media library)', () => {
     const written = toPersistedState(fromPersistedState(parsed.state));
     expect({ ...written, savedAt: stateV4Fixture.savedAt }).toEqual({
       ...stateV4Fixture,
+      settings: { ...stateV4Fixture.settings, controllerTheme: 'light' },
       timer: DEFAULT_TIMER,
       slideshow: EMPTY_SLIDESHOW,
     });

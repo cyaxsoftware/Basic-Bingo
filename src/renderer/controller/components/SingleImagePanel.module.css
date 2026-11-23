@@ -138,7 +138,7 @@
 
 .segment[aria-pressed='true'] {
   background: var(--info-bg);
-  color: var(--accent);
+  color: var(--accent-fg);
   font-weight: 800;
 }
 
@@ -167,7 +167,7 @@
 .danger {
   border: 1px solid var(--danger);
   background: var(--panel);
-  color: var(--danger);
+  color: var(--danger-fg);
 }
 
 .danger:disabled {

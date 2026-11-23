@@ -19,6 +19,49 @@
   --uncalled-border: #e8ebf0;
   --uncalled-text: #374151;
   --current-ring: #111827;
+
+  /* Colors that sit as text or fills on the panels need their own names, because in the dark theme a fill that
+     carries white text (--accent, --danger) is too dark to read as text on a dark panel. */
+  --accent-fg: #1d4ed8;
+  --danger-fg: #b91c1c;
+  --pill-bg: #e5e7eb;
+  --pill-live-bg: #dcfce7;
+  --pill-live-text: #166534;
+  --blackout-bg: #111827;
+  --blackout-fg: #6b7280;
+}
+
+/*
+ * The dark theme. It only redefines the tokens above, and only this window loads this file, so the Presentation
+ * window (which has its own presentation.css) is never themed. Set by ControllerApp from the saved setting.
+ * Called balls keep their bingo colors in both themes.
+ */
+:root[data-theme='dark'] {
+  color-scheme: dark;
+  --surface: #0e1116;
+  --panel: #171b22;
+  --border: #2e3642;
+  --text: #e7eaf0;
+  --text-muted: #9aa4b2;
+  --accent: #2f5fe0;
+  --accent-fg: #8ab0ff;
+  --danger: #dc2626;
+  --danger-fg: #f87171;
+  --warning-bg: #3a2a0a;
+  --warning-border: #d97706;
+  --error-bg: #3b1416;
+  --error-border: #ef4444;
+  --info-bg: #1b2a4d;
+  --info-border: #3b6ef0;
+  --uncalled-bg: #242b35;
+  --uncalled-border: #242b35;
+  --uncalled-text: #b8c0cc;
+  --current-ring: #e7eaf0;
+  --pill-bg: #2a313c;
+  --pill-live-bg: #12351f;
+  --pill-live-text: #86efac;
+  --blackout-bg: #07090c;
+  --blackout-fg: #6b7280;
 }
 
 body {

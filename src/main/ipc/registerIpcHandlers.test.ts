@@ -239,6 +239,39 @@ describe('registerIpcHandlers', () => {
     });
   });
 
+  describe('Controller theme', () => {
+    const invoke = (sender: number, ...args: unknown[]) =>
+      ctx.ipc.invoke(sender, IpcChannel.setControllerTheme, ...args) as CommandResult;
+
+    it('is set from the Controller and leaves the game and the projector alone', () => {
+      ctx.ipc.invoke(CONTROLLER_ID, IpcChannel.toggleBall, 3);
+      const before = ctx.store.getSnapshot();
+
+      expect(invoke(CONTROLLER_ID, 'dark')).toEqual(ok);
+      const after = ctx.store.getSnapshot();
+      expect(after.controllerTheme).toBe('dark');
+      expect(after.game).toBe(before.game);
+      expect(after.presentationMode).toBe(before.presentationMode);
+      expect(after.presentation).toBe(before.presentation);
+      expect(invoke(CONTROLLER_ID, 'light')).toEqual(ok);
+      expect(ctx.store.getSnapshot().controllerTheme).toBe('light');
+    });
+
+    it('is rejected from the Presentation window and from strangers', () => {
+      for (const sender of [PRESENTATION_ID, STRANGER_ID]) expect(invoke(sender, 'dark').ok).toBe(false);
+      expect(ctx.store.getSnapshot().controllerTheme).toBe('light');
+    });
+
+    it.each(['Dark', 'auto', '', 0, null, undefined, { theme: 'dark' }])(
+      'rejects the invalid theme %j without changing anything',
+      (arg) => {
+        const before = ctx.store.getSnapshot();
+        expect(invoke(CONTROLLER_ID, arg).ok).toBe(false);
+        expect(ctx.store.getSnapshot()).toBe(before);
+      },
+    );
+  });
+
   describe('presentation mode', () => {
     it('is set from the Controller and leaves every game field alone', () => {
       ctx.ipc.invoke(CONTROLLER_ID, IpcChannel.toggleBall, 3);

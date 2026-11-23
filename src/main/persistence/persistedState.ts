@@ -50,6 +50,7 @@ import {
   type SlideshowState,
 } from '../../shared/media/slideshow';
 import { DEFAULT_PRESENTATION_MODE, type PresentationMode } from '../../shared/presentation/presentationMode';
+import { DEFAULT_CONTROLLER_THEME, type ControllerTheme } from '../../shared/theme/controllerTheme';
 import {
   DEFAULT_TIMER,
   isCountdownMessage,
@@ -191,8 +192,13 @@ export interface PersistedMediaV4 {
   };
 }
 
-export interface PersistedStateV4 extends Omit<PersistedStateV3, 'schemaVersion'> {
+export interface PersistedStateV4 extends Omit<PersistedStateV3, 'schemaVersion' | 'settings'> {
   readonly schemaVersion: 4;
+  /** `controllerTheme` was added while V4 was still open: a file without it loads as the light theme. */
+  readonly settings: {
+    readonly preferredDisplayId: number | null;
+    readonly controllerTheme: ControllerTheme;
+  };
   readonly media: PersistedMediaV4;
   readonly timer: PersistedTimerV4;
   readonly slideshow: PersistedSlideshowV4;
@@ -251,8 +257,10 @@ const PersistedStateV4Schema = z.object({
   settings: z
     .object({
       preferredDisplayId: z.number().int().nullable().catch(null),
+      // Anything but light or dark (a hand-edited file, or a file from before the switch existed) means light.
+      controllerTheme: z.enum(['light', 'dark']).catch(DEFAULT_CONTROLLER_THEME),
     })
-    .catch({ preferredDisplayId: null }),
+    .catch({ preferredDisplayId: null, controllerTheme: DEFAULT_CONTROLLER_THEME }),
 });
 
 // ---------------------------------------------------------------------------
@@ -274,6 +282,7 @@ export interface AppData {
   readonly slideshow: SlideshowState;
   readonly settings: {
     readonly preferredDisplayId: number | null;
+    readonly controllerTheme: ControllerTheme;
   };
 }
 
@@ -366,7 +375,7 @@ export function createDefaultPersistedState(now: Date = new Date()): PersistedSt
     media: defaultPersistedMedia(),
     timer: toPersistedTimer(DEFAULT_TIMER),
     slideshow: toPersistedSlideshow(EMPTY_SLIDESHOW),
-    settings: { preferredDisplayId: null },
+    settings: { preferredDisplayId: null, controllerTheme: DEFAULT_CONTROLLER_THEME },
   };
 }
 
@@ -390,7 +399,10 @@ export function toPersistedState(data: AppData, now: Date = new Date()): Persist
     media: toPersistedMedia(data.media),
     timer: toPersistedTimer(data.timer),
     slideshow: toPersistedSlideshow(data.slideshow),
-    settings: { preferredDisplayId: data.settings.preferredDisplayId },
+    settings: {
+      preferredDisplayId: data.settings.preferredDisplayId,
+      controllerTheme: data.settings.controllerTheme,
+    },
   };
 }
 
@@ -417,7 +429,10 @@ export function fromPersistedState(document: PersistedState, now: Date = new Dat
     },
     timer: reduceTimer({ ...document.timer }, { type: 'expire' }, now.getTime()),
     slideshow: toPersistedSlideshow(document.slideshow),
-    settings: { preferredDisplayId: document.settings.preferredDisplayId },
+    settings: {
+      preferredDisplayId: document.settings.preferredDisplayId,
+      controllerTheme: document.settings.controllerTheme,
+    },
   };
 }
 
@@ -759,7 +774,10 @@ export function parsePersistedState(raw: unknown): ParseResult {
       media,
       timer: normalizeTimer(parsed.data.timer, warnings),
       slideshow: normalizeSlideshow(parsed.data.slideshow, media.library, warnings),
-      settings: { preferredDisplayId: parsed.data.settings.preferredDisplayId },
+      settings: {
+        preferredDisplayId: parsed.data.settings.preferredDisplayId,
+        controllerTheme: parsed.data.settings.controllerTheme,
+      },
     },
   };
 }

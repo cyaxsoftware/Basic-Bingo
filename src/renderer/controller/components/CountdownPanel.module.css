@@ -117,7 +117,7 @@
 .presets button[aria-pressed='true'] {
   border-color: var(--accent);
   background: var(--info-bg);
-  color: var(--accent);
+  color: var(--accent-fg);
 }
 
 .panel :disabled {
@@ -135,7 +135,7 @@
 
 .error {
   margin: var(--space-1) 0 0;
-  color: var(--danger);
+  color: var(--danger-fg);
 }
 
 .preview {

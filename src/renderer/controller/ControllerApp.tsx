@@ -15,8 +15,10 @@ import { PatternsView } from './components/PatternsView';
 import { PresentationControls } from './components/PresentationControls';
 import { SingleImagePanel } from './components/SingleImagePanel';
 import { SlideshowPanel } from './components/SlideshowPanel';
+import { ThemeSwitch } from './components/ThemeSwitch';
 import styles from './ControllerApp.module.css';
 import { useControllerActions } from './useControllerActions';
+import { useControllerTheme } from './useControllerTheme';
 
 export interface ControllerAppProps {
   readonly api: ControllerApi;
@@ -41,6 +43,7 @@ export function ControllerApp({ api, store }: ControllerAppProps) {
   const railLayout = useMediaQuery('(min-width: 1440px) and (min-height: 780px)');
   // Wide enough for the tabs and the projector controls to share the top bar (see ControllerApp.module.css).
   const topRow = useMediaQuery('(min-width: 1366px)');
+  useControllerTheme(state.status === 'ready' ? state.snapshot.controllerTheme : undefined);
 
   if (state.status === 'loading') {
     return <div className={styles.message}>Loading game…</div>;
@@ -119,6 +122,7 @@ export function ControllerApp({ api, store }: ControllerAppProps) {
           />
         </div>
         {railLayout || !onBoard ? null : newGame}
+        <ThemeSwitch theme={snapshot.controllerTheme} onChange={actions.setControllerTheme} />
       </header>
 
       {topRow ? null : tabs}

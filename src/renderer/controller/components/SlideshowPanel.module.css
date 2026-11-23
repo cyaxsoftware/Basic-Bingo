@@ -46,7 +46,7 @@
 
 .panel .collections button[aria-pressed='true'] {
   background: var(--info-bg);
-  color: var(--accent);
+  color: var(--accent-fg);
   border-color: var(--accent);
 }
 
@@ -223,7 +223,7 @@
 }
 
 .panel button.delete {
-  color: var(--danger);
+  color: var(--danger-fg);
 }
 
 @media (max-width: 740px) {

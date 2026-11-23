@@ -254,6 +254,11 @@ A failed save sets `snapshot.persistence` to `error`; the Controller shows it un
 - `renderer/shared/bingoApi.ts`: the only place that touches `window.bingo`. Apps receive the API and
   store as props, so tests pass `renderer/test/fakeBingoApi.ts`.
 - `renderer/controller/useControllerActions.ts`: wraps commands and surfaces failures.
+- **Controller theme:** the light/dark choice is `settings.controllerTheme` (saved, owned by main, changed by the
+  `setControllerTheme` command). `useControllerTheme` puts it on the page's root element and `controller.css`
+  redefines the colour tokens for `[data-theme='dark']`. Only the Controller loads `controller.css`, so the
+  Presentation window is never themed. Tokens that are both a button fill and a text colour have a separate
+  text name (`--accent-fg`, `--danger-fg`) so dark mode can lighten the text without lightening the fill.
 - Components are presentational and styled with CSS Modules. Colors and spacing live in
   `renderer/shared/styles/tokens.css`; each window adds its own theme file (`controller.css`,
   `presentation.css`), so the two views can be restyled independently.

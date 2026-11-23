@@ -49,6 +49,8 @@ No internet connection, cloud database, user account, local HTTP server, or sepa
 
 **Visual intent:** Light neutral surfaces, high contrast text, clear color cues, no visual clutter. Optimize for fingers, not mouse hover.
 
+**Light and dark:** The Controller starts light. A sun/moon switch at the right end of the top bar flips it to a dark theme (for dim rooms) and the choice is remembered. It themes the Controller only: the projector, and the projector previews inside the Controller, never change.
+
 **Primary layout:**
 - Compact top bar with app name, presentation status (`Not projecting` / selected display), `Project`, and display selection.
 - Presentation mode tabs: **Game Board**, **Break Slideshow**, **Single Image**, **Countdown**.

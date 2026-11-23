@@ -25,7 +25,7 @@
 .tab[aria-selected='true'] {
   border-color: var(--accent);
   background: var(--info-bg);
-  color: var(--accent);
+  color: var(--accent-fg);
   font-weight: 800;
 }
 

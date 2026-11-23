@@ -164,7 +164,7 @@
 .primary:disabled {
   border-color: var(--border);
   background: var(--info-bg);
-  color: var(--accent);
+  color: var(--accent-fg);
 }
 
 .hide {

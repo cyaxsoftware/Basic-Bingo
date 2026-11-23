@@ -109,6 +109,7 @@ test('renderers are sandboxed and the Presentation bridge is read-only', { tag: 
     'selectPattern',
     'selectSingleImage',
     'setActivePatternCell',
+    'setControllerTheme',
     'setCountdownMessage',
     'setImageFit',
     'setPresentationMode',

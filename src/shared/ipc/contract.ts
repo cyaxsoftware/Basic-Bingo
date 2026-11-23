@@ -19,6 +19,7 @@ import type { SingleImageState } from '../media/mediaState';
 import type { GameState } from '../game/gameState';
 import type { ActivePattern, Pattern, PatternCells, ShownPattern } from '../patterns/pattern';
 import type { PresentationMode } from '../presentation/presentationMode';
+import type { ControllerTheme } from '../theme/controllerTheme';
 import type { TimerState } from '../timer/timerState';
 import type { SlideshowCommand, SlideshowState } from '../media/slideshow';
 import type { SlideshowPlayback, SlideshowPlaybackCommand } from '../media/slideshowPlayback';
@@ -96,6 +97,8 @@ export interface AppSnapshot {
   readonly displays: readonly DisplayInfo[];
   /** Last display the operator projected to. Persisted as a convenience only. */
   readonly preferredDisplayId: number | null;
+  /** Persisted: the Controller's colour theme. The Presentation window ignores it. */
+  readonly controllerTheme: ControllerTheme;
   readonly persistence: PersistenceStatus;
   readonly notices: readonly Notice[];
 }
@@ -116,6 +119,7 @@ export const IpcChannel = {
   dismissBingoBanner: 'bingo:dismiss-bingo-banner',
   newGame: 'bingo:new-game',
   setPresentationMode: 'bingo:set-presentation-mode',
+  setControllerTheme: 'bingo:set-controller-theme',
   selectPattern: 'bingo:select-pattern',
   setActivePatternCell: 'bingo:set-active-pattern-cell',
   renameActivePattern: 'bingo:rename-active-pattern',
@@ -173,6 +177,8 @@ export interface ControllerApi extends PresentationApi {
   newGame(): Promise<CommandResult>;
   /** Choose what the audience display shows. Never changes the game. */
   setPresentationMode(mode: PresentationMode): Promise<CommandResult>;
+  /** Switch the Controller between its light and dark colours. Never changes the game or the projector. */
+  setControllerTheme(theme: ControllerTheme): Promise<CommandResult>;
   /** Show a library pattern: replaces the working copy with a fresh, unedited copy of it. */
   selectPattern(patternId: string): Promise<CommandResult>;
   /** Set one cell (0 to 24, the center included) of the working copy on or off. Never changes the library. */

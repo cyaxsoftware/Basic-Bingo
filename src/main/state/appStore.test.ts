@@ -188,6 +188,20 @@ describe('AppStore', () => {
     expect(persister.saved.at(-1)?.settings.preferredDisplayId).toBe(7);
   });
 
+  it('persists the Controller theme, and ignores setting the one already chosen', async () => {
+    const { store, persister } = createStore();
+    expect(store.getSnapshot().controllerTheme).toBe('light');
+    const saves = persister.saved.length;
+    store.setControllerTheme('light');
+    await flushPromises();
+    expect(persister.saved).toHaveLength(saves);
+
+    store.setControllerTheme('dark');
+    await flushPromises();
+    expect(store.getSnapshot().controllerTheme).toBe('dark');
+    expect(persister.saved.at(-1)?.settings.controllerTheme).toBe('dark');
+  });
+
   it('adds, replaces and dismisses notices by id', () => {
     const { store } = createStore();
     store.addNotice({ id: 'a', level: 'warning', message: 'one' });

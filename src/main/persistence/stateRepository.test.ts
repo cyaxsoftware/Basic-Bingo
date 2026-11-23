@@ -10,7 +10,7 @@ function stateWith(calledNumbers: number[], preferredDisplayId: number | null = 
   return {
     ...createDefaultPersistedState(),
     game: { calledNumbers, bingoBannerVisible: false, disabledRows: [] },
-    settings: { preferredDisplayId },
+    settings: { preferredDisplayId, controllerTheme: 'light' },
   };
 }
 

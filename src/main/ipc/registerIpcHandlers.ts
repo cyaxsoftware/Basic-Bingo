@@ -15,6 +15,7 @@ import { findMedia, isFitMode, isValidMediaId, type MediaItem } from '../../shar
 import { slideshowImages } from '../../shared/media/slideshow';
 import { isValidPatternId } from '../../shared/patterns';
 import { isPresentationMode } from '../../shared/presentation/presentationMode';
+import { isControllerTheme } from '../../shared/theme/controllerTheme';
 import { isCountdownMessage, isTimerDuration } from '../../shared/timer/timerState';
 import {
   fail,
@@ -144,6 +145,12 @@ export function registerIpcHandlers(ipc: IpcMainLike, deps: IpcDependencies): vo
   command(IpcChannel.setPresentationMode, (mode) => {
     if (!isPresentationMode(mode)) return fail('Choose a valid presentation mode.');
     return store.setPresentationMode(mode);
+  });
+
+  command(IpcChannel.setControllerTheme, (theme) => {
+    if (!isControllerTheme(theme)) return fail('Choose light or dark.');
+    store.setControllerTheme(theme);
+    return ok;
   });
 
   // Pattern commands. Here only the TYPES of the arguments are checked; the rules (cell 0 to 24, title 1 to 60

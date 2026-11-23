@@ -14,6 +14,7 @@ import {
   type PatternCommand,
 } from '../../shared/patterns';
 import { isPresentationMode, type PresentationMode } from '../../shared/presentation/presentationMode';
+import { isControllerTheme, type ControllerTheme } from '../../shared/theme/controllerTheme';
 import { DEFAULT_TIMER, reduceTimer, type TimerCommand } from '../../shared/timer/timerState';
 import {
   EMPTY_SLIDESHOW,
@@ -75,6 +76,7 @@ export function makeSnapshot(overrides: Partial<AppSnapshot> = {}): AppSnapshot 
     presentation: { kind: 'closed' },
     displays: [LAPTOP, PROJECTOR],
     preferredDisplayId: null,
+    controllerTheme: 'light',
     persistence: { kind: 'ok' },
     notices: [],
     ...overrides,
@@ -219,6 +221,11 @@ export function createFakeBingoApi(initial: AppSnapshot = makeSnapshot()): FakeB
           presentationMode: mode,
           slideshowPlayback: stopSlideshow(snapshot.slideshowPlayback),
         });
+      return ok;
+    }),
+    setControllerTheme: vi.fn(async (theme: ControllerTheme) => {
+      if (!isControllerTheme(theme)) return fail('Choose light or dark.');
+      if (theme !== snapshot.controllerTheme) publish({ controllerTheme: theme });
       return ok;
     }),
     selectPattern: vi.fn(async (patternId: string) => dispatchPattern({ type: 'selectPattern', patternId })),

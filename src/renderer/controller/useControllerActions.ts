@@ -5,6 +5,7 @@ import type { SlideshowCommand } from '../../shared/media/slideshow';
 import type { SlideshowPlaybackCommand } from '../../shared/media/slideshowPlayback';
 import type { CommandResult, ControllerApi } from '../../shared/ipc/contract';
 import type { PresentationMode } from '../../shared/presentation/presentationMode';
+import type { ControllerTheme } from '../../shared/theme/controllerTheme';
 
 export type UnsavedEdits = 'update' | 'saveAsNew' | 'discard';
 
@@ -22,6 +23,8 @@ export interface ControllerActions {
   newGame(): void;
   /** Choose what the projector shows. Never changes the game. */
   setPresentationMode(mode: PresentationMode): void;
+  /** Switch the Controller between light and dark. Never changes the game or the projector. */
+  setControllerTheme(theme: ControllerTheme): void;
   /** What to do with unsaved edits to the working pattern before switching to another one. */
   switchPattern(patternId: string, unsavedEdits: UnsavedEdits): void;
   setPatternCell(index: number, on: boolean): void;
@@ -88,6 +91,7 @@ export function useControllerActions(api: ControllerApi): ControllerActions {
       dismissBingoBanner: () => run(() => api.dismissBingoBanner()),
       newGame: () => run(() => api.newGame()),
       setPresentationMode: (mode: PresentationMode) => run(() => api.setPresentationMode(mode)),
+      setControllerTheme: (theme: ControllerTheme) => run(() => api.setControllerTheme(theme)),
       // Save first, then switch; if the save fails the switch does not happen, so no edits are lost.
       switchPattern: (patternId: string, unsavedEdits: UnsavedEdits) =>
         run(async () => {

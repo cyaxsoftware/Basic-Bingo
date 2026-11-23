@@ -1,5 +1,6 @@
 import { screen, type BrowserWindow } from 'electron';
 import { createAppWindow } from './createAppWindow';
+import type { ControllerTheme } from '../../shared/theme/controllerTheme';
 
 const PREFERRED_SIZE = { width: 1280, height: 800 };
 const MIN_SIZE = { width: 1024, height: 640 };
@@ -9,7 +10,7 @@ const MIN_SIZE = { width: 1024, height: 640 };
  * display (falling back to the Windows primary display) so it stays on the
  * laptop when a projector is attached.
  */
-export function createControllerWindow(): BrowserWindow {
+export function createControllerWindow(theme: ControllerTheme): BrowserWindow {
   const display = screen.getAllDisplays().find((d) => d.internal) ?? screen.getPrimaryDisplay();
   const area = display.workArea;
   const width = Math.min(PREFERRED_SIZE.width, area.width);
@@ -23,7 +24,8 @@ export function createControllerWindow(): BrowserWindow {
     height,
     minWidth: Math.min(MIN_SIZE.width, area.width),
     minHeight: Math.min(MIN_SIZE.height, area.height),
-    backgroundColor: '#f4f5f7',
+    // The page's own --surface color for the saved theme, so a dark Controller does not flash light on start.
+    backgroundColor: theme === 'dark' ? '#0e1116' : '#f4f5f7',
   });
 
   window.once('ready-to-show', () => {

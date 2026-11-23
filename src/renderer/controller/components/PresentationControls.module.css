@@ -25,18 +25,18 @@
   white-space: nowrap;
   padding: var(--space-2) var(--space-3);
   border-radius: 999px;
-  background: #e5e7eb;
+  background: var(--pill-bg);
   font-weight: 600;
 }
 
 .status[data-kind='projecting'] {
-  background: #dcfce7;
-  color: #166534;
+  background: var(--pill-live-bg);
+  color: var(--pill-live-text);
 }
 
 .status[data-kind='preview'] {
   background: var(--info-bg);
-  color: var(--accent);
+  color: var(--accent-fg);
 }
 
 .toggle,
