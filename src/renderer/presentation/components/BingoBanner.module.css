@@ -1,16 +1,16 @@
 /*
  * A band above the board, not an overlay on it: the board and the call display
- * stay fully visible and simply get a little shorter. Sized from the smaller
- * screen dimension (and capped by width) so it is legible from the back of the
- * room at 1920x1080 and still fits at 1024x768, where it may wrap to two lines.
+ * stay fully visible and simply get a little shorter. It is about half the height it started with (about 64 px
+ * at 1920x1080), sized from the smaller screen dimension and capped by width so it stays legible from the back
+ * of the room; at 1024x768 the shorter text fits on a single line.
  */
 .banner {
   flex: none;
-  padding: 2vmin 3vmin;
-  border-radius: 1.5vmin;
+  padding: 1vmin 3vmin;
+  border-radius: 1vmin;
   background: var(--bingo-banner-bg);
   color: var(--bingo-banner-text);
-  font-size: min(6.5vmin, 5vw);
+  font-size: min(3.4vmin, 3.2vw);
   font-weight: 800;
   letter-spacing: 0.02em;
   line-height: 1.15;
