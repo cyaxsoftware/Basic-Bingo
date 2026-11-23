@@ -19,6 +19,7 @@ interface ModalDialogProps {
   readonly closeLabel: string;
   readonly onClose: () => void;
   readonly confirmation?: { readonly label: string; readonly onConfirm: () => void };
+  readonly description?: string;
 }
 
 /**
@@ -52,7 +53,14 @@ export function ConfirmDialog({
 }
 
 /** Shared modal shell for settings and confirmations. */
-export function ModalDialog({ title, children, closeLabel, onClose, confirmation }: ModalDialogProps) {
+export function ModalDialog({
+  title,
+  children,
+  closeLabel,
+  onClose,
+  confirmation,
+  description,
+}: ModalDialogProps) {
   const isConfirmation = confirmation !== undefined;
   const titleId = useId();
   const bodyId = useId();
@@ -128,13 +136,18 @@ export function ModalDialog({ title, children, closeLabel, onClose, confirmation
         role="dialog"
         aria-modal="true"
         aria-labelledby={titleId}
-        aria-describedby={confirmation ? bodyId : undefined}
+        aria-describedby={confirmation || description ? bodyId : undefined}
         onKeyDown={handleKeyDown}
       >
         <h2 id={titleId} className={styles.title}>
           {title}
         </h2>
-        <div id={bodyId} className={styles.body}>
+        {description ? (
+          <p className={styles.description} id={bodyId}>
+            {description}
+          </p>
+        ) : null}
+        <div id={description ? undefined : bodyId} className={styles.body}>
           {children}
         </div>
         <div className={styles.actions}>

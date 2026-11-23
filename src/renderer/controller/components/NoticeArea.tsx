@@ -29,8 +29,8 @@ export function NoticeArea({
     <div className={styles.area}>
       {persistence.kind === 'error' && (
         // Not dismissible: it clears itself after the next successful save, so it offers to try again now.
-        <div className={styles.notice} data-level="error" role="alert">
-          <span>{persistence.message} Calls still work, but may not survive a restart.</span>
+        <div className={styles.notice} data-level="error">
+          <span role="alert">{persistence.message} Calls still work, but may not survive a restart.</span>
           <span className={styles.actions}>
             <button type="button" className={styles.dismiss} onClick={onRetrySave}>
               Try again
@@ -42,8 +42,8 @@ export function NoticeArea({
         </div>
       )}
       {notices.map((notice) => (
-        <div key={notice.id} className={styles.notice} data-level={notice.level} role="alert">
-          <span>{notice.message}</span>
+        <div key={notice.id} className={styles.notice} data-level={notice.level}>
+          <span role={notice.level === 'info' ? 'status' : 'alert'}>{notice.message}</span>
           <span className={styles.actions}>
             {notice.action === 'showDataFolder' ? (
               <button type="button" className={styles.dismiss} onClick={onShowDataFolder}>
@@ -57,8 +57,8 @@ export function NoticeArea({
         </div>
       ))}
       {actionError && (
-        <div className={styles.notice} data-level="error" role="alert">
-          <span>{actionError}</span>
+        <div className={styles.notice} data-level="error">
+          <span role="alert">{actionError}</span>
           <button type="button" className={styles.dismiss} onClick={onDismissActionError}>
             Dismiss
           </button>

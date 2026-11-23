@@ -40,14 +40,17 @@ describe('ControllerApp', () => {
 
   it('projects to the default external display and shows status', async () => {
     const api = renderController();
-    await userEvent.click(await screen.findByRole('button', { name: 'Project' }));
+    const project = await screen.findByRole('button', { name: 'Project' });
+    project.focus();
+    await userEvent.keyboard('{Enter}');
     expect(api.openPresentation).toHaveBeenCalledWith(PROJECTOR.id);
     expect(await screen.findByRole('status')).toHaveTextContent(`Projecting on ${PROJECTOR.label}`);
     // Project flips into Stop, and Stop flips back.
     expect(screen.queryByRole('button', { name: 'Project' })).not.toBeInTheDocument();
-    await userEvent.click(screen.getByRole('button', { name: 'Stop' }));
+    expect(screen.getByRole('button', { name: 'Stop' })).toHaveFocus();
+    await userEvent.keyboard('{Enter}');
     expect(api.closePresentation).toHaveBeenCalled();
-    expect(await screen.findByRole('button', { name: 'Project' })).toBeInTheDocument();
+    expect(await screen.findByRole('button', { name: 'Project' })).toHaveFocus();
     expect(screen.queryByRole('button', { name: 'Stop' })).not.toBeInTheDocument();
   });
 

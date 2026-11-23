@@ -1,3 +1,4 @@
+import type { Ref } from 'react';
 import type { ActivePattern } from '../../../shared/patterns';
 import { PatternThumbnail } from './PatternThumbnail';
 import styles from './PatternCard.module.css';
@@ -5,12 +6,13 @@ import styles from './PatternCard.module.css';
 export interface PatternCardProps {
   readonly active: ActivePattern;
   readonly onOpen: () => void;
+  readonly ref?: Ref<HTMLButtonElement>;
 }
 
 /** What the game is playing for, always on the game screen. Tapping it opens the Patterns view. */
-export function PatternCard({ active, onOpen }: PatternCardProps) {
+export function PatternCard({ active, onOpen, ref }: PatternCardProps) {
   return (
-    <button type="button" className={styles.card} onClick={onOpen}>
+    <button ref={ref} type="button" className={styles.card} onClick={onOpen}>
       <PatternThumbnail cells={active.cells} />
       <span className={styles.text}>
         <span className={styles.label}>Pattern</span>

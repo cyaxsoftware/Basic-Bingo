@@ -63,6 +63,13 @@ No internet connection, cloud database, user account, local HTTP server, or sepa
 
 **Touch target rule:** Aim for 48 to 60 CSS px number targets at usable layout widths, with a practical minimum of 44 CSS px and visible spacing. At 125% / 150% Windows scaling on a 15-inch display, collapse or rearrange secondary panels before reducing number targets below touch-friendly dimensions. Avoid horizontal scrolling of the 15-number rows; avoid vertical scrolling during normal call operation where possible. Test actual logical pixel width, not just physical screen resolution.
 
+**Keyboard operation:** Tab follows the visible layout, with a three-pixel focus outline in both themes.
+The mode tabs use arrow keys to move focus and Enter or Space to activate. Opening Patterns focuses
+**Back to game**, and returning focuses the control that opened the editor. When a slide reaches the
+first or last position, focus moves to its available reorder arrow. On short windows, notice stacks
+can make the layout scroll so the notices and ball controls remain reachable. Windows reduced-motion
+settings turn off the press-scale effects on balls, row letters and tabs.
+
 **Ball appearance:** Uncalled numbers have clear contrast. Called numbers are solid B/I/N/G/O color circles. The most recent active call has an extra non-color highlight (e.g., white or dark outline depending on background), not merely a changed fill. A touch produces immediate visual feedback; a call has no confirmation dialog. There is no separate Undo button required for normal corrections.
 
 **Controller pattern workflow:**

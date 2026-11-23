@@ -69,7 +69,9 @@ describe('Single Image panel', () => {
     it('lists every image as a button, marking the one on the projector', async () => {
       renderPanel(withImages);
       const view = await panel();
-      const logo = within(view).getByRole('button', { name: 'Legion Sponsors.png, 1200 × 600' });
+      const logo = within(view).getByRole('button', {
+        name: 'Legion Sponsors.png, 1200 × 600, On projector',
+      });
       const menu = within(view).getByRole('button', { name: 'Menu.jpg, 1920 × 1080' });
       expect(logo).toHaveAttribute('aria-pressed', 'true');
       expect(logo).toHaveTextContent('On projector');
@@ -87,10 +89,9 @@ describe('Single Image panel', () => {
         'src',
         `bingo-media://${ID_MENU}`,
       );
-      expect(within(view).getByRole('button', { name: 'Menu.jpg, 1920 × 1080' })).toHaveAttribute(
-        'aria-pressed',
-        'true',
-      );
+      expect(
+        within(view).getByRole('button', { name: 'Menu.jpg, 1920 × 1080, On projector' }),
+      ).toHaveAttribute('aria-pressed', 'true');
     });
 
     const previewOf = (view: HTMLElement, name: string) => {
@@ -138,11 +139,13 @@ describe('Single Image panel', () => {
       const view = await panel();
       expect(within(view).getByRole('button', { name: 'Fill' })).toHaveAttribute('aria-pressed', 'true');
 
-      await userEvent.click(within(view).getByRole('button', { name: 'Menu.jpg, 1920 × 1080' }));
+      await userEvent.click(within(view).getByRole('button', { name: 'Menu.jpg, 1920 × 1080, Original' }));
       expect(within(view).getByRole('button', { name: 'Original' })).toHaveAttribute('aria-pressed', 'true');
       expect(within(view).getByRole('button', { name: 'Fill' })).toHaveAttribute('aria-pressed', 'false');
 
-      await userEvent.click(within(view).getByRole('button', { name: 'Legion Sponsors.png, 1200 × 600' }));
+      await userEvent.click(
+        within(view).getByRole('button', { name: 'Legion Sponsors.png, 1200 × 600, Fill' }),
+      );
       expect(within(view).getByRole('button', { name: 'Fill' })).toHaveAttribute('aria-pressed', 'true');
     });
 
@@ -156,10 +159,10 @@ describe('Single Image panel', () => {
         singleImage: { imageId: ID_LOGO },
       });
       const view = await panel();
-      expect(within(view).getByRole('button', { name: 'Legion Sponsors.png, 1200 × 600' })).toHaveTextContent(
-        'Fill',
-      );
-      expect(within(view).getByRole('button', { name: 'Menu.jpg, 1920 × 1080' })).toHaveTextContent(
+      expect(
+        within(view).getByRole('button', { name: 'Legion Sponsors.png, 1200 × 600, Fill On projector' }),
+      ).toHaveTextContent('Fill');
+      expect(within(view).getByRole('button', { name: 'Menu.jpg, 1920 × 1080, Original' })).toHaveTextContent(
         'Original',
       );
       const plain = within(view).getByRole('button', { name: 'Plain.png, 1200 × 600' });
@@ -213,6 +216,7 @@ describe('Single Image panel', () => {
         const thumb = within(view).getByRole('button', { name: 'Menu.jpg, 1920 × 1080' });
         fireEvent.error(thumb.querySelector('img') as HTMLImageElement);
         expect(thumb).toHaveTextContent('Missing');
+        expect(thumb).toHaveAccessibleName('Menu.jpg, 1920 × 1080, Missing');
         expect(thumb.querySelector('img')).toBeNull();
       });
     });

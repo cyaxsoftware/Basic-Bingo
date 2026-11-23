@@ -30,6 +30,7 @@
   border: 1px solid var(--border);
   border-radius: var(--radius-md);
   overflow: auto;
+  scroll-padding-block: 5px;
 }
 
 .row {
@@ -65,7 +66,7 @@
 }
 
 .letter:focus-visible {
-  outline: 3px solid var(--accent);
+  outline: 3px solid var(--focus-ring);
   outline-offset: -3px;
 }
 
@@ -123,13 +124,24 @@
   transform: scale(0.92);
 }
 
+@media (prefers-reduced-motion: reduce) {
+  .letter:active,
+  .ball:active .chip {
+    transform: none;
+  }
+
+  .chip {
+    transition: none;
+  }
+}
+
 /* The ring goes around the drawn chip, not the (larger) invisible tap area. */
 .ball:focus-visible {
   outline: none;
 }
 
 .ball:focus-visible .chip {
-  outline: 3px solid var(--accent);
+  outline: 3px solid var(--focus-ring);
   outline-offset: 2px;
 }
 
@@ -139,6 +151,11 @@
   border-color: var(--ball-ring);
   color: var(--ball-ink);
   font-weight: 800;
+}
+
+/* Put keyboard focus outside the current-call ring so it contrasts with the panel. */
+.ball[data-status='current']:focus-visible .chip {
+  outline-offset: 7px;
 }
 
 /* Current call: extra non-color cue (thick dark ring), not just a different fill. */

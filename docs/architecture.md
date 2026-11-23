@@ -281,6 +281,10 @@ A failed save sets `snapshot.persistence` to `error`; the Controller shows it un
 - `BallChip` is sized by the caller's `font-size` only (diameter = 2.6em).
 - The projector board sizes itself from its container (`container-type: size`, `cqw`/`cqh`), so it
   fits 16:9 and 4:3 without breakpoints per resolution.
+- Renderer accessibility tests mount both apps with `fakeBingoApi.ts` and run axe against the visible
+  app states. The jsdom suite disables `color-contrast` because it has no browser layout or compositing.
+  The headless preview and `e2e/accessibility.spec.ts` exercise contrast in Chromium. Follow the
+  [end-to-end test policy](../AGENTS.md) before running the Electron spec.
 
 ## Recipe: adding a command end to end
 

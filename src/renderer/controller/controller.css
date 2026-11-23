@@ -5,7 +5,9 @@
   --border: #d5d9e0;
   --text: #111827;
   --text-muted: #4b5563;
+  --footer-text: #676f7a;
   --accent: #1d4ed8;
+  --focus-ring: var(--accent);
   --accent-text: #ffffff;
   --danger: #b91c1c;
   --warning-bg: #fef3c7;
@@ -43,7 +45,9 @@
   --border: #2e3642;
   --text: #e7eaf0;
   --text-muted: #9aa4b2;
+  --footer-text: #777f8b;
   --accent: #2f5fe0;
+  --focus-ring: var(--accent-fg);
   --accent-fg: #8ab0ff;
   --danger: #dc2626;
   --danger-fg: #f87171;
@@ -76,4 +80,9 @@ button {
   font: inherit;
   /* Removes the double-tap-to-zoom delay on touch. */
   touch-action: manipulation;
+}
+
+:focus-visible {
+  outline: 3px solid var(--focus-ring);
+  outline-offset: 2px;
 }

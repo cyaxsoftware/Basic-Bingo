@@ -32,7 +32,12 @@ export function PresentationApp({ store }: PresentationAppProps) {
   const onBoard = snapshot.presentationMode === 'gameBoard';
   const gameNumber = nextGameNumber(snapshot.gameLog);
   return (
-    <div className={styles.root} data-mode={snapshot.presentation.kind} data-view={snapshot.presentationMode}>
+    <main
+      className={styles.root}
+      data-mode={snapshot.presentation.kind}
+      data-view={snapshot.presentationMode}
+    >
+      <h1 className={styles.heading}>Basic Bingo Presentation</h1>
       {/*
         The Game Board always keeps a band of its own at the top, so the board and the calls do not move when the
         BINGO banner comes and goes (the banner fills the band). In other modes the flag is untouched and returns
@@ -83,6 +88,6 @@ export function PresentationApp({ store }: PresentationAppProps) {
           />
         )}
       </div>
-    </div>
+    </main>
   );
 }

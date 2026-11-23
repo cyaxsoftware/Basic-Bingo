@@ -158,12 +158,27 @@ describe('PatternWidget in the left rail (from 1440 px)', () => {
 
   it('Edit patterns… opens the Patterns screen, and Back to game returns', async () => {
     await renderController(1536);
-    await userEvent.click(within(widget()).getByRole('button', { name: 'Edit patterns…' }));
+    within(widget()).getByRole('button', { name: 'Edit patterns…' }).focus();
+    await userEvent.keyboard('{Enter}');
     expect(screen.getByRole('region', { name: 'Patterns' })).toBeInTheDocument();
     expect(screen.queryByRole('region', { name: 'Pattern' })).toBeNull();
-    await userEvent.click(screen.getByRole('button', { name: /Back to game/ }));
+    expect(screen.getByRole('button', { name: /Back to game/ })).toHaveFocus();
+    await userEvent.keyboard('{Enter}');
     expect(widget()).toBeInTheDocument();
+    expect(within(widget()).getByRole('button', { name: 'Edit patterns…' })).toHaveFocus();
   });
+});
+
+it.each([
+  [910, [/BINGO CALLED/, /^Pattern/, /^Black out B row$/]],
+  [1280, [/Edit patterns/, /BINGO CALLED/, /^Black out B row$/]],
+  [1536, [/Edit patterns/, /^Black out B row$/, /BINGO CALLED/]],
+] as const)('orders board controls by visual layout at %i px', async (width, names) => {
+  await renderController(width);
+  const [first, second, third] = names.map((name) => screen.getByRole('button', { name }));
+  const following = Node.DOCUMENT_POSITION_FOLLOWING;
+  expect(first!.compareDocumentPosition(second!) & following).toBeTruthy();
+  expect(second!.compareDocumentPosition(third!) & following).toBeTruthy();
 });
 
 describe('PatternWidget as a strip (1141 to 1439 px, or wide but short)', () => {

@@ -15,6 +15,11 @@ function rule(css: string, selector: string): string {
  * this checks that the CSS keeps doing that (the real positions were measured in a browser).
  */
 describe('the banner band is reserved, so raising the banner moves nothing', () => {
+  it('the screen-reader heading stays out of the stage layout', () => {
+    const heading = rule(appCss, '.heading');
+    expect(heading).toContain('position: absolute');
+    expect(heading).toContain('clip-path: inset(50%)');
+  });
   it('the band has a fixed height of its own and does not shrink', () => {
     const slot = rule(appCss, '.bannerSlot');
     expect(slot).toMatch(/height:\s*[\d.]+vmin/);

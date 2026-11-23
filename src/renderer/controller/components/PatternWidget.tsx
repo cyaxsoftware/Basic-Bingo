@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, type Ref } from 'react';
 import {
   MAX_PATTERN_TITLE_LENGTH,
   PATTERN_CELL_COUNT,
@@ -26,6 +26,7 @@ export interface PatternWidgetProps {
   readonly onShow: () => void;
   readonly onHide: () => void;
   readonly onEditPatterns: () => void;
+  readonly editButtonRef?: Ref<HTMLButtonElement>;
 }
 
 const CELLS = Array.from({ length: PATTERN_CELL_COUNT }, (_, index) => index);
@@ -47,6 +48,7 @@ export function PatternWidget({
   onShow,
   onHide,
   onEditPatterns,
+  editButtonRef,
 }: PatternWidgetProps) {
   // The saved pattern the operator asked for while the working copy has unsaved edits.
   const [pendingId, setPendingId] = useState<string | null>(null);
@@ -151,7 +153,7 @@ export function PatternWidget({
       </label>
 
       <div className={styles.actions}>
-        <button type="button" className={styles.button} onClick={onEditPatterns}>
+        <button ref={editButtonRef} type="button" className={styles.button} onClick={onEditPatterns}>
           Edit patterns…
         </button>
         <div className={styles.projector}>

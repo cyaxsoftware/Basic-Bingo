@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from 'react';
+import { useLayoutEffect, useRef, useState, type FormEvent } from 'react';
 import { mediaUrl, type MediaItem } from '../../../shared/media';
 import {
   MAX_COLLECTION_NAME,
@@ -84,6 +84,38 @@ function CollectionEditor({
   const [secondsDraft, setSecondsDraft] = useState<string | null>(null);
   const legacyImages = new Map(library.map((image) => [image.id, image]));
   const current = presentedSlide(collection, playback);
+  const pendingMove = useRef<{
+    button: HTMLButtonElement;
+    alternate: HTMLButtonElement | null;
+    mediaId: string;
+    index: number;
+  } | null>(null);
+
+  const moveSlide = (button: HTMLButtonElement, mediaId: string, index: number, direction: 'up' | 'down') => {
+    if (document.activeElement === button) {
+      const alternate = direction === 'up' ? button.nextElementSibling : button.previousElementSibling;
+      pendingMove.current = {
+        button,
+        alternate: alternate instanceof HTMLButtonElement ? alternate : null,
+        mediaId,
+        index,
+      };
+    }
+    onEdit({ type: 'moveSlide', collectionId, mediaId, direction });
+  };
+
+  useLayoutEffect(() => {
+    const move = pendingMove.current;
+    if (!move) return;
+    pendingMove.current = null;
+    const index = slides.findIndex(({ mediaId }) => mediaId === move.mediaId);
+    if (index < 0 || index === move.index) return;
+    // Reordering can detach the focused slide. At an endpoint, its other arrow stays enabled.
+    const focused = document.activeElement;
+    if (focused === document.body || focused === move.button) {
+      (move.button.disabled ? move.alternate : move.button)?.focus();
+    }
+  }, [slides, pendingMove]);
 
   return (
     <div className={styles.editor}>
@@ -148,7 +180,7 @@ function CollectionEditor({
                     aria-label={`Move ${name} earlier`}
                     title="Move earlier"
                     disabled={index === 0}
-                    onClick={() => onEdit({ type: 'moveSlide', collectionId, mediaId, direction: 'up' })}
+                    onClick={(event) => moveSlide(event.currentTarget, mediaId, index, 'up')}
                   >
                     <ArrowLeftIcon />
                   </button>
@@ -158,7 +190,7 @@ function CollectionEditor({
                     aria-label={`Move ${name} later`}
                     title="Move later"
                     disabled={index === slides.length - 1}
-                    onClick={() => onEdit({ type: 'moveSlide', collectionId, mediaId, direction: 'down' })}
+                    onClick={(event) => moveSlide(event.currentTarget, mediaId, index, 'down')}
                   >
                     <ArrowRightIcon />
                   </button>
@@ -371,7 +403,12 @@ export function SlideshowPanel({
         )}
       </section>
       {countdownOpen ? (
-        <ModalDialog title="Slideshow countdown" closeLabel="Done" onClose={() => setCountdownOpen(false)}>
+        <ModalDialog
+          title="Slideshow countdown"
+          description="Set the break timer and choose whether it appears on the slideshow."
+          closeLabel="Done"
+          onClose={() => setCountdownOpen(false)}
+        >
           <label className={styles.countdownToggle}>
             <input
               type="checkbox"

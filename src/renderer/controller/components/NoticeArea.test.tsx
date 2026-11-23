@@ -70,6 +70,8 @@ describe('NoticeArea', () => {
   it('a notice without an action has only Dismiss', () => {
     renderArea({ notices: [{ id: 'a', level: 'info', message: 'Imported 3 images.' }] });
     expect(screen.getAllByRole('button').map((b) => b.textContent)).toEqual(['Dismiss']);
+    expect(screen.getByRole('status')).toHaveTextContent('Imported 3 images.');
+    expect(screen.queryByRole('alert')).toBeNull();
   });
 
   it('every button is a touch-sized target (the Controller is used with a finger)', () => {

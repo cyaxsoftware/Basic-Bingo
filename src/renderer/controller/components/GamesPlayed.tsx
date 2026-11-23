@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useId, useState } from 'react';
 import { formatGameDuration, formatGameStart, type GameRecord } from '../../../shared/games/gameLog';
 import { ConfirmDialog } from './ConfirmDialog';
 import styles from './GamesPlayed.module.css';
@@ -15,13 +15,16 @@ export interface GamesPlayedProps {
 /** The night's games: number, when the first ball was called, the pattern and how long it took. */
 export function GamesPlayed({ records, onClear, now }: GamesPlayedProps) {
   const [confirming, setConfirming] = useState(false);
+  const headingId = useId();
   // Newest first; each game keeps the number it was played as.
   const rows = records.toReversed();
 
   return (
     <section className={styles.panel} aria-label="Games played">
       <div className={styles.head}>
-        <h2 className={styles.title}>Games played · {records.length}</h2>
+        <h2 id={headingId} className={styles.title}>
+          Games played · {records.length}
+        </h2>
         <button
           type="button"
           className={styles.clear}
@@ -38,10 +41,10 @@ export function GamesPlayed({ records, onClear, now }: GamesPlayedProps) {
         </p>
       ) : (
         <div className={styles.scroll} tabIndex={0} role="region" aria-label="Games played, newest first">
-          <table className={styles.table}>
+          <table className={styles.table} aria-labelledby={headingId}>
             <thead>
               <tr>
-                <th scope="col" className={styles.number}>
+                <th scope="col" className={styles.number} aria-label="Game number">
                   #
                 </th>
                 <th scope="col">First ball</th>
