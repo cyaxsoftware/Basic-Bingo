@@ -18,6 +18,8 @@ const config: ForgeConfig = {
   packagerConfig: {
     asar: true,
     executableName: 'offline-bingo-display',
+    // No extension: Packager appends .ico on Windows.
+    icon: 'build/icon',
     appCopyright: 'Copyright © 2026 Cyax Software',
     win32metadata: {
       CompanyName: 'Cyax Software',
@@ -30,6 +32,7 @@ const config: ForgeConfig = {
     new MakerSquirrel({
       name: 'offline_bingo_display',
       setupExe: 'OfflineBingoDisplaySetup.exe',
+      setupIcon: 'build/icon.ico',
     }),
     // Portable zip, useful for rehearsal machines where installing is not allowed.
     new MakerZIP({}, ['win32']),

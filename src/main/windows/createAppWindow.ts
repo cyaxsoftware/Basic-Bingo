@@ -1,3 +1,4 @@
+import path from 'node:path';
 import { app, BrowserWindow, type BrowserWindowConstructorOptions } from 'electron';
 import { hardenWebContents } from '../security/offlinePolicy';
 import { loadRenderer, preloadPath, type WindowRole } from './rendererEntry';
@@ -10,6 +11,8 @@ export function createAppWindow(role: WindowRole, options: BrowserWindowConstruc
   const window = new BrowserWindow({
     show: false,
     autoHideMenuBar: true,
+    // A packaged app already carries its icon in the .exe (see forge.config.mts); only `npm start` needs it.
+    ...(app.isPackaged ? {} : { icon: path.join(app.getAppPath(), 'build', 'icon.ico') }),
     ...options,
     webPreferences: {
       preload: preloadPath(role),
