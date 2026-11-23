@@ -3,7 +3,9 @@ import { mediaUrl, type MediaItem } from '../../../shared/media';
 import {
   MAX_COLLECTION_NAME,
   MAX_SLIDE_SECONDS,
+  collectionName,
   slideFit,
+  slideSeconds,
   slideshowFit,
   type SlideshowCollection,
   type SlideshowCommand,
@@ -55,6 +57,9 @@ function CollectionEditor({
 }: Omit<SlideshowPanelProps, 'slideshow'> & { readonly collection: SlideshowCollection }) {
   const { id: collectionId, slides } = collection;
   const [confirmDelete, setConfirmDelete] = useState(false);
+  // Snapshots contain valid values, while an input may be temporarily blank or contain trailing spaces.
+  const [nameDraft, setNameDraft] = useState<string | null>(null);
+  const [secondsDraft, setSecondsDraft] = useState<string | null>(null);
   const legacyImages = new Map(library.map((image) => [image.id, image]));
 
   return (
@@ -133,45 +138,37 @@ function CollectionEditor({
       <details className={styles.details}>
         <summary>Collection settings</summary>
         <div className={styles.settings}>
-          <form
-            onSubmit={(event) => onEdit({ type: 'rename', collectionId, name: readField(event, 'name') })}
-          >
-            <label>
-              Collection name
-              <input
-                key={collection.name}
-                name="name"
-                required
-                maxLength={MAX_COLLECTION_NAME}
-                defaultValue={collection.name}
-              />
-            </label>
-            <button type="submit">Rename</button>
-          </form>
-          <form
-            onSubmit={(event) =>
-              onEdit({
-                type: 'setInterval',
-                collectionId,
-                secondsPerSlide: Number(readField(event, 'seconds')),
-              })
-            }
-          >
-            <label>
-              Seconds per slide
-              <input
-                key={collection.secondsPerSlide}
-                name="seconds"
-                type="number"
-                required
-                min={1}
-                max={MAX_SLIDE_SECONDS}
-                step={1}
-                defaultValue={collection.secondsPerSlide}
-              />
-            </label>
-            <button type="submit">Set interval</button>
-          </form>
+          <label>
+            Collection name
+            <input
+              maxLength={MAX_COLLECTION_NAME}
+              value={nameDraft ?? collection.name}
+              onChange={(event) => {
+                const draft = event.currentTarget.value;
+                setNameDraft(draft);
+                const name = collectionName.safeParse(draft);
+                if (name.success) onEdit({ type: 'rename', collectionId, name: name.data });
+              }}
+              onBlur={() => setNameDraft(null)}
+            />
+          </label>
+          <label>
+            Seconds per slide
+            <input
+              type="number"
+              min={1}
+              max={MAX_SLIDE_SECONDS}
+              step={1}
+              value={secondsDraft ?? collection.secondsPerSlide}
+              onChange={(event) => {
+                setSecondsDraft(event.currentTarget.value);
+                const seconds = slideSeconds.safeParse(event.currentTarget.valueAsNumber);
+                if (seconds.success)
+                  onEdit({ type: 'setInterval', collectionId, secondsPerSlide: seconds.data });
+              }}
+              onBlur={() => setSecondsDraft(null)}
+            />
+          </label>
           <label>
             Default image fit
             <select

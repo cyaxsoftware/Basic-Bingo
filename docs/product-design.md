@@ -92,7 +92,7 @@ No internet connection, cloud database, user account, local HTTP server, or sepa
 - Create, rename, and delete **multiple collections** (e.g., Legion Sponsors, VFW Announcements, Scout Fundraiser).
 - The Collections list switches between collections. **New collection** opens a name field and
   selects the new collection when created. Renaming, deletion, the default fit, and the interval
-  are under **Collection settings**.
+  are under **Collection settings**. The name and interval save as you edit valid values.
 - **Add images…** opens the local file picker for the selected collection and appends each chosen file
   as a slide. The app keeps its own copies so slides survive removal of the source USB drive.
   Single Image has a separate gallery.

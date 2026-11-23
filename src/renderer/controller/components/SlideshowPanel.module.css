@@ -92,8 +92,7 @@
 
 .slideBar,
 .slideActions,
-.settings,
-.settings form {
+.settings {
   display: flex;
   align-items: center;
   flex-wrap: wrap;
@@ -174,8 +173,7 @@
   font-weight: 700;
 }
 
-.settings,
-.settings form {
+.settings {
   align-items: end;
   gap: var(--space-3);
 }

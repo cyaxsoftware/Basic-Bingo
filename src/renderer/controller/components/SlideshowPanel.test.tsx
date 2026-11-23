@@ -66,9 +66,12 @@ describe('Break Slideshow collection management', () => {
     await user.click(view.getByText('Collection settings'));
     const field = view.getByRole('textbox', { name: 'Collection name' });
     await user.clear(field);
-    await user.type(field, 'Announcements');
-    await user.click(view.getByRole('button', { name: 'Rename' }));
-    expect(view.getByRole('button', { name: 'Announcements' })).toHaveAttribute('aria-pressed', 'true');
+    await user.type(field, 'Club Announcements');
+    expect(view.getByRole('button', { name: 'Club Announcements' })).toHaveAttribute('aria-pressed', 'true');
+    expect(field).toHaveFocus();
+    await user.clear(field);
+    await user.tab();
+    expect(field).toHaveValue('Club Announcements');
   });
 
   it('appends picked images immediately with thumbnails, and supports Original, Fit, and Fill', async () => {
@@ -94,7 +97,11 @@ describe('Break Slideshow collection management', () => {
     const seconds = view.getByRole('spinbutton', { name: 'Seconds per slide' });
     await user.clear(seconds);
     await user.type(seconds, '20');
-    await user.click(view.getByRole('button', { name: 'Set interval' }));
+    expect(api.current().slideshow.collections[0]?.secondsPerSlide).toBe(20);
+    fireEvent.change(seconds, { target: { value: '301' } });
+    expect(api.current().slideshow.collections[0]?.secondsPerSlide).toBe(20);
+    await user.tab();
+    expect(seconds).toHaveValue(20);
     fireEvent.error(view.getByRole('img', { name: 'Menu.png' }));
     expect(view.getByText('Image unavailable')).toBeInTheDocument();
     await user.click(view.getByRole('button', { name: 'Remove Logo.png from collection' }));
