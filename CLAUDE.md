@@ -1,15 +1,17 @@
 Read [AGENTS.md](AGENTS.md) first. It contains the project workflow, guardrails and conventions for
 every coding agent, and links to the architecture and product docs.
 
-## Test cadence: a hard rule
+## Tests: do not run the e2e tests (a hard rule)
 
-**Never run the full e2e suite (`npm run test:e2e` with no file) after a change.** It takes about a minute, and
-the owner has said more than once that it must not be rerun "every time". After a change run only:
+**Do not run any end-to-end test (`npm run test:e2e`, `npm run test:e2e:smoke`, or a single spec) until a major
+milestone is finished, or the owner says the work is done or asks for it.** Each e2e test launches the real app,
+so real windows open and close on the owner's screen, which is flashing and gives them a headache. They have
+asked for this more than once.
 
-1. `npx vitest run` (unit tests, a few seconds), and
-2. at most the ONE e2e spec the change touches, for example
-   `npm run test:e2e -- e2e/controllerLayout.spec.ts`.
+While working, use only the tests that open no windows:
 
-`npm run check` and `npm run test:e2e:smoke` are for when you are about to commit a finished piece of work.
-The full suite is only for a milestone boundary, a release, or when the owner asks. Do not rerun a test that
-already passed on code that has not changed since. See "Definition of done" in AGENTS.md.
+1. `npx vitest run` (unit and component tests, a few seconds).
+2. `npm run check` (typecheck, lint, format and the unit tests) when you are about to commit.
+
+If a change really needs a layout or app-level check, say so and ask first instead of running it. Do not rerun a
+test that already passed on code that has not changed since. See "Definition of done" in AGENTS.md.
