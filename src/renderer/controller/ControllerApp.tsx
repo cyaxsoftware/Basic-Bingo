@@ -88,7 +88,6 @@ export function ControllerApp({ api, store }: ControllerAppProps) {
             onProject={actions.openPresentation}
             onPreview={actions.openPreview}
             onStop={actions.closePresentation}
-            onRefreshDisplays={actions.refreshDisplays}
           />
         </div>
         {railLayout ? null : newGame}

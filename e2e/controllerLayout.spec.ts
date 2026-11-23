@@ -83,6 +83,16 @@ async function fillHistory(controller: Page): Promise<void> {
   for (const label of ['B-3', 'I-17', 'N-33', 'G-48', 'O-61', 'B-9']) await tapBall(controller, label);
 }
 
+/**
+ * Ask the app to re-read the connected displays, as Windows would tell it about a newly connected projector. The
+ * tests below fake the display list, so they trigger the re-read directly (there is no button for it any more).
+ */
+async function refreshDisplays(controller: Page): Promise<void> {
+  await controller.evaluate(() =>
+    (globalThis as unknown as { bingo: { listDisplays(): Promise<unknown> } }).bingo.listDisplays(),
+  );
+}
+
 type BannerState = 'idle' | 'banner up';
 
 /** Sizes for the top-bar scenarios below: the tightest case (150%), a small laptop, and a typical one. */
@@ -346,7 +356,7 @@ for (const state of STATES) {
       } as unknown as typeof own;
       screen.getAllDisplays = () => [own, projector];
     }, LONG_MONITOR_NAME);
-    await controller.getByRole('button', { name: 'Refresh displays' }).click();
+    await refreshDisplays(controller);
     // Fail loudly if the selector is missing: without it this would quietly test the single-display hint.
     const selector = controller.getByLabel('Presentation display');
     await expect(selector).toBeVisible();
@@ -381,7 +391,7 @@ for (const state of STATES) {
       const own = screen.getDisplayMatching(BrowserWindow.getAllWindows()[0]!.getBounds());
       screen.getAllDisplays = () => [own];
     });
-    await controller.getByRole('button', { name: 'Refresh displays' }).click();
+    await refreshDisplays(controller);
     const hint = controller.getByText(/No second display/);
     await expect(hint).toBeVisible();
     await expect(controller.getByRole('button', { name: 'Project', exact: true })).toHaveCount(0);

@@ -27,7 +27,6 @@ export interface ControllerActions {
   openPresentation(displayId: number): void;
   openPreview(): void;
   closePresentation(): void;
-  refreshDisplays(): void;
   dismissNotice(noticeId: string): void;
   /** Message from the last failed command, shown until cleared or the next success. */
   readonly lastError: string | null;
@@ -77,11 +76,6 @@ export function useControllerActions(api: ControllerApi): ControllerActions {
       openPresentation: (displayId: number) => run(() => api.openPresentation(displayId)),
       openPreview: () => run(() => api.openPreview()),
       closePresentation: () => run(() => api.closePresentation()),
-      refreshDisplays: () =>
-        run(async () => {
-          await api.listDisplays();
-          return { ok: true };
-        }),
       dismissNotice: (noticeId: string) => run(() => api.dismissNotice(noticeId)),
       lastError,
       clearError,
