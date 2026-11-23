@@ -1,13 +1,16 @@
 /*
- * The board scales to whatever space it gets (any resolution or aspect ratio)
- * by sizing cells from the container: 16 columns (letter + 15) and 5 rows,
- * plus gaps. --cell is the largest square that fits both dimensions.
+ * The board scales to whatever space it gets (any resolution or aspect ratio) by sizing cells from the
+ * container: 16 columns (letter + 15) and 5 rows, plus gaps. --cell is the largest square that fits both
+ * dimensions. Uncalled numbers are plain and quiet; called numbers are filled circles in the letter's color.
  */
 .frame {
   container-type: size;
   min-height: 0;
   display: grid;
   place-items: center;
+  padding: 1.5vmin;
+  background: var(--stage-panel);
+  border-radius: 1.5vmin;
 }
 
 .board {
@@ -29,34 +32,39 @@
 .cell {
   display: grid;
   place-items: center;
-  font-size: calc(var(--cell) * 0.46);
-  font-weight: 800;
+  font-size: calc(var(--cell) * 0.5);
+  font-weight: 700;
   line-height: 1;
 }
 
+/* The row letter is large text in the row's color, not a filled tile. */
 .letter {
-  border-radius: calc(var(--cell) * 0.15);
-  background: var(--ball-color);
-  color: var(--ball-ink);
-  font-size: calc(var(--cell) * 0.6);
+  color: var(--ball-color);
+  font-size: calc(var(--cell) * 0.8);
+  font-weight: 600;
 }
 
 .cell {
   border-radius: 50%;
-  background: var(--uncalled-fill);
-  color: var(--uncalled-text);
+  color: var(--stage-dim);
+  font-weight: 600;
 }
 
+/* The current call is shown in the large ball below the board, so on the board it looks like any other called
+ * number (it keeps data-status='current' for tests and assistive tech, but no special style). */
 .cell[data-status='called'],
 .cell[data-status='current'] {
   background: var(--ball-color);
   color: var(--ball-ink);
+  font-weight: 800;
 }
 
-/* Current call: bright ring plus slight scale, so it is not signalled by color alone. */
-.cell[data-status='current'] {
-  box-shadow:
-    0 0 0 calc(var(--cell) * 0.06) var(--stage),
-    0 0 0 calc(var(--cell) * 0.13) var(--current-ring);
-  transform: scale(1.06);
+/* A row this game does not use: its balls just disappear (they keep their place, so the board does not shift),
+ * and only a quiet letter is left to show the row is not in play. */
+.row[data-disabled='true'] .cell {
+  visibility: hidden;
+}
+
+.row[data-disabled='true'] .letter {
+  color: var(--stage-blackout-text);
 }

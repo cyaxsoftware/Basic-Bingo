@@ -10,7 +10,7 @@
  * channels are removed first, so a hot restart or accidental second call
  * cannot throw "Attempted to register a second handler".
  */
-import { isValidBall } from '../../shared/game/balls';
+import { isBingoLetter, isValidBall } from '../../shared/game/balls';
 import { isValidPatternId } from '../../shared/patterns';
 import { isPresentationMode } from '../../shared/presentation/presentationMode';
 import {
@@ -105,6 +105,12 @@ export function registerIpcHandlers(ipc: IpcMainLike, deps: IpcDependencies): vo
     return store.dispatch({ type: 'toggleBall', ball });
   });
 
+  command(IpcChannel.toggleRowDisabled, (letter) =>
+    isBingoLetter(letter)
+      ? store.dispatch({ type: 'toggleRowDisabled', letter })
+      : fail('Invalid row: expected B, I, N, G or O.'),
+  );
+
   command(IpcChannel.showBingoBanner, () => store.dispatch({ type: 'showBingoBanner' }));
 
   command(IpcChannel.dismissBingoBanner, () => store.dispatch({ type: 'dismissBingoBanner' }));
@@ -169,6 +175,10 @@ export function registerIpcHandlers(ipc: IpcMainLike, deps: IpcDependencies): vo
       ? store.dispatchPattern({ type: 'deletePattern', patternId })
       : fail('Invalid pattern id.'),
   );
+
+  // No arguments: it pushes whatever the working pattern is right now.
+  command(IpcChannel.showPatternOnProjector, () => store.dispatchPattern({ type: 'showPatternOnProjector' }));
+  command(IpcChannel.hidePatternOnProjector, () => store.dispatchPattern({ type: 'hidePatternOnProjector' }));
 
   command(IpcChannel.openPresentation, (displayId) => {
     if (typeof displayId !== 'number' || !Number.isSafeInteger(displayId)) {

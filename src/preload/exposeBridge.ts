@@ -30,6 +30,7 @@ export function createControllerApi(): ControllerApi {
   return {
     ...createPresentationApi(),
     toggleBall: (ball) => ipcRenderer.invoke(IpcChannel.toggleBall, ball),
+    toggleRowDisabled: (letter) => ipcRenderer.invoke(IpcChannel.toggleRowDisabled, letter),
     showBingoBanner: () => ipcRenderer.invoke(IpcChannel.showBingoBanner),
     dismissBingoBanner: () => ipcRenderer.invoke(IpcChannel.dismissBingoBanner),
     newGame: () => ipcRenderer.invoke(IpcChannel.newGame),
@@ -43,6 +44,8 @@ export function createControllerApi(): ControllerApi {
     renamePattern: (patternId, title) => ipcRenderer.invoke(IpcChannel.renamePattern, patternId, title),
     duplicatePattern: (patternId) => ipcRenderer.invoke(IpcChannel.duplicatePattern, patternId),
     deletePattern: (patternId) => ipcRenderer.invoke(IpcChannel.deletePattern, patternId),
+    showPatternOnProjector: () => ipcRenderer.invoke(IpcChannel.showPatternOnProjector),
+    hidePatternOnProjector: () => ipcRenderer.invoke(IpcChannel.hidePatternOnProjector),
     listDisplays: () => ipcRenderer.invoke(IpcChannel.listDisplays),
     openPresentation: (displayId) => ipcRenderer.invoke(IpcChannel.openPresentation, displayId),
     openPreview: () => ipcRenderer.invoke(IpcChannel.openPreview),

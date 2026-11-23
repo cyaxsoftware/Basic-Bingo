@@ -3,8 +3,7 @@
  * ball grid out of a short window. Instead the parts that can give way do so, in this order:
  * the status text is truncated (to a floor of 6em), the display selector narrows (to 120 px),
  * and the single-display hint takes whatever is left (and clamps to two lines). The buttons
- * never shrink. At the narrowest supported window (about 853 px) this needs roughly 555 px of
- * the 560 px available; e2e/controllerLayout.spec.ts checks long labels and the hint at 910 px.
+ * never shrink. e2e/controllerLayout.spec.ts checks long labels and the hint at the narrowest sizes.
  */
 .controls {
   flex: 1 1 0;

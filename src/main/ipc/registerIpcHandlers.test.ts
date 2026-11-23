@@ -86,6 +86,49 @@ describe('registerIpcHandlers', () => {
     expect(ctx.store.getSnapshot().game.calledNumbers).toEqual([]);
   });
 
+  describe('blacked-out rows', () => {
+    it('toggles a row from the Controller, and never touches the calls', () => {
+      ctx.ipc.invoke(CONTROLLER_ID, IpcChannel.toggleBall, 3);
+      expect(ctx.ipc.invoke(CONTROLLER_ID, IpcChannel.toggleRowDisabled, 'N')).toEqual({ ok: true });
+      expect(ctx.store.getSnapshot().game.disabledRows).toEqual(['N']);
+      expect(ctx.store.getSnapshot().game.calledNumbers).toEqual([3]);
+      expect(ctx.ipc.invoke(CONTROLLER_ID, IpcChannel.toggleRowDisabled, 'N')).toEqual({ ok: true });
+      expect(ctx.store.getSnapshot().game.disabledRows).toEqual([]);
+    });
+
+    it('rejects a ball in a blacked-out row, leaving the calls alone, and accepts it once the row is back', () => {
+      ctx.ipc.invoke(CONTROLLER_ID, IpcChannel.toggleRowDisabled, 'N');
+      const before = ctx.store.getSnapshot();
+      const result = ctx.ipc.invoke(CONTROLLER_ID, IpcChannel.toggleBall, 33) as CommandResult;
+      expect(result.ok).toBe(false);
+      expect(!result.ok && result.error).toMatch(/N row is blacked out/);
+      expect(ctx.store.getSnapshot()).toBe(before);
+
+      ctx.ipc.invoke(CONTROLLER_ID, IpcChannel.toggleRowDisabled, 'N');
+      expect(ctx.ipc.invoke(CONTROLLER_ID, IpcChannel.toggleBall, 33)).toEqual({ ok: true });
+      expect(ctx.store.getSnapshot().game.calledNumbers).toEqual([33]);
+    });
+
+    it('rejects it from the Presentation window and from strangers, changing nothing', () => {
+      const before = ctx.store.getSnapshot();
+      expect((ctx.ipc.invoke(PRESENTATION_ID, IpcChannel.toggleRowDisabled, 'B') as CommandResult).ok).toBe(
+        false,
+      );
+      expect((ctx.ipc.invoke(STRANGER_ID, IpcChannel.toggleRowDisabled, 'B') as CommandResult).ok).toBe(
+        false,
+      );
+      expect(ctx.store.getSnapshot()).toBe(before);
+    });
+
+    it.each(['X', 'b', '', 'BI', 3, null, undefined, ['B']])('rejects %j as a row', (arg) => {
+      const before = ctx.store.getSnapshot();
+      expect((ctx.ipc.invoke(CONTROLLER_ID, IpcChannel.toggleRowDisabled, arg) as CommandResult).ok).toBe(
+        false,
+      );
+      expect(ctx.store.getSnapshot()).toBe(before);
+    });
+  });
+
   describe('BINGO banner and new game', () => {
     const channels = [IpcChannel.showBingoBanner, IpcChannel.dismissBingoBanner, IpcChannel.newGame];
 
@@ -106,14 +149,26 @@ describe('registerIpcHandlers', () => {
       ctx.ipc.invoke(CONTROLLER_ID, IpcChannel.toggleBall, 9);
 
       expect(ctx.ipc.invoke(CONTROLLER_ID, IpcChannel.showBingoBanner)).toEqual({ ok: true });
-      expect(ctx.store.getSnapshot().game).toEqual({ calledNumbers: [3, 9], bingoBannerVisible: true });
+      expect(ctx.store.getSnapshot().game).toEqual({
+        calledNumbers: [3, 9],
+        bingoBannerVisible: true,
+        disabledRows: [],
+      });
 
       expect(ctx.ipc.invoke(CONTROLLER_ID, IpcChannel.dismissBingoBanner)).toEqual({ ok: true });
-      expect(ctx.store.getSnapshot().game).toEqual({ calledNumbers: [3, 9], bingoBannerVisible: false });
+      expect(ctx.store.getSnapshot().game).toEqual({
+        calledNumbers: [3, 9],
+        bingoBannerVisible: false,
+        disabledRows: [],
+      });
 
       ctx.ipc.invoke(CONTROLLER_ID, IpcChannel.showBingoBanner);
       expect(ctx.ipc.invoke(CONTROLLER_ID, IpcChannel.newGame)).toEqual({ ok: true });
-      expect(ctx.store.getSnapshot().game).toEqual({ calledNumbers: [], bingoBannerVisible: false });
+      expect(ctx.store.getSnapshot().game).toEqual({
+        calledNumbers: [],
+        bingoBannerVisible: false,
+        disabledRows: [],
+      });
     });
 
     it('showing the banner twice publishes only one snapshot', () => {
@@ -209,6 +264,8 @@ describe('pattern commands over IPC', () => {
     [IpcChannel.renamePattern, [SOME_ID, 'Hook']],
     [IpcChannel.duplicatePattern, [SOME_ID]],
     [IpcChannel.deletePattern, [SOME_ID]],
+    [IpcChannel.showPatternOnProjector, []],
+    [IpcChannel.hidePatternOnProjector, []],
   ];
 
   it.each(validCalls)(

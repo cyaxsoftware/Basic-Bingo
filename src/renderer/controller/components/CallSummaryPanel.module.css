@@ -1,15 +1,33 @@
+/*
+ * Side column (the default, about 260 px): a compact card with the current ball and the call count side by
+ * side, and the previous five below. The sections are dissolved into the card's own grid so the count can
+ * sit beside the ball. Content starts at the top; any extra height (the card is stretched to end level with
+ * the ball board) is just white space below.
+ */
 .panel {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-4);
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  grid-template-areas:
+    'currentHeading currentHeading'
+    'current count'
+    'previousHeading previousHeading'
+    'previous previous';
+  align-content: start;
+  align-items: center;
+  gap: var(--space-2) var(--space-4);
   padding: var(--space-4);
   background: var(--panel);
   border: 1px solid var(--border);
   border-radius: var(--radius-md);
 }
 
+.currentSection,
+.previousSection {
+  display: contents;
+}
+
 .heading {
-  margin: 0 0 var(--space-2);
+  margin: 0;
   font-size: 0.9rem;
   font-weight: 600;
   text-transform: uppercase;
@@ -17,17 +35,28 @@
   color: var(--text-muted);
 }
 
-.current {
-  display: grid;
-  place-items: center;
-  min-height: 140px;
+.currentHeading {
+  grid-area: currentHeading;
 }
 
+.previousHeading {
+  grid-area: previousHeading;
+  margin-top: var(--space-2);
+}
+
+.current {
+  grid-area: current;
+  display: grid;
+  place-items: center;
+}
+
+/* About 92 px across (the chip is always 2.6em). */
 .currentChip {
-  font-size: 3rem;
+  font-size: 2.2rem;
 }
 
 .previous {
+  grid-area: previous;
   display: flex;
   gap: 6px;
   margin: 0;
@@ -35,7 +64,7 @@
   list-style: none;
 }
 
-/* Five fit on one line in the 260px side panel (5 × 2.6em + gaps). */
+/* Five fit on one line in the 260px side panel (5 x 2.6em + gaps). */
 .previousChip {
   font-size: 0.95rem;
 }
@@ -46,7 +75,8 @@
 }
 
 .count {
-  margin: auto 0 0;
+  grid-area: count;
+  margin: 0;
   font-size: 1.1rem;
 }
 
@@ -57,6 +87,7 @@
  */
 @container (min-width: 520px) {
   .panel {
+    display: flex;
     flex-direction: row;
     align-items: center;
     gap: var(--space-6);
@@ -68,11 +99,8 @@
     align-items: center;
     gap: var(--space-3);
   }
-  .heading {
-    margin: 0;
-  }
-  .current {
-    min-height: 0;
+  .previousHeading {
+    margin-top: 0;
   }
   .currentChip {
     font-size: 1.3rem;

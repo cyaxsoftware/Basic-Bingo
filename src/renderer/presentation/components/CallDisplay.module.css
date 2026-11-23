@@ -1,98 +1,62 @@
 /*
- * The panel is a size container. Everything is sized from it, so the same
- * markup works as a tall side column (16:9) or a wide top band (4:3).
- * Balls are sized with font-size only (diameter = 2.6em, see BallChip).
+ * The calls band: the current ball (with its caption) and the previous five (with theirs), side by side and
+ * centered in whatever area the layout gives it. The panel is a size container and everything is sized from it,
+ * so the same markup works along the bottom of a 16:9 screen and beside the pattern on a squarer one.
+ * Balls are sized with font-size only (diameter = 2.6em, see BallChip), so each diameter below is divided by 2.6.
  */
 .panel {
   container-type: size;
-  min-height: 0;
-  padding: 2vmin;
-  background: var(--stage-panel);
-  border-radius: 1.5vmin;
-}
-
-/* Tall panel: current ball on top, previous five below. */
-.layout {
-  display: flex;
-  flex-direction: column;
-  gap: 4cqh;
-  height: 100%;
-}
-
-.currentArea {
-  flex: 1;
   min-height: 0;
   display: grid;
   place-items: center;
 }
 
+.layout {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6cqw;
+  max-width: 100%;
+}
+
+.currentArea,
+.previousArea {
+  display: grid;
+  justify-items: center;
+  gap: 3cqh;
+}
+
 .currentBall {
-  font-size: min(28cqw, 22cqh);
-  border-width: 0.06em;
-  box-shadow: 0 0 0 0.6vmin var(--current-ring);
+  /* The largest ball that leaves room for its caption: 62% of the height, or 24% of the width. */
+  font-size: calc(min(62cqh, 24cqw) / 2.6);
+}
+
+.caption,
+.heading {
+  margin: 0;
+  font-size: min(5.2cqh, 2.4cqw);
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  white-space: nowrap;
 }
 
 .ready {
   margin: 0;
-  font-size: min(9cqw, 10cqh);
+  font-size: min(9cqh, 5cqw);
   font-weight: 700;
   color: var(--stage-muted);
   text-align: center;
 }
 
-.previousArea {
-  flex: none;
-}
-
-.heading {
-  margin: 0 0 1.5cqh;
-  font-size: min(5cqw, 4cqh);
-  font-weight: 600;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: var(--stage-muted);
-}
-
 .previous {
   display: flex;
-  justify-content: space-between;
-  gap: 2cqw;
+  gap: 1.6cqw;
   margin: 0;
   padding: 0;
   list-style: none;
 }
 
-/* Five across the panel width: 5 × 2.6em + gaps ≈ 100cqw. */
 .previousBall {
-  font-size: min(6.6cqw, 6cqh);
-}
-
-/* Wide panel (top band on 4:3 screens): everything in one row. */
-@container (min-aspect-ratio: 2/1) {
-  .layout {
-    flex-direction: row;
-    align-items: center;
-    gap: 4cqw;
-  }
-  .currentArea {
-    flex: none;
-  }
-  .currentBall {
-    font-size: 30cqh;
-  }
-  .ready {
-    font-size: 16cqh;
-  }
-  .previousArea {
-    flex: 1;
-  }
-  .heading {
-    font-size: 8cqh;
-  }
-  .previous {
-    justify-content: flex-start;
-  }
-  .previousBall {
-    font-size: min(22cqh, 5cqw);
-  }
+  font-size: calc(min(36cqh, 11cqw) / 2.6);
 }

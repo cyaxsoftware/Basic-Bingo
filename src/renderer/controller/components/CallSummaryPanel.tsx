@@ -14,7 +14,7 @@ export function CallSummaryPanel({ calledNumbers }: CallSummaryPanelProps) {
   return (
     <aside className={styles.panel} aria-label="Call summary">
       <section className={styles.currentSection}>
-        <h2 className={styles.heading}>Current call</h2>
+        <h2 className={`${styles.heading} ${styles.currentHeading}`}>Current call</h2>
         <div className={styles.current} data-testid="current-call">
           {current === null ? (
             <span className={styles.empty}>No calls yet</span>
@@ -25,7 +25,7 @@ export function CallSummaryPanel({ calledNumbers }: CallSummaryPanelProps) {
       </section>
 
       <section className={styles.previousSection}>
-        <h2 className={styles.heading}>Previous</h2>
+        <h2 className={`${styles.heading} ${styles.previousHeading}`}>Previous</h2>
         {previous.length === 0 ? (
           <p className={styles.empty}>—</p>
         ) : (

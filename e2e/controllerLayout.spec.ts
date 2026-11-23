@@ -40,6 +40,9 @@ export const LAYOUT_SIZES = [
   { width: 1140, height: 700 },
   { width: 1141, height: 700 },
   { width: 1160, height: 700 },
+  { width: 1439, height: 800 },
+  { width: 1440, height: 800 },
+  { width: 1440, height: 720 },
 ] as const;
 
 /** Design doc: 48 CSS px targets, never below 44; 48 from 1280 wide upwards. */
@@ -80,6 +83,16 @@ async function fillHistory(controller: Page): Promise<void> {
   for (const label of ['B-3', 'I-17', 'N-33', 'G-48', 'O-61', 'B-9']) await tapBall(controller, label);
 }
 
+/**
+ * Ask the app to re-read the connected displays, as Windows would tell it about a newly connected projector. The
+ * tests below fake the display list, so they trigger the re-read directly (there is no button for it any more).
+ */
+async function refreshDisplays(controller: Page): Promise<void> {
+  await controller.evaluate(() =>
+    (globalThis as unknown as { bingo: { listDisplays(): Promise<unknown> } }).bingo.listDisplays(),
+  );
+}
+
 type BannerState = 'idle' | 'banner up';
 
 /** Sizes for the top-bar scenarios below: the tightest case (150%), a small laptop, and a typical one. */
@@ -93,6 +106,77 @@ const SCENARIO_SIZES = [
 const LONG_MONITOR_NAME = 'Epson EB-PU1008W Projector (Main Hall, Stage Left)';
 /** How the app labels it: the monitor name plus its physical resolution. */
 const LONG_DISPLAY_LABEL = `${LONG_MONITOR_NAME} — 1920×1080`;
+
+/**
+ * Where things are, by size. From 1141 px: BINGO CALLED tops the side column over the Current Call widget, which
+ * ends level with the ball board; the projector controls are one widget in the top bar. From 1440 x 780 the left
+ * rail holds New Game and the pattern widget (tappable cells); in a wider-but-shorter or narrower window New Game
+ * is in the top bar and the pattern widget is a strip above the board. Below 1141 the compact layout keeps New
+ * Game in the top bar and a small Pattern card.
+ */
+async function expectArrangement(
+  controller: Page,
+  size: { readonly width: number; readonly height: number },
+): Promise<void> {
+  const { width, height } = size;
+  const rail = width >= 1440 && height >= 780;
+  const [newGame] = await rects(controller.getByRole('button', { name: 'New Game', exact: true }));
+  const [status] = await rects(controller.getByRole('status'));
+  expect(status?.top ?? 99, 'projector status is in the top bar').toBeLessThan(70);
+
+  if (width < 1141) {
+    expect(newGame?.top ?? 99, 'New Game is in the top bar').toBeLessThan(70);
+    await expect(controller.getByRole('button', { name: /^Pattern/ })).toBeVisible();
+    return;
+  }
+
+  const [board] = await rects(controller.getByLabel('Bingo balls'));
+  const [pattern] = await rects(controller.getByRole('region', { name: 'Pattern' }));
+  const [summary] = await rects(controller.getByLabel('Call summary'));
+  const [bingo] = await rects(controller.getByRole('button', { name: /BINGO CALLED|Dismiss BINGO/ }));
+  const [first] = await rects(controller.getByRole('button', { name: /^B-1,/ }));
+
+  if (rail) {
+    expect(newGame?.right ?? 0, 'New Game is in the left rail').toBeLessThanOrEqual(board?.left ?? 0);
+    expect(newGame?.top ?? 0, 'New Game is below the top bar').toBeGreaterThan(70);
+    expect(pattern?.right ?? 0, 'the pattern widget is in the left rail').toBeLessThanOrEqual(
+      board?.left ?? 0,
+    );
+    const cells = await rects(controller.getByRole('button', { name: /^Row \d, column \d$/ }));
+    expect(cells, 'the rail has the 25 tappable cells').toHaveLength(25);
+    for (const [index, cell] of cells.entries()) {
+      expect(cell.width, `pattern cell ${index} width`).toBeGreaterThanOrEqual(44);
+      expect(cell.height, `pattern cell ${index} height`).toBeGreaterThanOrEqual(44);
+    }
+  } else {
+    expect(newGame?.top ?? 99, 'New Game is in the top bar').toBeLessThan(70);
+    expect(pattern?.bottom ?? 99, 'the pattern strip is above the board').toBeLessThanOrEqual(
+      (board?.top ?? 0) + 1,
+    );
+    expect(pattern?.left ?? 99, 'the pattern strip is over the board column').toBeLessThanOrEqual(
+      (board?.left ?? 0) + 1,
+    );
+  }
+
+  expect(bingo?.bottom ?? 0, 'BINGO CALLED is above the Current Call widget').toBeLessThanOrEqual(
+    (summary?.top ?? 0) + 1,
+  );
+  // The side column ends level with the board's bottom: the Current Call widget stretches down to it.
+  expect(
+    Math.abs((summary?.bottom ?? 0) - (board?.bottom ?? 99)),
+    'call widget ends level with the board',
+  ).toBeLessThanOrEqual(1);
+  // BINGO is level with the top of the content beside it (the rail, or the strip, or the board), or one status
+  // line lower while the banner is up ("BINGO banner enabled").
+  const contentTop = rail ? (board?.top ?? 0) : (pattern?.top ?? 0);
+  const drop = (bingo?.top ?? 0) - contentTop;
+  expect(drop, 'BINGO sits at the top of the side column').toBeGreaterThanOrEqual(-1);
+  expect(drop, 'BINGO sits at the top of the side column').toBeLessThanOrEqual(32);
+  // The board starts at the top of its area, not centered in spare height.
+  expect((first?.top ?? 99) - (board?.top ?? 0), 'first row is at the top of the board').toBeLessThanOrEqual(
+    16,
+  );
+}
 
 /** Keep a picture, then assert the whole layout fits and is touchable. (The banner is raised by the caller.) */
 async function expectLayoutFits(
@@ -112,8 +196,9 @@ async function expectLayoutFits(
   if (keepIn) await writeFile(path.join(keepIn, fileName), picture);
 
   // The top bar is one row. A second row is what pushed the grid out of short windows (PR #55 review).
+  // From 1141 px the projector controls sit in a bordered widget (58 px tall); a wrapped bar is over 100.
   const header = await rects(controller.locator('header'));
-  expect(header[0]?.height ?? 0, 'top bar must stay a single row').toBeLessThanOrEqual(56);
+  expect(header[0]?.height ?? 0, 'top bar must stay a single row').toBeLessThanOrEqual(64);
 
   // Nothing scrolls: the page, and the grid itself.
   expect(await horizontalOverflow(controller), 'horizontal overflow').toBe(0);
@@ -125,8 +210,17 @@ async function expectLayoutFits(
   expect(gridScroll, 'the grid must not scroll internally').toEqual({ over: 0, overX: 0 });
 
   // All 75 balls are on screen and big enough to touch.
-  const balls = await rects(controller.getByRole('group').getByRole('button'));
+  const balls = await rects(controller.getByRole('button', { name: /^[BINGO]-\d+,/ }));
   expect(balls).toHaveLength(75);
+  // The five row letters are buttons too (tap one to black the row out), and as touchable as a ball.
+  const letters = await rects(controller.getByRole('button', { name: /^Black out [BINGO] row$/ }));
+  expect(letters).toHaveLength(5);
+  for (const [index, letter] of letters.entries()) {
+    expect(letter.width, `row letter ${index} width`).toBeGreaterThanOrEqual(minimumBallSize(width));
+    expect(letter.height, `row letter ${index} height`).toBeGreaterThanOrEqual(minimumBallSize(width));
+    expect(letter.right, `row letter ${index} right`).toBeLessThanOrEqual(width);
+    expect(letter.bottom, `row letter ${index} bottom`).toBeLessThanOrEqual(height);
+  }
   const minimum = minimumBallSize(width);
   for (const [index, ball] of balls.entries()) {
     expect(ball.width, `ball ${index + 1} width`).toBeGreaterThanOrEqual(minimum);
@@ -146,6 +240,8 @@ async function expectLayoutFits(
     expect(control.right, `control ${index} right edge`).toBeLessThanOrEqual(width);
     expect(control.bottom, `control ${index} bottom edge`).toBeLessThanOrEqual(height);
   }
+  await expectArrangement(controller, size);
+
   // Where the layout hides "BINGO banner enabled" to save a row, it must stay readable to a screen reader.
   if (state === 'banner up') await expect(controller.getByText('BINGO banner enabled')).toHaveCount(1);
 
@@ -178,6 +274,66 @@ for (const state of STATES) {
   });
 }
 
+// The Patterns screen replaces the ball grid, so it gets its own checks: the editor fits without scrolling at
+// every size, and everything on it (and the controls that stay) is touchable. The game screen, with the
+// Pattern card on it, is covered by every test above.
+test('Controller Patterns screen at every size', async () => {
+  const { app, controller } = await launchApp(userDataDir);
+  await fillHistory(controller);
+  await controller.getByRole('button', { name: /^(Edit patterns…|Pattern)/ }).click();
+  const view = controller.getByRole('region', { name: 'Patterns' });
+  await expect(view).toBeVisible();
+
+  for (const size of LAYOUT_SIZES) {
+    await test.step(`${size.width}x${size.height}`, async () => {
+      const { width, height } = size;
+      await resizeController(app, controller, width, height);
+      await controller.waitForTimeout(200);
+      const picture = await controller.screenshot();
+      const keepIn = process.env['BINGO_SCREENSHOT_DIR'];
+      if (keepIn) await writeFile(path.join(keepIn, `controller-patterns-${width}x${height}.png`), picture);
+
+      const header = await rects(controller.locator('header'));
+      expect(header[0]?.height ?? 0, 'top bar must stay a single row').toBeLessThanOrEqual(64);
+      expect(await horizontalOverflow(controller), 'horizontal overflow').toBe(0);
+      expect(await verticalOverflow(controller), 'vertical overflow').toBe(0);
+
+      // The editor and its controls never scroll; only the library list may.
+      const [box] = await rects(view);
+      expect(box?.right, 'view right edge').toBeLessThanOrEqual(width);
+      expect(box?.bottom, 'view bottom edge').toBeLessThanOrEqual(height);
+      const editor = await rects(view.locator('input, button[aria-pressed]'));
+      const inside = editor.every(
+        (control) => control.bottom <= (box?.bottom ?? 0) + 0.5 && control.right <= (box?.right ?? 0) + 0.5,
+      );
+      expect(inside, 'the title and all 25 cells are inside the view').toBe(true);
+
+      const cells = await rects(view.getByRole('button', { name: /^Row \d, column \d$/ }));
+      expect(cells).toHaveLength(25);
+      for (const [index, cell] of cells.entries()) {
+        expect(cell.width, `cell ${index} width`).toBeGreaterThanOrEqual(44);
+        expect(cell.height, `cell ${index} height`).toBeGreaterThanOrEqual(44);
+      }
+
+      // Everything else tappable is touch-sized, inside the window, and the BINGO control is still there.
+      await expect(controller.getByRole('button', { name: 'BINGO CALLED' })).toBeVisible();
+      const controls = await rects(controller.locator('button:not([aria-pressed]):visible, select:visible'));
+      for (const [index, control] of controls.entries()) {
+        expect(control.height, `control ${index} height`).toBeGreaterThanOrEqual(44);
+        expect(control.width, `control ${index} width`).toBeGreaterThanOrEqual(44);
+        expect(control.right, `control ${index} right edge`).toBeLessThanOrEqual(width);
+      }
+      // The first and last saved pattern can be reached (the list scrolls on its own if it must).
+      await expect(view.getByRole('button', { name: 'Four Corners' })).toBeVisible();
+    });
+  }
+
+  // And back: the game is exactly as it was left.
+  await controller.getByRole('button', { name: /Back to game/ }).click();
+  await expect(controller.getByTestId('called-count')).toHaveText('Called: 6 of 75');
+  await app.close();
+});
+
 // The top bar changes with what the operator is doing. These two states wrapped it onto a second row
 // and pushed the grid out of a 910x480 window (PR #55 review), so they are checked at several sizes.
 for (const state of STATES) {
@@ -200,9 +356,9 @@ for (const state of STATES) {
       } as unknown as typeof own;
       screen.getAllDisplays = () => [own, projector];
     }, LONG_MONITOR_NAME);
-    await controller.getByRole('button', { name: 'Refresh displays' }).click();
+    await refreshDisplays(controller);
     // Fail loudly if the selector is missing: without it this would quietly test the single-display hint.
-    const selector = controller.getByRole('combobox');
+    const selector = controller.getByLabel('Presentation display');
     await expect(selector).toBeVisible();
     await expect(selector.locator('option')).toHaveText(LONG_DISPLAY_LABEL);
     await expect(controller.getByRole('button', { name: 'Project', exact: true })).toBeVisible();
@@ -235,7 +391,7 @@ for (const state of STATES) {
       const own = screen.getDisplayMatching(BrowserWindow.getAllWindows()[0]!.getBounds());
       screen.getAllDisplays = () => [own];
     });
-    await controller.getByRole('button', { name: 'Refresh displays' }).click();
+    await refreshDisplays(controller);
     const hint = controller.getByText(/No second display/);
     await expect(hint).toBeVisible();
     await expect(controller.getByRole('button', { name: 'Project', exact: true })).toHaveCount(0);

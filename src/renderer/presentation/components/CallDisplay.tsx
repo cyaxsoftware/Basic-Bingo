@@ -19,10 +19,13 @@ export function CallDisplay({ calledNumbers }: CallDisplayProps) {
           ) : (
             <BallChip ball={current} className={styles.currentBall} />
           )}
+          <p className={styles.caption} aria-hidden="true">
+            Current call
+          </p>
         </div>
         {previous.length > 0 && (
           <div className={styles.previousArea}>
-            <h2 className={styles.heading}>Previous</h2>
+            <h2 className={styles.heading}>Previous calls</h2>
             <ol className={styles.previous} aria-label="Previous calls">
               {previous.map((ball) => (
                 <li key={ball}>

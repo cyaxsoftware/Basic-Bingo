@@ -3,7 +3,8 @@
   "savedAt": "2026-11-22T21:30:00.000Z",
   "game": {
     "calledNumbers": [3, 17, 9, 31, 52, 75],
-    "bingoBannerVisible": true
+    "bingoBannerVisible": true,
+    "disabledRows": ["N"]
   },
   "presentation": {
     "mode": "slideshow"
@@ -141,6 +142,36 @@
         true
       ],
       "editedFromLibrary": true
+    },
+    "shown": {
+      "title": "Big L",
+      "cells": [
+        true,
+        false,
+        false,
+        false,
+        false,
+        true,
+        false,
+        false,
+        false,
+        false,
+        true,
+        false,
+        false,
+        false,
+        false,
+        true,
+        false,
+        false,
+        false,
+        false,
+        true,
+        true,
+        true,
+        true,
+        true
+      ]
     }
   },
   "settings": {

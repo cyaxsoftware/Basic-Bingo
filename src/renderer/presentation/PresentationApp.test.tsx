@@ -1,4 +1,4 @@
-import { act, render, screen } from '@testing-library/react';
+import { act, render, screen, within } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 import { createSnapshotStore } from '../shared/snapshotStore';
 import { createFakeBingoApi, makeSnapshot } from '../test/fakeBingoApi';
@@ -19,7 +19,10 @@ describe('PresentationApp', () => {
 
   it('shows the latest state immediately on open', async () => {
     renderPresentation(
-      makeSnapshot({ revision: 7, game: { calledNumbers: [3, 17, 9], bingoBannerVisible: false } }),
+      makeSnapshot({
+        revision: 7,
+        game: { calledNumbers: [3, 17, 9], bingoBannerVisible: false, disabledRows: [] },
+      }),
     );
     expect(await screen.findByRole('img', { name: 'B-9' })).toBeInTheDocument();
     const previous = screen.getByRole('list', { name: 'Previous calls' });
@@ -33,7 +36,12 @@ describe('PresentationApp', () => {
     const { api } = renderPresentation();
     await screen.findByText('Ready for first call');
     act(() =>
-      api.push(makeSnapshot({ revision: 2, game: { calledNumbers: [3], bingoBannerVisible: false } })),
+      api.push(
+        makeSnapshot({
+          revision: 2,
+          game: { calledNumbers: [3], bingoBannerVisible: false, disabledRows: [] },
+        }),
+      ),
     );
     expect(screen.getByRole('img', { name: 'B-3' })).toBeInTheDocument();
     expect(screen.queryByText('Ready for first call')).not.toBeInTheDocument();
@@ -50,7 +58,7 @@ describe('PresentationApp', () => {
   });
 
   it('returns to the board with the game intact after a mode change', async () => {
-    const calls = { calledNumbers: [3, 17, 9], bingoBannerVisible: false };
+    const calls = { calledNumbers: [3, 17, 9], bingoBannerVisible: false, disabledRows: [] };
     const { api } = renderPresentation(makeSnapshot({ game: calls, presentationMode: 'singleImage' }));
     await screen.findByRole('heading', { name: 'Single Image' });
 
@@ -61,7 +69,11 @@ describe('PresentationApp', () => {
 
   describe('BINGO banner', () => {
     const BANNER = 'BINGO CALLED — PLEASE HOLD YOUR CARDS';
-    const game = (bingoBannerVisible: boolean) => ({ calledNumbers: [3, 17, 9], bingoBannerVisible });
+    const game = (bingoBannerVisible: boolean) => ({
+      calledNumbers: [3, 17, 9],
+      bingoBannerVisible,
+      disabledRows: [],
+    });
 
     it('is absent until the operator raises it', async () => {
       renderPresentation(makeSnapshot({ game: game(false) }));
@@ -92,7 +104,10 @@ describe('PresentationApp', () => {
 
       act(() =>
         api.push(
-          makeSnapshot({ revision: 2, game: { calledNumbers: [3, 17, 9, 40], bingoBannerVisible: true } }),
+          makeSnapshot({
+            revision: 2,
+            game: { calledNumbers: [3, 17, 9, 40], bingoBannerVisible: true, disabledRows: [] },
+          }),
         ),
       );
       act(() => api.push(makeSnapshot({ revision: 3, game: game(true), presentation: { kind: 'preview' } })));
@@ -125,9 +140,115 @@ describe('PresentationApp', () => {
   });
 
   it('has no interactive controls', async () => {
-    renderPresentation(makeSnapshot({ game: { calledNumbers: [1, 2, 3], bingoBannerVisible: false } }));
+    renderPresentation(
+      makeSnapshot({ game: { calledNumbers: [1, 2, 3], bingoBannerVisible: false, disabledRows: [] } }),
+    );
     await screen.findByRole('img', { name: 'B-3' });
     expect(screen.queryAllByRole('button')).toHaveLength(0);
     expect(document.querySelectorAll('input, select, textarea, a[href]')).toHaveLength(0);
+  });
+
+  describe('the pushed pattern', () => {
+    const shown = { title: 'Crazy Y', cells: [true, ...Array<boolean>(23).fill(false), true] };
+
+    it('shows nothing about a pattern until the operator pushes one', async () => {
+      renderPresentation();
+      await screen.findByText('Ready for first call');
+      expect(screen.queryByRole('region', { name: 'Winning pattern' })).toBeNull();
+    });
+
+    it('shows the pushed title and exactly the lit squares, with no free center', async () => {
+      renderPresentation(makeSnapshot({ shownPattern: shown }));
+      const panel = await screen.findByRole('region', { name: 'Winning pattern' });
+      expect(within(panel).getByRole('heading', { name: 'Crazy Y' })).toBeInTheDocument();
+      expect(within(panel).getByRole('img', { name: 'Crazy Y: 2 of 25 squares' })).toBeInTheDocument();
+      for (let index = 0; index < 25; index++) {
+        const lit = index === 0 || index === 24;
+        expect(screen.getByTestId(`pattern-cell-${index}`)).toHaveAttribute('data-on', String(lit));
+      }
+      expect(screen.getByTestId('pattern-cell-12')).toHaveAttribute('data-on', 'false');
+    });
+
+    it('follows the pushed pattern, not the working copy', async () => {
+      const { api } = renderPresentation(makeSnapshot({ shownPattern: shown }));
+      await screen.findByRole('region', { name: 'Winning pattern' });
+      act(() =>
+        api.push(
+          makeSnapshot({
+            revision: 2,
+            shownPattern: shown,
+            activePattern: {
+              sourcePatternId: null,
+              title: 'Edited later',
+              cells: Array(25).fill(true),
+              editedFromLibrary: false,
+            },
+          }),
+        ),
+      );
+      expect(screen.getByRole('heading', { name: 'Crazy Y' })).toBeInTheDocument();
+      expect(screen.queryByText('Edited later')).toBeNull();
+      expect(screen.getByTestId('pattern-cell-12')).toHaveAttribute('data-on', 'false');
+    });
+
+    it('updates when a new pattern is pushed, and goes away when hidden', async () => {
+      const { api } = renderPresentation(makeSnapshot({ shownPattern: shown }));
+      await screen.findByRole('region', { name: 'Winning pattern' });
+      act(() =>
+        api.push(
+          makeSnapshot({ revision: 2, shownPattern: { title: 'Blackout', cells: Array(25).fill(true) } }),
+        ),
+      );
+      expect(screen.getByRole('heading', { name: 'Blackout' })).toBeInTheDocument();
+      act(() => api.push(makeSnapshot({ revision: 3, shownPattern: null })));
+      expect(screen.queryByRole('region', { name: 'Winning pattern' })).toBeNull();
+    });
+
+    it('stays read-only: no controls were added', async () => {
+      renderPresentation(makeSnapshot({ shownPattern: shown }));
+      await screen.findByRole('region', { name: 'Winning pattern' });
+      expect(screen.queryAllByRole('button')).toHaveLength(0);
+    });
+  });
+
+  describe('blacked-out rows', () => {
+    const rowOut = (letter: string) =>
+      screen.getByTestId(`board-row-${letter}`).getAttribute('data-disabled');
+
+    it('shows every row in play until the operator blacks one out', async () => {
+      renderPresentation();
+      await screen.findByText('Ready for first call');
+      for (const letter of ['B', 'I', 'N', 'G', 'O']) expect(rowOut(letter)).toBe('false');
+    });
+
+    it('marks exactly the blacked-out rows, and follows changes', async () => {
+      const game = (disabledRows: ('B' | 'I' | 'N' | 'G' | 'O')[]) => ({
+        calledNumbers: [3, 17],
+        bingoBannerVisible: false,
+        disabledRows,
+      });
+      const { api } = renderPresentation(makeSnapshot({ game: game(['I', 'O']) }));
+      await screen.findByTestId('board-row-I');
+      expect(['B', 'I', 'N', 'G', 'O'].map(rowOut)).toEqual(['false', 'true', 'false', 'false', 'true']);
+
+      act(() => api.push(makeSnapshot({ revision: 2, game: game([]) })));
+      expect(['B', 'I', 'N', 'G', 'O'].map(rowOut)).toEqual(['false', 'false', 'false', 'false', 'false']);
+    });
+
+    it('still shows called balls, and the current call, from a blacked-out row', async () => {
+      renderPresentation(
+        makeSnapshot({ game: { calledNumbers: [3, 17], bingoBannerVisible: false, disabledRows: ['I'] } }),
+      );
+      expect(await screen.findByRole('img', { name: 'I-17' })).toBeInTheDocument();
+      expect(screen.getByTestId('board-ball-17')).toHaveAttribute('data-status', 'current');
+    });
+
+    it('stays read-only: no controls were added for it', async () => {
+      renderPresentation(
+        makeSnapshot({ game: { calledNumbers: [], bingoBannerVisible: false, disabledRows: ['B'] } }),
+      );
+      await screen.findByTestId('board-row-B');
+      expect(screen.queryAllByRole('button')).toHaveLength(0);
+    });
   });
 });

@@ -4,6 +4,7 @@ import { AudienceBoard } from './components/AudienceBoard';
 import { BingoBanner } from './components/BingoBanner';
 import { CallDisplay } from './components/CallDisplay';
 import { ComingSoon } from './components/ComingSoon';
+import { ShownPattern } from './components/ShownPattern';
 import styles from './PresentationApp.module.css';
 
 export interface PresentationAppProps {
@@ -30,10 +31,23 @@ export function PresentationApp({ store }: PresentationAppProps) {
       {onBoard && snapshot.game.bingoBannerVisible ? <BingoBanner /> : null}
       <div className={styles.stage}>
         {onBoard ? (
-          <>
-            <CallDisplay calledNumbers={snapshot.game.calledNumbers} />
-            <AudienceBoard calledNumbers={snapshot.game.calledNumbers} />
-          </>
+          <div className={styles.game} data-pattern={snapshot.shownPattern ? 'shown' : 'none'}>
+            {/* The pattern the operator pushed (nothing until they do), the board, and the calls. */}
+            {snapshot.shownPattern ? (
+              <div className={styles.pattern}>
+                <ShownPattern pattern={snapshot.shownPattern} />
+              </div>
+            ) : null}
+            <div className={styles.board}>
+              <AudienceBoard
+                calledNumbers={snapshot.game.calledNumbers}
+                disabledRows={snapshot.game.disabledRows}
+              />
+            </div>
+            <div className={styles.calls}>
+              <CallDisplay calledNumbers={snapshot.game.calledNumbers} />
+            </div>
+          </div>
         ) : (
           <ComingSoon mode={snapshot.presentationMode} />
         )}

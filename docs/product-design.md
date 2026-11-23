@@ -25,7 +25,7 @@ No internet connection, cloud database, user account, local HTTP server, or sepa
 1. **Ball selection is a toggle.** Tapping an uncalled ball adds it as the newest call. Tapping a called ball removes it from the active called sequence. All other calls retain their relative chronological order. If a removed ball is tapped again, it becomes the newest call.
 2. **New Game** clears all called balls but retains the currently selected winning pattern; it requires confirmation.
 3. **BINGO CALLED** displays a conspicuous red notice on the game projector, and the notice persists until the operator explicitly dismisses it (false BINGO) or resets the game. It is never automatically dismissed.
-4. **Winning patterns** live in a saved, editable library. The active pattern's name and all 25 cells can be edited in place during the game and the projector updates accordingly. **Never assume that the center cell is highlighted.** Patterns only highlight cells explicitly selected by the operator.
+4. **Winning patterns** live in a saved, editable library. The active pattern's name and all 25 cells can be edited in place during the game. The projector shows the pattern the operator last **pushed** with the Show on projector button (a snapshot of the title and cells); edits wait for the next push, so a stray tap never changes what the audience sees. **Never assume that the center cell is highlighted.** Patterns only highlight cells explicitly selected by the operator.
 5. **Slideshow** supports multiple named collections. Different organizations can maintain their own collections on the same installed laptop.
 6. When a break countdown reaches zero, show **“Time to Play!”**, but continue the slideshow until the operator manually chooses another presentation mode.
 7. **Still-image mode** uses a reusable local image library; support fit and crop presentation options.
@@ -55,6 +55,7 @@ No internet connection, cloud database, user account, local HTTP server, or sepa
 - In Game Board mode, allocate the largest possible area to an interactive 5-by-15 number layout, grouped into five rows of 15, with B/I/N/G/O row indicators.
 - Visible current call, last five *previous* calls, and called-ball count.
 - A prominent **BINGO CALLED** button. When the banner is active, show an equally prominent **Dismiss BINGO Banner** control.
+- Tapping a row letter blacks that row out (see 5.2a); the letters are drawn in their ball colors.
 - Pattern selection, active pattern grid and editable name. Tapping pattern cells edits the active pattern directly. The default UI can use a compact pattern panel that expands for editing, but editing must remain accessible without taking the operator away from the active game screen.
 - **New Game** is secondary and confirmation-protected. Do not place it where accidental touch is likely.
 
@@ -64,8 +65,8 @@ No internet connection, cloud database, user account, local HTTP server, or sepa
 
 **Controller pattern workflow:**
 1. Operator selects a saved pattern from a library.
-2. Its 5x5 grid and title become the active pattern, shown on both screens.
-3. Operator can edit any cell or rename the active pattern inline, immediately affecting the presentation.
+2. Its 5x5 grid and title become the active pattern on the Controller.
+3. Operator can edit any cell or rename the active pattern inline. The projector is unaffected until the operator pushes it with **Show on projector** (or **Update projector** when it already shows an older version); **Hide** removes it.
 4. **Proposed safe behavior:** Maintain an active working copy of the pattern. In-game changes persist as part of current game state, but do not silently overwrite the original library template. Provide **Update Saved Pattern** and **Save As New Pattern** controls. Show an `Edited` indicator while active copy differs from saved template. If the operator changes to another template with unsaved library changes, give an unobtrusive save/discard choice. A generic selected pattern can also be used without saving.
 5. Pattern library allows create, rename, duplicate, edit, and delete. Confirm deletion. A library item's grid is 25 explicit booleans; there is no hardcoded center rule or automatic free-space highlighting.
 
@@ -76,10 +77,11 @@ No internet connection, cloud database, user account, local HTTP server, or sepa
 **Visual intent:** Large, crisp display, charcoal background, high contrast and saturated BINGO colors. No operator tools, controls, cursors, navigation bars, or visible application chrome.
 
 **Game Board layout:**
-- Pattern graphic and pattern title on the left, or in a dedicated compact area when screen aspect ratio is narrow.
+- **Layout (16:9):** the 75-number board in a panel across the top, the pushed pattern (graphic and title, no panel) to its left, and a band along the bottom with the large current ball (captioned CURRENT CALL) and the previous five (captioned PREVIOUS CALLS). **Squarer screens (4:3, 5:4):** the board takes the full width at the top, and the pattern sits beside the current and previous calls in the band below it. Nothing is shown in the pattern's place until the operator pushes a pattern; the board then takes the full width.
+- **Pattern look:** lit squares are red and the others white, drawn straight on the stage background. Row letters are large text in their row's color; uncalled numbers are plain and quieter than called ones but still readable (about 5:1); called numbers are filled circles.
 - 75-number board dominates the display; B/I/N/G/O letterheads and row colors clearly group numbers.
 - Uncalled numbers are visible rather than nearly black. Called numbers are filled in their conventional colors: **B blue, I red, N white, G green, O yellow**. Use dark numerals within filled circles for readability, subject to contrast checks.
-- The **current call** is visually emphasized both within the numbered grid and separately in a larger ball display.
+- The **current call** is shown in a larger ball display, captioned CURRENT CALL, with no extra ring (its size and caption set it apart). On the projected board it is drawn like any other called number.
 - **Previous five** shows exactly up to five calls immediately preceding the current active call, newest first. The current ball is not duplicated in previous history.
 - When no calls exist, show a calm “Ready for first call” state, rather than a fake or stale number.
 - The BINGO banner overlays or occupies a substantial band, reading **BINGO CALLED — PLEASE HOLD YOUR CARDS**. Keep board context visible if possible. Banner stays until dismissed or reset.
@@ -143,9 +145,12 @@ The projector must reflect a single canonical state transaction. Both windows re
 
 ### 5.2 Reset
 - `NEW_GAME` requires an explicit confirmation that identifies what will be cleared.
-- Clear `calledNumbers` and `bingoBannerVisible`; retain `activePattern` including title and in-game edits.
+- Clear `calledNumbers` and `bingoBannerVisible`; retain `activePattern` including title and in-game edits, and the blacked-out rows (5.4a).
 - Reset must **not** delete saved patterns or media collections.
 - **Proposed default:** leave the selected presentation mode unchanged. If the operator resets during a slideshow, they can manually return to Game Board when ready.
+
+### 5.2a Blacked-out rows
+Some games do not use every row. Tapping a row's letter (B, I, N, G or O) on the Controller blacks that row out, and tapping it again brings it back. On the Controller the row's balls become dark discs that **cannot be tapped**; the rules refuse to call or un-call a ball in a blacked-out row, so nothing can be added to a row the game is not using. Calls already made in the row stay as they are, and the row has to be brought back to change them. On the projector the row's numbers **disappear** and only a quiet letter is left. It is a separate game field, `disabledRows`, in B, I, N, G, O order, persisted, surviving a restart, and kept by New Game like the pattern.
 
 ### 5.3 BINGO verification banner
 - `SHOW_BINGO_BANNER` sets visibility true, idempotently.

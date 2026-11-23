@@ -62,4 +62,38 @@ describe('ControllerApp', () => {
     await userEvent.click(screen.getByRole('button', { name: 'Dismiss' }));
     expect(api.dismissNotice).toHaveBeenCalledWith('lost');
   });
+
+  it('blacks out a row from its letter, which disables its balls, and brings it back', async () => {
+    const api = renderController();
+    await screen.findByRole('group', { name: 'N row' });
+    await tap(/^N-33,/);
+
+    await userEvent.click(screen.getByRole('button', { name: 'Black out N row' }));
+    expect(api.current().game.disabledRows).toEqual(['N']);
+    expect(api.current().game.calledNumbers).toEqual([33]);
+    expect(screen.getByRole('group', { name: 'N row' })).toHaveAttribute('data-disabled', 'true');
+    expect(screen.getByRole('button', { name: 'Black out N row' })).toHaveAttribute('aria-pressed', 'true');
+
+    // Its balls cannot be tapped, so nothing can be added to (or taken from) a row the game is not using.
+    expect(screen.getByRole('button', { name: /^N-34,/ })).toBeDisabled();
+    await tap(/^N-34,/);
+    expect(api.current().game.calledNumbers).toEqual([33]);
+
+    await userEvent.click(screen.getByRole('button', { name: 'Black out N row' }));
+    expect(api.current().game.disabledRows).toEqual([]);
+    expect(screen.getByRole('group', { name: 'N row' })).toHaveAttribute('data-disabled', 'false');
+    await tap(/^N-34,/);
+    expect(api.current().game.calledNumbers).toEqual([33, 34]);
+  });
+
+  it('keeps the blacked-out rows through New Game', async () => {
+    const api = renderController();
+    await screen.findByRole('group', { name: 'B row' });
+    await tap(/^B-3,/);
+    await userEvent.click(screen.getByRole('button', { name: 'Black out O row' }));
+    await userEvent.click(screen.getByRole('button', { name: 'New Game' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Start New Game' }));
+    expect(api.current().game.calledNumbers).toEqual([]);
+    expect(api.current().game.disabledRows).toEqual(['O']);
+  });
 });

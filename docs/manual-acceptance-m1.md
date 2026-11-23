@@ -49,7 +49,7 @@ Tester: ____________  Date: ____________  Build/commit: ____________
       window is left behind; the Controller shows a warning that the display was disconnected; calls
       are unchanged.
 - [ ] D2. Press **Preview**. It works on the laptop alone.
-- [ ] D3. Reconnect the display (Win + P → Extend if needed), press **Refresh displays**, choose it,
+- [ ] D3. Reconnect the display (Win + P → Extend if needed), wait for it to appear in the display list, choose it,
       press **Project**. Projection resumes with the current state.
 - [ ] D4. (Optional) Change the external display's resolution or scaling in Windows Settings while
       projecting. The Presentation refits the display.

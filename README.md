@@ -93,7 +93,8 @@ The projector must be a separate desktop, not a mirror of the laptop screen:
 1. Connect the projector or monitor.
 2. Press **Win + P** and choose **Extend**,
    or open **Settings → System → Display** and choose **Extend these displays**.
-3. In the Controller, press **Refresh displays** if the new display is not listed yet.
+3. The Controller picks up the new display by itself and lists it next to **Project**. If it does not appear, press
+   **Win + P** again (or unplug and reconnect the cable).
 
 ### Project, Preview and Stop
 

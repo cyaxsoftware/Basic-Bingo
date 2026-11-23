@@ -1,0 +1,52 @@
+/*
+ * The panel is a size container, like the other projector pieces, so the same markup works in the column beside
+ * the board on a 16:9 screen and in the band below it on a squarer one. It has no background: the cells and the
+ * title sit straight on the stage. The grid cell is the largest square that fits the width and what is left of
+ * the height after the title (up to two lines, about 17cqh).
+ */
+.panel {
+  container-type: size;
+  min-height: 0;
+  padding: 2vmin;
+  display: flex;
+  /* The title comes first in the markup (so it is read first) but is drawn under the cells. */
+  flex-direction: column-reverse;
+  justify-content: center;
+  align-items: center;
+  gap: 3cqh;
+}
+
+.title {
+  flex: none;
+  max-width: 100%;
+  max-height: 17cqh;
+  margin: 0;
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  font-size: min(10cqw, 8cqh);
+  font-weight: 700;
+  line-height: 1.1;
+  text-align: center;
+  overflow-wrap: anywhere;
+}
+
+.grid {
+  --cell: min(18cqw, 14cqh);
+
+  flex: none;
+  display: grid;
+  grid-template-columns: repeat(5, var(--cell));
+  grid-auto-rows: var(--cell);
+  gap: calc(var(--cell) * 0.06);
+}
+
+/* Lit squares are red, the rest white: a large difference in brightness as well as in color. */
+.cell {
+  background: var(--pattern-off);
+}
+
+.cell[data-on='true'] {
+  background: var(--pattern-on);
+}

@@ -1,29 +1,46 @@
 import { memo } from 'react';
-import { formatBall } from '../../../shared/game/balls';
+import { formatBall, type BingoLetter } from '../../../shared/game/balls';
 import { buildBoardRows, type BoardCell } from '../../../shared/game/boardModel';
 import type { CalledNumbers } from '../../../shared/game/calledNumbers';
 import styles from './BallGrid.module.css';
 
 export interface BallGridProps {
   readonly calledNumbers: CalledNumbers;
+  /** Rows the operator has blacked out: their balls cannot be tapped. */
+  readonly disabledRows: readonly BingoLetter[];
   readonly onToggle: (ball: number) => void;
+  readonly onToggleRow: (letter: BingoLetter) => void;
 }
 
 /**
  * The operator's 5×15 touch grid. Tap toggles a ball; there is no confirmation
- * and no separate undo (tapping again removes it).
+ * and no separate undo (tapping again removes it). Tapping a row's letter blacks the row out (or brings it
+ * back), because this game does not use it. The balls in a blacked-out row cannot be tapped.
  */
-export function BallGrid({ calledNumbers, onToggle }: BallGridProps) {
-  const rows = buildBoardRows(calledNumbers);
+export function BallGrid({ calledNumbers, disabledRows, onToggle, onToggleRow }: BallGridProps) {
+  const rows = buildBoardRows(calledNumbers, disabledRows);
   return (
     <section className={styles.grid} aria-label="Bingo balls">
       {rows.map((row) => (
-        <div key={row.letter} className={styles.row} role="group" aria-label={`${row.letter} row`}>
-          <div className={styles.letter} data-letter={row.letter} aria-hidden="true">
+        <div
+          key={row.letter}
+          className={styles.row}
+          role="group"
+          aria-label={`${row.letter} row`}
+          data-disabled={row.disabled}
+        >
+          <button
+            type="button"
+            className={styles.letter}
+            data-letter={row.letter}
+            aria-pressed={row.disabled}
+            aria-label={`Black out ${row.letter} row`}
+            onClick={() => onToggleRow(row.letter)}
+          >
             {row.letter}
-          </div>
+          </button>
           {row.cells.map((cell) => (
-            <BallButton key={cell.ball} cell={cell} onToggle={onToggle} />
+            <BallButton key={cell.ball} cell={cell} disabled={row.disabled} onToggle={onToggle} />
           ))}
         </div>
       ))}
@@ -35,15 +52,18 @@ const STATUS_TEXT = { uncalled: 'not called', called: 'called', current: 'curren
 
 const BallButton = memo(function BallButton({
   cell,
+  disabled,
   onToggle,
 }: {
   cell: BoardCell;
+  disabled: boolean;
   onToggle: (ball: number) => void;
 }) {
   return (
     <button
       type="button"
       className={styles.ball}
+      disabled={disabled}
       data-letter={cell.letter}
       data-status={cell.status}
       aria-pressed={cell.status !== 'uncalled'}

@@ -10,7 +10,6 @@ export interface PresentationControlsProps {
   readonly onProject: (displayId: number) => void;
   readonly onPreview: () => void;
   readonly onStop: () => void;
-  readonly onRefreshDisplays: () => void;
 }
 
 const NO_SECOND_DISPLAY_HINT = 'No second display. Press Win+P → Extend, or use Preview.';
@@ -36,7 +35,6 @@ export function PresentationControls({
   onProject,
   onPreview,
   onStop,
-  onRefreshDisplays,
 }: PresentationControlsProps) {
   const selectId = useId();
   const candidates = projectableDisplays(displays);
@@ -90,15 +88,6 @@ export function PresentationControls({
         </span>
       )}
 
-      {/* The accessible name keeps the full words; the short visible label saves top-bar width. */}
-      <button
-        type="button"
-        className={styles.secondary}
-        aria-label="Refresh displays"
-        onClick={onRefreshDisplays}
-      >
-        Refresh
-      </button>
       <button type="button" className={styles.secondary} onClick={onPreview}>
         Preview
       </button>

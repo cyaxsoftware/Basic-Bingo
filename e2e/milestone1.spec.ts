@@ -88,6 +88,7 @@ test('renderers are sandboxed and the Presentation bridge is read-only', { tag: 
     'dismissNotice',
     'duplicatePattern',
     'getSnapshot',
+    'hidePatternOnProjector',
     'listDisplays',
     'newGame',
     'onSnapshot',
@@ -100,7 +101,9 @@ test('renderers are sandboxed and the Presentation bridge is read-only', { tag: 
     'setActivePatternCell',
     'setPresentationMode',
     'showBingoBanner',
+    'showPatternOnProjector',
     'toggleBall',
+    'toggleRowDisabled',
     'updateSavedPattern',
   ]);
 

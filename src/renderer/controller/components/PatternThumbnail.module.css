@@ -1,0 +1,17 @@
+.thumb {
+  display: grid;
+  flex: none;
+  grid-template-columns: repeat(5, 6px);
+  gap: 2px;
+}
+
+.cell {
+  width: 6px;
+  height: 6px;
+  border-radius: 1px;
+  background: var(--border);
+}
+
+.cell[data-on='true'] {
+  background: var(--accent);
+}

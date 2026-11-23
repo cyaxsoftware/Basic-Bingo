@@ -13,9 +13,9 @@
  *    snapshot whose revision is not newer than the one they already show.
  *  - Command handlers return {@link CommandResult}; they never throw across IPC.
  */
-import type { BallNumber } from '../game/balls';
+import type { BallNumber, BingoLetter } from '../game/balls';
 import type { GameState } from '../game/gameState';
-import type { ActivePattern, Pattern, PatternCells } from '../patterns/pattern';
+import type { ActivePattern, Pattern, PatternCells, ShownPattern } from '../patterns/pattern';
 import type { PresentationMode } from '../presentation/presentationMode';
 
 // ---------------------------------------------------------------------------
@@ -76,6 +76,8 @@ export interface AppSnapshot {
   readonly patternLibrary: readonly Pattern[];
   /** Persisted: the working copy of a pattern the game is showing (edits never touch the library by themselves). */
   readonly activePattern: ActivePattern;
+  /** Persisted: the pattern the operator last pushed to the projector (a snapshot, not the working copy), or null. */
+  readonly shownPattern: ShownPattern | null;
   /** Runtime-only: what the Presentation window is doing. Never persisted. */
   readonly presentation: PresentationStatus;
   /** Runtime-only: currently connected displays. */
@@ -97,6 +99,7 @@ export const IpcChannel = {
   getSnapshot: 'bingo:get-snapshot',
   // Commands (Controller window only)
   toggleBall: 'bingo:toggle-ball',
+  toggleRowDisabled: 'bingo:toggle-row-disabled',
   showBingoBanner: 'bingo:show-bingo-banner',
   dismissBingoBanner: 'bingo:dismiss-bingo-banner',
   newGame: 'bingo:new-game',
@@ -110,6 +113,8 @@ export const IpcChannel = {
   renamePattern: 'bingo:rename-pattern',
   duplicatePattern: 'bingo:duplicate-pattern',
   deletePattern: 'bingo:delete-pattern',
+  showPatternOnProjector: 'bingo:show-pattern-on-projector',
+  hidePatternOnProjector: 'bingo:hide-pattern-on-projector',
   listDisplays: 'bingo:list-displays',
   openPresentation: 'bingo:open-presentation',
   openPreview: 'bingo:open-preview',
@@ -132,6 +137,8 @@ export interface PresentationApi {
 /** API exposed to the Controller window as `window.bingo`. */
 export interface ControllerApi extends PresentationApi {
   toggleBall(ball: BallNumber): Promise<CommandResult>;
+  /** Black out (or restore) a row the game does not use. Visual only; calls are unaffected. */
+  toggleRowDisabled(letter: BingoLetter): Promise<CommandResult>;
   /** Raise the BINGO CALLED banner (idempotent). It stays until dismissed or a new game starts. */
   showBingoBanner(): Promise<CommandResult>;
   /** Hide the banner. Never changes the calls. */
@@ -155,6 +162,10 @@ export interface ControllerApi extends PresentationApi {
   duplicatePattern(patternId: string): Promise<CommandResult>;
   /** The caller must have confirmed with the operator first. */
   deletePattern(patternId: string): Promise<CommandResult>;
+  /** Push the working pattern (title and cells) to the projector. Later edits do not change it until pushed again. */
+  showPatternOnProjector(): Promise<CommandResult>;
+  /** Remove the pattern from the projector. */
+  hidePatternOnProjector(): Promise<CommandResult>;
   /** Re-reads displays from Windows and returns them (the snapshot updates too). */
   listDisplays(): Promise<readonly DisplayInfo[]>;
   openPresentation(displayId: number): Promise<CommandResult>;
