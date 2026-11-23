@@ -25,6 +25,7 @@ import {
 import type { PresentationMode } from '../../shared/presentation/presentationMode';
 import type { ControllerTheme } from '../../shared/theme/controllerTheme';
 import { applyGameChange, clearGameRecords } from '../../shared/games/gameLog';
+import { classifyStorageError, describeSaveFailure } from '../../shared/storage/storageProblem';
 import { toPersistedState, type AppData } from '../persistence/persistedState';
 import { reduceMedia, type MediaCommand, type MediaItem } from '../../shared/media';
 import {
@@ -391,9 +392,14 @@ export class AppStore {
       },
       (error: unknown) => {
         this.failedSaveId = Math.max(this.failedSaveId, saveId);
+        // The raw error (with Windows' wording and the file path) goes to the log for support; the operator gets a
+        // plain message that says what to do.
+        console.error('[persistence] save failed', error);
+        const problem = classifyStorageError(error);
         this.setPersistence({
           kind: 'error',
-          message: `Could not save game state: ${error instanceof Error ? error.message : String(error)}`,
+          message: describeSaveFailure(problem),
+          problem,
           failedAt: this.now().toISOString(),
         });
         this.notifySaveWaiters();

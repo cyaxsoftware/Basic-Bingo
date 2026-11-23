@@ -196,7 +196,7 @@
 .cell:focus-visible,
 .title:focus-visible,
 .action:focus-visible {
-  outline: 3px solid var(--accent);
+  outline: 3px solid var(--focus-ring);
   outline-offset: 2px;
 }
 
@@ -247,6 +247,6 @@
 .tool:focus-visible,
 .toolDanger:focus-visible,
 .rename:focus-visible {
-  outline: 3px solid var(--accent);
+  outline: 3px solid var(--focus-ring);
   outline-offset: 2px;
 }

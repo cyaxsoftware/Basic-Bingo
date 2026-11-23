@@ -10,6 +10,16 @@
   padding: 2.5vmin;
 }
 
+.heading {
+  /* An entry point for screen readers without taking space from the audience display. */
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
 .bannerSlot {
   /* Always this tall on the Game Board, banner or not, so nothing below it moves (see BingoBanner.module.css). */
   flex: none;

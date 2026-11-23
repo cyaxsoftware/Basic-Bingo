@@ -1,4 +1,4 @@
-import { useId, useState } from 'react';
+import { useId, useLayoutEffect, useRef, useState } from 'react';
 import type { ControllerApi } from '../../shared/ipc/contract';
 import type { SnapshotStore } from '../shared/snapshotStore';
 import { useMediaQuery } from '../shared/useMediaQuery';
@@ -37,6 +37,18 @@ export function ControllerApp({ api, store }: ControllerAppProps) {
   // Which screen the operator is on. Only the layout cares: the game, the patterns and the projector all
   // live in the main process, so switching screens never changes (or loses) any of them.
   const [view, setView] = useState<'game' | 'patterns'>('game');
+  const back = useRef<HTMLButtonElement>(null);
+  const editPatterns = useRef<HTMLButtonElement>(null);
+  const movingFocus = useRef(false);
+  const changeView = (next: typeof view) => {
+    movingFocus.current = true;
+    setView(next);
+  };
+  useLayoutEffect(() => {
+    if (!movingFocus.current) return;
+    movingFocus.current = false;
+    (view === 'patterns' ? back : editPatterns).current?.focus();
+  }, [view]);
   // Which pattern UI there is, and where New Game is, depends on the width: a control cannot be in two places
   // at once, so these choices are made in code. The widths match the breakpoints in ControllerApp.module.css.
   //   from 1440 wide and 780 high: a left rail with New Game and the pattern widget (the rail is about 610 px
@@ -91,7 +103,7 @@ export function ControllerApp({ api, store }: ControllerAppProps) {
       {view === 'game' ? (
         <ModeTabs mode={mode} onSelect={actions.setPresentationMode} panelId={panelId} />
       ) : (
-        <button type="button" className={styles.back} onClick={() => setView('game')}>
+        <button ref={back} type="button" className={styles.back} onClick={() => changeView('game')}>
           <span aria-hidden="true">‹</span> Back to game
         </button>
       )}
@@ -110,13 +122,34 @@ export function ControllerApp({ api, store }: ControllerAppProps) {
       onRename={actions.renameActivePattern}
       onShow={actions.showPatternOnProjector}
       onHide={actions.hidePatternOnProjector}
-      onEditPatterns={() => setView('patterns')}
+      editButtonRef={editPatterns}
+      onEditPatterns={() => changeView('patterns')}
     />
   );
   const onGame = view === 'game';
   // New Game, the pattern, BINGO CALLED and the call summary belong to the game, so they are shown only on the
   // Game Board tab. The break modes (slideshow, single image, countdown) get the whole window.
   const onBoard = mode === 'gameBoard';
+  const bingo = (
+    <div className={styles.bingo}>
+      <BingoBannerControl
+        bannerVisible={bingoBannerVisible}
+        onShow={actions.showBingoBanner}
+        onDismiss={actions.dismissBingoBanner}
+      />
+    </div>
+  );
+  const summary = (
+    <div className={styles.summary}>
+      <CallSummaryPanel calledNumbers={calledNumbers} />
+    </div>
+  );
+  const side = (
+    <div className={styles.side}>
+      {bingo}
+      {summary}
+    </div>
+  );
   return (
     <div className={styles.app}>
       <main
@@ -144,6 +177,7 @@ export function ControllerApp({ api, store }: ControllerAppProps) {
         </header>
 
         {topRow ? null : tabs}
+        {onBoard && !wideLayout ? bingo : null}
 
         {/* Empty (and hidden by CSS) unless there is something to tell the operator. */}
         <div className={styles.notices}>
@@ -153,8 +187,38 @@ export function ControllerApp({ api, store }: ControllerAppProps) {
             actionError={actions.lastError}
             onDismissNotice={actions.dismissNotice}
             onDismissActionError={actions.clearError}
+            onRetrySave={actions.retrySave}
+            onShowDataFolder={actions.showDataFolder}
           />
         </div>
+
+        {/* Follow the visual order at each breakpoint so Tab never jumps back over the grid. */}
+        {railLayout && onBoard ? (
+          <div className={styles.rail}>
+            {newGame}
+            {onGame ? widget('rail') : null}
+          </div>
+        ) : null}
+        {wideLayout && !railLayout && onBoard ? (
+          <>
+            {onGame ? <div className={styles.strip}>{widget('strip')}</div> : null}
+            {side}
+          </>
+        ) : null}
+        {!wideLayout && onBoard ? (
+          <>
+            {summary}
+            {onGame ? (
+              <div className={styles.pattern}>
+                <PatternCard
+                  ref={editPatterns}
+                  active={snapshot.activePattern}
+                  onOpen={() => changeView('patterns')}
+                />
+              </div>
+            ) : null}
+          </>
+        ) : null}
 
         {view === 'game' ? (
           <div className={styles.panel} role="tabpanel" id={panelId} aria-labelledby={modeTabId(mode)}>
@@ -209,37 +273,7 @@ export function ControllerApp({ api, store }: ControllerAppProps) {
           </div>
         )}
 
-        {railLayout && onBoard ? (
-          <div className={styles.rail}>
-            {newGame}
-            {onGame ? widget('rail') : null}
-          </div>
-        ) : null}
-
-        {wideLayout && !railLayout && onGame && onBoard ? (
-          <div className={styles.strip}>{widget('strip')}</div>
-        ) : null}
-
-        {/* Beside the board on wide windows; in the stacked layout its children go to their own grid areas. */}
-        {onBoard ? (
-          <div className={styles.side}>
-            <div className={styles.bingo}>
-              <BingoBannerControl
-                bannerVisible={bingoBannerVisible}
-                onShow={actions.showBingoBanner}
-                onDismiss={actions.dismissBingoBanner}
-              />
-            </div>
-            <div className={styles.summary}>
-              <CallSummaryPanel calledNumbers={calledNumbers} />
-            </div>
-            {wideLayout || !onGame ? null : (
-              <div className={styles.pattern}>
-                <PatternCard active={snapshot.activePattern} onOpen={() => setView('patterns')} />
-              </div>
-            )}
-          </div>
-        ) : null}
+        {railLayout && onBoard ? side : null}
 
         {/* Under the board, in the row the wide layouts leave empty. The stacked layout has no room for it. */}
         {wideLayout && onGame && onBoard ? (

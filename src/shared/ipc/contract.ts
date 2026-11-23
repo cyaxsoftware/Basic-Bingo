@@ -21,6 +21,7 @@ import type { ActivePattern, Pattern, PatternCells, ShownPattern } from '../patt
 import type { PresentationMode } from '../presentation/presentationMode';
 import type { ControllerTheme } from '../theme/controllerTheme';
 import type { GameLogState } from '../games/gameLog';
+import type { StorageProblemKind } from '../storage/storageProblem';
 import type { TimerState } from '../timer/timerState';
 import type { SlideshowCommand, SlideshowState } from '../media/slideshow';
 import type { SlideshowPlayback, SlideshowPlaybackCommand } from '../media/slideshowPlayback';
@@ -60,16 +61,28 @@ export type PresentationStatus =
 
 export type PersistenceStatus =
   | { readonly kind: 'ok' }
-  | { readonly kind: 'error'; readonly message: string; readonly failedAt: string };
+  | {
+      readonly kind: 'error';
+      /** Plain words for the operator: what happened and what to do. Never a path or an internal file name. */
+      readonly message: string;
+      /** What kind of problem it was (disk full, access denied, ...). */
+      readonly problem: StorageProblemKind;
+      readonly failedAt: string;
+    };
 
 export type NoticeLevel = 'info' | 'warning' | 'error';
 
 /** Operator-facing message shown in the Controller until dismissed. */
+/** A button a notice can offer next to Dismiss. */
+export type NoticeAction = 'showDataFolder';
+
 export interface Notice {
   /** Stable id; adding a notice with an existing id replaces it. */
   readonly id: string;
   readonly level: NoticeLevel;
   readonly message: string;
+  /** Optional recovery action shown with the message. */
+  readonly action?: NoticeAction;
 }
 
 export interface AppSnapshot {
@@ -124,6 +137,8 @@ export const IpcChannel = {
   setPresentationMode: 'bingo:set-presentation-mode',
   setControllerTheme: 'bingo:set-controller-theme',
   clearGameLog: 'bingo:clear-game-log',
+  retrySave: 'bingo:retry-save',
+  showDataFolder: 'bingo:show-data-folder',
   selectPattern: 'bingo:select-pattern',
   setActivePatternCell: 'bingo:set-active-pattern-cell',
   renameActivePattern: 'bingo:rename-active-pattern',
@@ -185,6 +200,10 @@ export interface ControllerApi extends PresentationApi {
   setControllerTheme(theme: ControllerTheme): Promise<CommandResult>;
   /** Empty the games-played history. The caller is responsible for confirming with the operator. */
   clearGameLog(): Promise<CommandResult>;
+  /** Try to save the game again after a failed save (a full disk, a locked folder). */
+  retrySave(): Promise<CommandResult>;
+  /** Open the app's data folder in Windows Explorer, for support. */
+  showDataFolder(): Promise<CommandResult>;
   /** Show a library pattern: replaces the working copy with a fresh, unedited copy of it. */
   selectPattern(patternId: string): Promise<CommandResult>;
   /** Set one cell (0 to 24, the center included) of the working copy on or off. Never changes the library. */

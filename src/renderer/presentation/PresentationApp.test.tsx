@@ -20,6 +20,9 @@ const played = (number: number, title = 'Four Corners') => ({
   durationSeconds: 600,
 });
 const NO_CLOCK = { firstBallAt: null, lastBingoAt: null, resumedAt: null, pausedMs: 0, bingoTitle: null };
+const gameNumber = (number?: number) => (_text: string, node: Element | null) =>
+  node?.tagName === 'P' &&
+  (number === undefined ? /^Game \d+$/.test(node.textContent) : node.textContent === `Game ${number}`);
 
 describe('PresentationApp banner band', () => {
   it('keeps the band on the Game Board with no banner in it, so there is nothing to move later', async () => {
@@ -66,19 +69,19 @@ describe('PresentationApp banner band', () => {
 describe('PresentationApp game number', () => {
   it('shows Game 1 on the board before anything is played', async () => {
     renderPresentation();
-    expect(await screen.findByLabelText('Game 1')).toBeInTheDocument();
+    expect(await screen.findByText(gameNumber(1))).toBeInTheDocument();
   });
 
   it('shows the number of the game being played: one more than the last game logged', async () => {
     renderPresentation(
       makeSnapshot({ gameLog: { records: [played(1), played(2), played(3)], current: NO_CLOCK } }),
     );
-    expect(await screen.findByLabelText('Game 4')).toBeInTheDocument();
+    expect(await screen.findByText(gameNumber(4))).toBeInTheDocument();
   });
 
   it('keeps counting from the last logged number when old games have aged out of the list', async () => {
     renderPresentation(makeSnapshot({ gameLog: { records: [played(41), played(42)], current: NO_CLOCK } }));
-    expect(await screen.findByLabelText('Game 43')).toBeInTheDocument();
+    expect(await screen.findByText(gameNumber(43))).toBeInTheDocument();
   });
 
   it('goes under the pattern name once a pattern is pushed, and is not shown twice', async () => {
@@ -90,11 +93,11 @@ describe('PresentationApp game number', () => {
       }),
     );
     const pattern = await screen.findByRole('region', { name: 'Winning pattern' });
-    expect(within(pattern).getByLabelText('Game 3')).toBeInTheDocument();
-    expect(screen.getAllByLabelText('Game 3')).toHaveLength(1);
+    expect(within(pattern).getByText(gameNumber(3))).toBeInTheDocument();
+    expect(screen.getAllByText(gameNumber(3))).toHaveLength(1);
     // Under the name: the name is read first, then the number.
     const heading = within(pattern).getByRole('heading', { name: 'Big L' });
-    const label = within(pattern).getByLabelText('Game 3');
+    const label = within(pattern).getByText(gameNumber(3));
     expect(heading.compareDocumentPosition(label) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   });
 
@@ -103,21 +106,21 @@ describe('PresentationApp game number', () => {
       makeSnapshot({ shownPattern: { title: 'Big L', cells: Array.from({ length: 25 }, () => false) } }),
     );
     const pattern = await screen.findByRole('region', { name: 'Winning pattern' });
-    expect(within(pattern).getByLabelText('Game 1')).toBeInTheDocument();
+    expect(within(pattern).getByText(gameNumber(1))).toBeInTheDocument();
     act(() => api.push(makeSnapshot({ revision: 9, shownPattern: null })));
     expect(screen.queryByRole('region', { name: 'Winning pattern' })).not.toBeInTheDocument();
-    expect(screen.getAllByLabelText('Game 1')).toHaveLength(1);
+    expect(screen.getAllByText(gameNumber(1))).toHaveLength(1);
   });
 
   it('is not shown on the other presentation modes', async () => {
     renderPresentation(makeSnapshot({ presentationMode: 'countdown' }));
     await screen.findByRole('region', { name: /countdown/i }).catch(() => undefined);
-    expect(screen.queryByLabelText(/^Game \d+$/)).not.toBeInTheDocument();
+    expect(screen.queryByText(gameNumber())).not.toBeInTheDocument();
   });
 
   it('is plain text with no controls', async () => {
     renderPresentation();
-    const label = await screen.findByLabelText('Game 1');
+    const label = await screen.findByText(gameNumber(1));
     expect(label.querySelector('button, a, input')).toBeNull();
   });
 });

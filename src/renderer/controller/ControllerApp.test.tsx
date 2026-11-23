@@ -40,14 +40,17 @@ describe('ControllerApp', () => {
 
   it('projects to the default external display and shows status', async () => {
     const api = renderController();
-    await userEvent.click(await screen.findByRole('button', { name: 'Project' }));
+    const project = await screen.findByRole('button', { name: 'Project' });
+    project.focus();
+    await userEvent.keyboard('{Enter}');
     expect(api.openPresentation).toHaveBeenCalledWith(PROJECTOR.id);
     expect(await screen.findByRole('status')).toHaveTextContent(`Projecting on ${PROJECTOR.label}`);
     // Project flips into Stop, and Stop flips back.
     expect(screen.queryByRole('button', { name: 'Project' })).not.toBeInTheDocument();
-    await userEvent.click(screen.getByRole('button', { name: 'Stop' }));
+    expect(screen.getByRole('button', { name: 'Stop' })).toHaveFocus();
+    await userEvent.keyboard('{Enter}');
     expect(api.closePresentation).toHaveBeenCalled();
-    expect(await screen.findByRole('button', { name: 'Project' })).toBeInTheDocument();
+    expect(await screen.findByRole('button', { name: 'Project' })).toHaveFocus();
     expect(screen.queryByRole('button', { name: 'Stop' })).not.toBeInTheDocument();
   });
 
@@ -202,13 +205,23 @@ describe('ControllerApp', () => {
     const api = renderController(
       makeSnapshot({
         notices: [{ id: 'lost', level: 'warning', message: 'Projector disconnected.' }],
-        persistence: { kind: 'error', message: 'Could not save game state: disk full', failedAt: 'now' },
+        persistence: {
+          kind: 'error',
+          message: "The game could not be saved because the computer's disk is full. Press Try again.",
+          problem: 'disk-full',
+          failedAt: 'now',
+        },
       }),
     );
     expect(await screen.findByText('Projector disconnected.')).toBeInTheDocument();
-    expect(screen.getByText(/disk full/)).toBeInTheDocument();
+    expect(screen.getByText(/disk is full/)).toBeInTheDocument();
     await userEvent.click(screen.getByRole('button', { name: 'Dismiss' }));
     expect(api.dismissNotice).toHaveBeenCalledWith('lost');
+    // A failed save offers a way out right there.
+    await userEvent.click(screen.getByRole('button', { name: 'Try again' }));
+    expect(api.retrySave).toHaveBeenCalledTimes(1);
+    await userEvent.click(screen.getByRole('button', { name: 'Show data folder' }));
+    expect(api.showDataFolder).toHaveBeenCalledTimes(1);
   });
 
   it('blacks out a row from its letter, which disables its balls, and brings it back', async () => {

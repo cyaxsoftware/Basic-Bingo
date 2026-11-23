@@ -187,23 +187,30 @@ if someone modified its page.
 
 `src/main/persistence/`:
 
-- `persistedState.ts`: the on-disk documents (`PersistedStateV1`, `V2` and `V3` are frozen; `PersistedStateV4`
-  adds the media library, Single Image choice, slideshow collections and countdown timer, and stays open to M4 changes until M4 ships), zod
+- `persistedState.ts`: the on-disk documents (V1 through V4 are frozen, and V5 is current), Zod
   validation, the migration table, and explicit conversion between the current document and
   `AppData` (the durable state the app uses). Documents never reference live domain types such as
   `GameState`, so growing the game model cannot change what an existing file means.
 - **Games played:** `src/shared/games/gameLog.ts` holds the pure rules (when a game starts and ends, what is
   logged, reading a saved log, formatting) and `AppStore.dispatch` feeds it every game command with the time, so
   `GameState` and `reduceGame` never see a clock. The log (`gameLog`: finished games plus the clock of the game in
-  progress) is saved as an optional field of the open V4 document; damaged entries are dropped with a warning.
+  progress) was added in V4. Damaged entries are dropped with a warning.
   `clearGameLog` is the only command that changes it directly.
-- `fixtures/state-v1.json` ... `state-v4.json`: representative files for each version; tests
+- V5 reserved a field for the rolled-back branding feature. Saves from that build still load,
+  and the next save clears the reserved field while preserving the game, media library, and other settings.
+- `fixtures/state-v1.json` ... `state-v5.json`: representative files for each version; tests
   load them on every run (an old file must keep loading, migrated up: V1 gets the banner hidden, V2 gets the
   default pattern library and an empty working pattern). Pattern data is checked entry by entry on load: one
   damaged pattern is dropped with a warning, and a missing section restores the defaults, never costing the game.
   The media section is checked the same way: a damaged image entry is dropped, and a Single Image choice that no
   longer names a library image falls back to "none". An image entry stores no file path (see Media library below).
-- `stateRepository.ts`: storage under `%APPDATA%\Basic Bingo\bingo-data\`.
+- `stateRepository.ts`: storage under `%APPDATA%\Basic Bingo\bingo-data\`. Its file system is injectable, and
+  `storageFaults.test.ts` runs the real store on it with simulated full disks, locks, permission and folder
+  problems. `LoadResult.blocked` says a saved file existed but could not be opened (locked), as opposed to damaged.
+- `src/shared/storage/storageProblem.ts` sorts an error into a kind (disk full, access denied, file busy, folder
+  missing, disk error, other) and has the plain-language message for each; `AppStore` uses it for a failed save and
+  `mediaService` for a failed copy. `recoveryNotices.ts` words what the operator is told after loading. A `Notice` can
+  carry the action `showDataFolder`; the Controller also has two commands, `retrySave` and `showDataFolder`.
 - `dataDirectory.ts`: the app used to be called "Offline Bingo Display", and Electron names the data folder after the
   app. On startup `migrateLegacyDataDirectory` copies the old `bingo-data` to the new location once (never over
   existing data, and skipped only when `BINGO_USER_DATA_DIR` really redirects userData: that is an unpackaged run,
@@ -275,6 +282,25 @@ A failed save sets `snapshot.persistence` to `error`; the Controller shows it un
 - `BallChip` is sized by the caller's `font-size` only (diameter = 2.6em).
 - The projector board sizes itself from its container (`container-type: size`, `cqw`/`cqh`), so it
   fits 16:9 and 4:3 without breakpoints per resolution.
+- Renderer accessibility tests mount both apps with `fakeBingoApi.ts` and run axe against the visible
+  app states. The jsdom suite disables `color-contrast` because it has no browser layout or compositing.
+  The headless preview and `e2e/accessibility.spec.ts` exercise contrast in Chromium. Follow the
+  [end-to-end test policy](../AGENTS.md) before running the Electron spec.
+
+## Windows release smoke
+
+`.github/workflows/windows-ci.yml` runs the quality gates and the ordinary Electron Playwright suite
+on a GitHub-hosted Windows VM with a 1920×1080 desktop. `npm run test:e2e` creates the production
+package first. The release smoke reuses that exact `basic-bingo.exe` and checks the six production
+fuses on disk before starting it.
+
+Playwright uses Electron's debug/inspection entry points, which are unavailable in the release
+executable. `scripts/test-release-smoke.ps1` uses native Windows UI Automation and the renderer's
+accessible labels. It calls B-3, verifies it in the separate Preview window, and closes the
+Controller so the ordinary save path runs. The fresh GitHub-hosted VM supplies a disposable
+Windows user profile. The smoke test verifies that both the current and legacy app data folders
+are absent before launch and keeps production storage behavior. No test build or app-side test
+switch is needed.
 
 ## Recipe: adding a command end to end
 

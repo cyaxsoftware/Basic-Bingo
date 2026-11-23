@@ -70,6 +70,8 @@ export interface IpcDependencies {
   readonly powerPoint: { importDeck(collectionId: string): Promise<CommandResult> };
   readonly presentation: PresentationService;
   readonly displays: DisplayService;
+  /** Opens the app's data folder in Windows Explorer. */
+  readonly dataFolder: { show(): Promise<CommandResult> };
   readonly senders: SenderPolicy;
 }
 
@@ -86,7 +88,7 @@ function failedCommand(channel: string, error: unknown): CommandResult {
 }
 
 export function registerIpcHandlers(ipc: IpcMainLike, deps: IpcDependencies): void {
-  const { store, media, powerPoint, presentation, displays, senders } = deps;
+  const { store, media, powerPoint, presentation, displays, dataFolder, senders } = deps;
 
   const query = <T>(channel: string, handler: () => T) => {
     ipc.removeHandler(channel);
@@ -170,6 +172,16 @@ export function registerIpcHandlers(ipc: IpcMainLike, deps: IpcDependencies): vo
     if (!isPresentationMode(mode)) return fail('Choose a valid presentation mode.');
     return store.setPresentationMode(mode);
   });
+
+  command(IpcChannel.retrySave, (...args) => {
+    if (args.length > 0) return fail('Try again takes no arguments.');
+    store.retrySave();
+    return ok;
+  });
+
+  command(IpcChannel.showDataFolder, (...args) =>
+    args.length > 0 ? fail('Show data folder takes no arguments.') : dataFolder.show(),
+  );
 
   command(IpcChannel.clearGameLog, (...args) => {
     if (args.length > 0) return fail('Clear history takes no arguments.');

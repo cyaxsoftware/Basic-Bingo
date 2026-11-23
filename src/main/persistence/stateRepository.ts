@@ -35,6 +35,11 @@ export interface LoadResult {
   readonly source: LoadSource;
   /** Problems found while loading (quarantined files, normalized data). */
   readonly issues: readonly string[];
+  /**
+   * True when a saved file exists but could not be opened at all (another program has it locked, or Windows is
+   * blocking it). That is different from a damaged file: the game may be perfectly good, just out of reach.
+   */
+  readonly blocked: boolean;
 }
 
 /** Persistence port used by the app store; lets tests substitute a fake. */
@@ -100,6 +105,7 @@ export class JsonStateRepository implements StatePersister {
    */
   async load(): Promise<LoadResult> {
     const issues: string[] = [];
+    let blocked = false;
     const candidates: Array<[LoadSource, string]> = [
       ['primary', this.filePath],
       ['backup', this.backupPath],
@@ -112,6 +118,7 @@ export class JsonStateRepository implements StatePersister {
           continue;
         case 'unreadable':
           issues.push(check.reason);
+          blocked = true;
           continue;
         case 'invalid':
           issues.push(check.reason);
@@ -119,11 +126,11 @@ export class JsonStateRepository implements StatePersister {
           continue;
         case 'valid':
           issues.push(...check.warnings);
-          return { state: check.state, source, issues };
+          return { state: check.state, source, issues, blocked };
       }
     }
 
-    return { state: createDefaultPersistedState(this.now()), source: 'defaults', issues };
+    return { state: createDefaultPersistedState(this.now()), source: 'defaults', issues, blocked };
   }
 
   save(state: PersistedState): Promise<void> {

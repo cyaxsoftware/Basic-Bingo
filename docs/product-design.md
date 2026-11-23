@@ -31,7 +31,7 @@ No internet connection, cloud database, user account, local HTTP server, or sepa
 7. **Still-image mode** uses a reusable local image library; support fit and crop presentation options.
 8. Target **Windows 11**. Laptop model is approximately a 15-inch HP touchscreen; exact resolution is unknown. Design and test for multiple logical resolutions and Windows scaling settings.
 9. Backup/export/import of settings, patterns, or media is **out of MVP scope**.
-10. Provide a polished generic default appearance and limited optional event/organization branding. Avoid an elaborate theme designer in MVP.
+10. Give Basic Bingo a consistent default appearance.
 
 ## 3. Roles and physical setup
 
@@ -62,6 +62,13 @@ No internet connection, cloud database, user account, local HTTP server, or sepa
 - **New Game** is secondary and confirmation-protected. Do not place it where accidental touch is likely.
 
 **Touch target rule:** Aim for 48 to 60 CSS px number targets at usable layout widths, with a practical minimum of 44 CSS px and visible spacing. At 125% / 150% Windows scaling on a 15-inch display, collapse or rearrange secondary panels before reducing number targets below touch-friendly dimensions. Avoid horizontal scrolling of the 15-number rows; avoid vertical scrolling during normal call operation where possible. Test actual logical pixel width, not just physical screen resolution.
+
+**Keyboard operation:** Tab follows the visible layout, with a three-pixel focus outline in both themes.
+The mode tabs use arrow keys to move focus and Enter or Space to activate. Opening Patterns focuses
+**Back to game**, and returning focuses the control that opened the editor. When a slide reaches the
+first or last position, focus moves to its available reorder arrow. On short windows, notice stacks
+can make the layout scroll so the notices and ball controls remain reachable. Windows reduced-motion
+settings turn off the press-scale effects on balls, row letters and tabs.
 
 **Ball appearance:** Uncalled numbers have clear contrast. Called numbers are solid B/I/N/G/O color circles. The most recent active call has an extra non-color highlight (e.g., white or dark outline depending on background), not merely a changed fill. A touch produces immediate visual feedback; a call has no confirmation dialog. There is no separate Undo button required for normal corrections.
 
@@ -233,6 +240,7 @@ Patterns are visual instructions only. **Automated detection or validation of wi
 - The app should handle malformed state files and missing images with a clear recovery path rather than a blank window. Keep an internal recovery copy or last-known-good state.
 - State restoration includes called order, active pattern, banner visibility, named collections, image metadata, and timer configuration. A running timer's target timestamp may expire while app is closed; restore it as expired, not as an arbitrary stale number.
 - Serially handle rapid calls to avoid races and persist updates without blocking touch feedback for noticeable intervals.
+- **Storage problems are told in plain words** (a volunteer runs this, not a technician). A failed save (a full disk, a locked or read-only folder, a file another program has open, a missing folder, a disk error) shows what happened and what to do, never a file path, an internal file name or an error code, and always offers **Try again** and **Show data folder**. The game on screen keeps working and the last good save on disk is untouched. A damaged saved game is told apart from one that could not be opened (locked): a damaged one is restored from the last good copy (or a new game is started and the damaged file kept); a locked one is never treated as lost. A missing picture is named, shows as "unavailable" and can be added again or removed. The raw errors go to the log for support. See [manual-acceptance-storage.md](manual-acceptance-storage.md).
 
 ## 6. Proposed technical architecture
 
@@ -302,7 +310,6 @@ Consider a single subscribed `APP_STATE_UPDATED` snapshot with monotonically inc
 - Named slideshow collections, image ordering, slide intervals, countdown
 - Reusable still-image library with fit/crop
 - Optional standalone countdown
-- Limited optional organization/event name and logo (if it does not compromise milestone delivery)
 - Local persistence and crash/relaunch recovery
 
 ### Not MVP

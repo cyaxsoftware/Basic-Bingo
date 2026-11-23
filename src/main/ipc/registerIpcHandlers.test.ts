@@ -50,6 +50,7 @@ function setup(persister: { save: () => Promise<void> } = { save: async () => un
       close: vi.fn((): CommandResult => ok),
     },
     displays: { refresh: vi.fn(() => []) },
+    dataFolder: { show: vi.fn(async (): Promise<CommandResult> => ok) },
     senders: {
       isController: (id) => id === CONTROLLER_ID,
       isAppWindow: (id) => id === CONTROLLER_ID || id === PRESENTATION_ID,
@@ -279,6 +280,45 @@ describe('registerIpcHandlers', () => {
       expect(invoke(IpcChannel.toggleBall, 17)).toEqual(ok);
       expect(ctx.store.getSnapshot().game.calledNumbers).toEqual([3, 17]);
     });
+  });
+
+  describe('storage recovery commands', () => {
+    const invoke = (sender: number, channel: string, ...args: unknown[]) =>
+      ctx.ipc.invoke(sender, channel, ...args) as CommandResult | Promise<CommandResult>;
+
+    it('Try again saves the game again (it does nothing when the game is already saved)', async () => {
+      const retry = vi.spyOn(ctx.store, 'retrySave');
+      expect(await invoke(CONTROLLER_ID, IpcChannel.retrySave)).toEqual(ok);
+      expect(retry).toHaveBeenCalledTimes(1);
+    });
+
+    it('Show data folder opens the folder and reports whether Windows could', async () => {
+      expect(await invoke(CONTROLLER_ID, IpcChannel.showDataFolder)).toEqual(ok);
+      expect(ctx.deps.dataFolder.show).toHaveBeenCalledTimes(1);
+
+      vi.mocked(ctx.deps.dataFolder.show).mockResolvedValueOnce({
+        ok: false,
+        error: 'Windows could not open the data folder.',
+      });
+      expect(await invoke(CONTROLLER_ID, IpcChannel.showDataFolder)).toMatchObject({
+        ok: false,
+        error: expect.stringContaining('data folder'),
+      });
+    });
+
+    it.each([IpcChannel.retrySave, IpcChannel.showDataFolder])(
+      '%s is Controller-only and takes no arguments',
+      async (channel) => {
+        const retry = vi.spyOn(ctx.store, 'retrySave');
+        for (const sender of [PRESENTATION_ID, STRANGER_ID]) {
+          expect(await invoke(sender, channel)).toMatchObject({ ok: false });
+        }
+        expect(await invoke(CONTROLLER_ID, channel, 'x')).toMatchObject({ ok: false });
+        expect(await invoke(CONTROLLER_ID, channel, null)).toMatchObject({ ok: false });
+        expect(retry).not.toHaveBeenCalled();
+        expect(ctx.deps.dataFolder.show).not.toHaveBeenCalled();
+      },
+    );
   });
 
   describe('Controller theme', () => {

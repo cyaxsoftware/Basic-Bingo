@@ -14,13 +14,8 @@ export interface GameNumberProps {
 /** "GAME 4", so the hall can tell which game this is. Display only. */
 export function GameNumber({ number, placement }: GameNumberProps) {
   return (
-    <p className={`${styles.gameNumber} ${styles[placement]}`} aria-label={`Game ${number}`}>
-      <span aria-hidden="true" className={styles.word}>
-        Game
-      </span>{' '}
-      <span aria-hidden="true" className={styles.number}>
-        {number}
-      </span>
+    <p className={`${styles.gameNumber} ${styles[placement]}`}>
+      <span className={styles.word}>Game</span> <span className={styles.number}>{number}</span>
     </p>
   );
 }

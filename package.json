@@ -28,6 +28,7 @@
     "test:coverage": "vitest run --coverage",
     "test:e2e": "electron-forge package && playwright test",
     "test:e2e:smoke": "electron-forge package && playwright test --grep @smoke",
+    "test:release-smoke": "powershell.exe -NoProfile -MTA -File scripts/test-release-smoke.ps1",
     "check": "npm run typecheck && npm run lint && npm run format:check && npm run test"
   },
   "dependencies": {
@@ -37,6 +38,7 @@
     "zod": "^4.6.7"
   },
   "devDependencies": {
+    "@axe-core/playwright": "^4.14.0",
     "@electron-forge/cli": "^8.0.1",
     "@electron-forge/maker-squirrel": "^8.0.1",
     "@electron-forge/maker-zip": "^8.0.1",
@@ -55,6 +57,7 @@
     "@types/react-dom": "^19.3.0",
     "@vitejs/plugin-react": "^6.3.0",
     "@vitest/coverage-v8": "^5.1.1",
+    "axe-core": "^4.14.1",
     "electron": "45.4.1",
     "jsdom": "^31.0.1",
     "oxfmt": "^0.79.0",

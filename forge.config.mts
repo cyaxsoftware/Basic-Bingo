@@ -5,6 +5,8 @@ import { AutoUnpackNativesPlugin } from '@electron-forge/plugin-auto-unpack-nati
 import { VitePlugin } from '@electron-forge/plugin-vite';
 import { FusesPlugin } from '@electron-forge/plugin-fuses';
 import { FuseV1Options, FuseVersion } from '@electron/fuses';
+import { keepEnglishLocalePacks } from './scripts/packaging/englishLocales';
+import { COPYRIGHT_NOTICE, SQUIRREL_PACKAGE_ID, WINDOWS_EXECUTABLE_NAME } from './src/shared/appInfo';
 
 /**
  * Build/packaging configuration.
@@ -17,10 +19,15 @@ import { FuseV1Options, FuseVersion } from '@electron/fuses';
 const config: ForgeConfig = {
   packagerConfig: {
     asar: true,
-    executableName: 'basic-bingo',
+    afterExtract: [
+      async ({ buildPath, platform }) => {
+        if (platform === 'win32') await keepEnglishLocalePacks(buildPath);
+      },
+    ],
+    executableName: WINDOWS_EXECUTABLE_NAME,
     // No extension: Packager appends .ico on Windows.
     icon: 'build/icon',
-    appCopyright: 'Copyright © 2026 Phil Cazella Consulting, DBA Cyax Software. All rights reserved.',
+    appCopyright: COPYRIGHT_NOTICE,
     win32metadata: {
       CompanyName: 'Cyax Software',
       ProductName: 'Basic Bingo',
@@ -30,9 +37,14 @@ const config: ForgeConfig = {
   makers: [
     // Windows installer (Setup.exe). Installs per-user, no admin rights required.
     new MakerSquirrel({
-      name: 'basic_bingo',
+      name: SQUIRREL_PACKAGE_ID,
       setupExe: 'BasicBingoSetup.exe',
       setupIcon: 'build/icon.ico',
+      // Squirrel writes its package description into Setup.exe's Product Name field.
+      description: 'Basic Bingo',
+      copyright: COPYRIGHT_NOTICE,
+      // Ship Chromium's notices and omit Squirrel's default remote installer icon.
+      nuspecTemplate: 'build/windows.nuspectemplate',
     }),
     // Portable zip, useful for rehearsal machines where installing is not allowed.
     new MakerZIP({}, ['win32']),

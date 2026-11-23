@@ -1,0 +1,60 @@
+{
+  "schemaVersion": 5,
+  "savedAt": "2026-11-23T21:00:00.000Z",
+  "game": { "calledNumbers": [3, 17, 9], "bingoBannerVisible": false, "disabledRows": [] },
+  "presentation": { "mode": "gameBoard" },
+  "patterns": {
+    "library": [],
+    "active": {
+      "sourcePatternId": null,
+      "title": "Untitled pattern",
+      "cells": [
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false
+      ],
+      "editedFromLibrary": false
+    },
+    "shown": null
+  },
+  "media": {
+    "library": [
+      {
+        "id": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+        "name": "Club logo.png",
+        "format": "png",
+        "bytes": 100,
+        "width": 128,
+        "height": 128,
+        "addedAt": "2026-11-23T20:00:00.000Z",
+        "fit": "fit"
+      }
+    ],
+    "singleImage": { "imageId": null }
+  },
+  "timer": { "status": "idle", "durationSeconds": 300, "message": "Time to Play!" },
+  "settings": { "preferredDisplayId": null, "controllerTheme": "light" },
+  "branding": { "name": "Community Bingo Night", "logoId": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa" }
+}

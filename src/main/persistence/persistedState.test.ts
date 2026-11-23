@@ -16,6 +16,7 @@ import stateV1Fixture from './fixtures/state-v1.json';
 import stateV2Fixture from './fixtures/state-v2.json';
 import stateV3Fixture from './fixtures/state-v3.json';
 import stateV4Fixture from './fixtures/state-v4.json';
+import stateV5Fixture from './fixtures/state-v5.json';
 import {
   CURRENT_SCHEMA_VERSION,
   createDefaultAppData,
@@ -166,7 +167,8 @@ describe('V1 save format is frozen (audit finding 5, #22)', () => {
         ok: true,
         warnings: [],
         state: {
-          schemaVersion: 4,
+          schemaVersion: CURRENT_SCHEMA_VERSION,
+          branding: null,
           savedAt: '2026-01-01T00:00:00.000Z',
           game: { calledNumbers: expectedCalls, bingoBannerVisible: false, disabledRows: [] },
           presentation: { mode: 'gameBoard' },
@@ -226,7 +228,7 @@ describe('V2 save format is frozen (released in milestone 2)', () => {
   it('migrates to the current version keeping the game and mode, and seeds the default library with an empty working pattern', () => {
     const parsed = parsePersistedState(stateV2Fixture);
     if (!parsed.ok) throw new Error(parsed.error);
-    expect(parsed.state.schemaVersion).toBe(4);
+    expect(parsed.state.schemaVersion).toBe(CURRENT_SCHEMA_VERSION);
     expect(parsed.state.game).toEqual({
       calledNumbers: [3, 17, 9, 31, 52, 75],
       bingoBannerVisible: true,
@@ -308,12 +310,13 @@ describe('V3 save format is frozen (released in milestone 3)', () => {
     expect(presentation.mode).toBe('slideshow');
   });
 
-  it('migrates the V3 fixture to V4 unchanged, with an empty media library', () => {
+  it('migrates the V3 fixture to the current version with an empty media library', () => {
     const parsed = loadFixture();
     const written = toPersistedState(fromPersistedState(parsed.state));
     expect({ ...written, savedAt: stateV3Fixture.savedAt }).toEqual({
       ...stateV3Fixture,
-      schemaVersion: 4,
+      schemaVersion: CURRENT_SCHEMA_VERSION,
+      branding: null,
       // A file from before the theme switch existed opens in the light theme.
       settings: { ...stateV3Fixture.settings, controllerTheme: 'light' },
       gameLog: {
@@ -609,7 +612,8 @@ describe('blacked-out rows in the save file', () => {
 describe('parsePersistedState', () => {
   it('accepts a valid current document', () => {
     const result = parsePersistedState({
-      schemaVersion: 4,
+      schemaVersion: CURRENT_SCHEMA_VERSION,
+      branding: null,
       savedAt: '2026-01-01T00:00:00.000Z',
       game: { calledNumbers: [3, 17, 9], bingoBannerVisible: true, disabledRows: [] },
       presentation: { mode: 'singleImage' },
@@ -621,7 +625,8 @@ describe('parsePersistedState', () => {
       ok: true,
       warnings: [],
       state: {
-        schemaVersion: 4,
+        schemaVersion: CURRENT_SCHEMA_VERSION,
+        branding: null,
         savedAt: '2026-01-01T00:00:00.000Z',
         game: { calledNumbers: [3, 17, 9], bingoBannerVisible: true, disabledRows: [] },
         presentation: { mode: 'singleImage' },
@@ -750,7 +755,8 @@ describe('parsePersistedState', () => {
   it('creates a default state: an empty game, the default patterns and an empty working pattern', () => {
     const state = createDefaultPersistedState(new Date('2026-01-01T00:00:00Z'));
     expect(state).toMatchObject({
-      schemaVersion: 4,
+      schemaVersion: CURRENT_SCHEMA_VERSION,
+      branding: null,
       savedAt: '2026-01-01T00:00:00.000Z',
       game: { calledNumbers: [], bingoBannerVisible: false, disabledRows: [] },
       presentation: { mode: 'gameBoard' },
@@ -878,6 +884,8 @@ describe('V4 save format (milestone 4: the media library)', () => {
     const written = toPersistedState(fromPersistedState(parsed.state));
     expect({ ...written, savedAt: stateV4Fixture.savedAt }).toEqual({
       ...stateV4Fixture,
+      schemaVersion: CURRENT_SCHEMA_VERSION,
+      branding: null,
       settings: { ...stateV4Fixture.settings, controllerTheme: 'light' },
       gameLog: {
         records: [],
@@ -1026,4 +1034,17 @@ describe('V4 save format (milestone 4: the media library)', () => {
       },
     );
   });
+});
+
+it('opens a branding-build save and keeps the game and image library across the next save', () => {
+  const parsed = parsePersistedState(stateV5Fixture);
+  if (!parsed.ok) throw new Error(parsed.error);
+  expect(parsed.warnings).toEqual([]);
+  const data = fromPersistedState(parsed.state);
+  expect(data.game).toEqual(stateV5Fixture.game);
+  expect(data.media).toEqual(stateV5Fixture.media);
+  const written = toPersistedState(data);
+  expect(written.branding).toBeNull();
+  expect(written.game).toEqual(stateV5Fixture.game);
+  expect(written.media).toEqual(stateV5Fixture.media);
 });

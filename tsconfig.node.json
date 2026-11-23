@@ -12,6 +12,7 @@
     "src/shared/**/*",
     "src/types/**/*",
     "e2e/**/*",
+    "scripts/packaging/**/*.ts",
     "*.mts",
     "playwright.config.ts"
   ]

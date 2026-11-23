@@ -47,7 +47,7 @@
 
 .clear:focus-visible,
 .scroll:focus-visible {
-  outline: 3px solid var(--accent);
+  outline: 3px solid var(--focus-ring);
   outline-offset: 2px;
 }
 

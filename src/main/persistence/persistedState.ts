@@ -60,7 +60,7 @@ import {
   type TimerState,
 } from '../../shared/timer/timerState';
 
-export const CURRENT_SCHEMA_VERSION = 4;
+export const CURRENT_SCHEMA_VERSION = 5;
 
 // ---------------------------------------------------------------------------
 // Version 1 document (released in milestone 1; frozen)
@@ -290,7 +290,13 @@ const PersistedStateV4Schema = z.object({
 // ---------------------------------------------------------------------------
 
 /** The document version this build writes. */
-export type PersistedState = PersistedStateV4;
+export interface PersistedState extends Omit<PersistedStateV4, 'schemaVersion'> {
+  readonly schemaVersion: 5;
+  /** Reserved by the short-lived branding build. The rollback clears it on the next save. */
+  readonly branding: null;
+}
+
+const PersistedStateV5Schema = PersistedStateV4Schema.extend({ schemaVersion: z.literal(5) });
 
 /** Durable state as the running app uses it (independent of the file format). */
 export interface AppData {
@@ -398,7 +404,8 @@ function toPersistedPatterns(patterns: PatternsState): PersistedStateV3['pattern
 
 export function createDefaultPersistedState(now: Date = new Date()): PersistedState {
   return {
-    schemaVersion: 4,
+    schemaVersion: CURRENT_SCHEMA_VERSION,
+    branding: null,
     savedAt: now.toISOString(),
     game: { calledNumbers: [], bingoBannerVisible: false, disabledRows: [] },
     presentation: { mode: DEFAULT_PRESENTATION_MODE },
@@ -419,7 +426,8 @@ export function createDefaultAppData(): AppData {
 /** Convert app data to the current on-disk document. Copies fields explicitly. */
 export function toPersistedState(data: AppData, now: Date = new Date()): PersistedState {
   return {
-    schemaVersion: 4,
+    schemaVersion: CURRENT_SCHEMA_VERSION,
+    branding: null,
     savedAt: now.toISOString(),
     game: {
       calledNumbers: [...data.game.calledNumbers],
@@ -502,6 +510,8 @@ const MIGRATIONS: Record<number, (raw: Record<string, unknown>) => Record<string
     slideshow: undefined,
     gameLog: undefined,
   }),
+  // V5 differs from V4 only by the reserved branding field, which the parser discards.
+  4: (raw) => ({ ...raw, schemaVersion: 5 }),
 };
 
 export type ParseResult =
@@ -787,7 +797,7 @@ export function parsePersistedState(raw: unknown): ParseResult {
     version += 1;
   }
 
-  const parsed = PersistedStateV4Schema.safeParse(data);
+  const parsed = PersistedStateV5Schema.safeParse(data);
   if (!parsed.success) {
     return { ok: false, error: `State file is malformed: ${z.prettifyError(parsed.error)}` };
   }
@@ -807,7 +817,8 @@ export function parsePersistedState(raw: unknown): ParseResult {
     ok: true,
     warnings,
     state: {
-      schemaVersion: 4,
+      schemaVersion: CURRENT_SCHEMA_VERSION,
+      branding: null,
       savedAt: parsed.data.savedAt,
       game: {
         calledNumbers,

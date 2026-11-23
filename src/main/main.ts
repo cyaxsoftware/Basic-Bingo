@@ -10,10 +10,12 @@
  *
  * See docs/architecture.md for the full picture.
  */
+import { mkdir } from 'node:fs/promises';
 import path from 'node:path';
-import { app, BrowserWindow, dialog, ipcMain, Menu, protocol, screen, session } from 'electron';
+import { app, BrowserWindow, dialog, ipcMain, Menu, protocol, screen, session, shell } from 'electron';
 import started from 'electron-squirrel-startup';
-import type { Notice } from '../shared/ipc/contract';
+import { WINDOWS_APP_USER_MODEL_ID } from '../shared/appInfo';
+import { fail, ok, type CommandResult } from '../shared/ipc/contract';
 import { MEDIA_PROTOCOL } from '../shared/media';
 import { confirmClose, describeUnsavedGame, type CloseChoice } from './app/closeGuard';
 import { registerIpcHandlers } from './ipc/registerIpcHandlers';
@@ -27,7 +29,8 @@ import {
   resolveDataDirectory,
 } from './persistence/dataDirectory';
 import { fromPersistedState } from './persistence/persistedState';
-import { JsonStateRepository, type LoadResult } from './persistence/stateRepository';
+import { recoveryNotices } from './persistence/recoveryNotices';
+import { JsonStateRepository } from './persistence/stateRepository';
 import { installOfflinePolicy } from './security/offlinePolicy';
 import { AppStore } from './state/appStore';
 import { startSlideshowService, startTimerService } from './timer/timerService';
@@ -37,8 +40,6 @@ import { DisplayManager } from './windows/displayManager';
 import { PresentationWindowManager } from './windows/presentationWindowManager';
 import { devServerOrigins } from './windows/rendererEntry';
 import { WindowRegistry } from './windows/windowRegistry';
-
-const APP_USER_MODEL_ID = 'com.cyaxsoftware.basicbingo';
 
 // The windows show library images through bingo-media://<id>. A custom scheme has to be declared before the app is
 // ready; "standard" gives it normal URL handling (the id is the host) and "secure" lets pages use it like https.
@@ -70,7 +71,7 @@ function main(): void {
     return;
   }
 
-  app.setAppUserModelId(APP_USER_MODEL_ID);
+  if (process.platform === 'win32') app.setAppUserModelId(WINDOWS_APP_USER_MODEL_ID);
   const registry = new WindowRegistry();
 
   app.on('second-instance', () => {
@@ -159,7 +160,26 @@ async function startApplication(registry: WindowRegistry): Promise<void> {
     createWindow: (options) => createAppWindow('presentation', options),
   });
 
-  registerIpcHandlers(ipcMain, { store, media, powerPoint, presentation, displays, senders: registry });
+  // "Show data folder", for support: opens it in Explorer (created first, in case it has gone missing).
+  const dataFolder = {
+    show: async (): Promise<CommandResult> => {
+      await mkdir(dataDirectory, { recursive: true }).catch(() => undefined);
+      const problem = await shell.openPath(dataDirectory);
+      if (problem === '') return ok;
+      console.error('[support] could not open the data folder:', problem);
+      return fail('Windows could not open the data folder.');
+    },
+  };
+
+  registerIpcHandlers(ipcMain, {
+    store,
+    media,
+    powerPoint,
+    presentation,
+    displays,
+    dataFolder,
+    senders: registry,
+  });
   store.subscribe((snapshot) => registry.broadcast(snapshot));
   const stopTimerService = startTimerService(store);
   const stopSlideshowService = startSlideshowService(store);
@@ -284,35 +304,6 @@ function installShutdown(
   });
 
   app.on('window-all-closed', () => app.quit());
-}
-
-function recoveryNotices(loaded: LoadResult): Notice[] {
-  if (loaded.source === 'backup') {
-    return [
-      {
-        id: 'state-recovered-from-backup',
-        level: 'warning',
-        message:
-          'The saved game could not be read, so the previous backup was restored. Check the called numbers.',
-      },
-    ];
-  }
-  if (loaded.source === 'defaults' && loaded.issues.length > 0) {
-    return [
-      {
-        id: 'state-reset-unreadable',
-        level: 'error',
-        message:
-          'The saved game could not be read and no backup was usable, so a new game was started. The unreadable file was kept for inspection.',
-      },
-    ];
-  }
-  if (loaded.issues.length > 0) {
-    return [
-      { id: 'state-normalized', level: 'info', message: `Saved game repaired: ${loaded.issues.join(' ')}` },
-    ];
-  }
-  return [];
 }
 
 function fatal(message: string, error: unknown): void {

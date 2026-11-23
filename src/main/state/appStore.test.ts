@@ -1,3 +1,4 @@
+import path from 'node:path';
 import { describe, expect, it, vi } from 'vitest';
 import type { AppSnapshot } from '../../shared/ipc/contract';
 import { DEFAULT_TIMER } from '../../shared/timer/timerState';
@@ -12,11 +13,13 @@ import { AppStore } from './appStore';
 
 class FakePersister implements StatePersister {
   saved: PersistedState[] = [];
-  failNext = false;
+  /** Make the next save fail: `true` for a plain error, or the error to throw (for example one with a Windows code). */
+  failNext: boolean | Error = false;
   async save(state: PersistedState): Promise<void> {
     if (this.failNext) {
+      const error = this.failNext === true ? new Error('disk full') : this.failNext;
       this.failNext = false;
-      throw new Error('disk full');
+      throw error;
     }
     this.saved.push(state);
   }
@@ -170,13 +173,92 @@ describe('AppStore', () => {
     await flushPromises();
     const failed = store.getSnapshot().persistence;
     expect(failed.kind).toBe('error');
-    expect(failed.kind === 'error' && failed.message).toMatch(/disk full/);
+    expect(failed.kind === 'error' && failed.message).toMatch(/Try again/);
     // The in-memory game is still correct even though the save failed.
     expect(store.getSnapshot().game.calledNumbers).toEqual([5]);
 
     store.dispatch({ type: 'toggleBall', ball: 6 });
     await flushPromises();
     expect(store.getSnapshot().persistence).toEqual({ kind: 'ok' });
+  });
+
+  describe('what the operator is told when a save fails', () => {
+    const fault = (code: string) =>
+      Object.assign(
+        new Error(
+          `${code}: something wrong, open '${path.join('C:', 'Users', 'me', 'AppData', 'Roaming', 'Basic Bingo', 'bingo-data', 'state.json.tmp')}'`,
+        ),
+        { code },
+      );
+
+    it.each([
+      ['ENOSPC', 'disk-full', /disk is full/],
+      ['EACCES', 'access-denied', /will not let the app write/],
+      ['EPERM', 'access-denied', /will not let the app write/],
+      ['EROFS', 'access-denied', /will not let the app write/],
+      ['EBUSY', 'file-busy', /another program/],
+      ['ENOENT', 'folder-missing', /data folder is missing/],
+      ['EIO', 'disk-error', /disk reported an error/],
+    ] as const)(
+      'says it plainly for %s (%s), with no path, file name or error code',
+      async (code, problem, words) => {
+        const { store, persister } = createStore();
+        const log = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+        persister.failNext = fault(code);
+        store.dispatch({ type: 'toggleBall', ball: 5 });
+        await flushPromises();
+        const status = store.getSnapshot().persistence;
+        if (status.kind !== 'error') throw new Error('expected a save failure');
+        expect(status.problem).toBe(problem);
+        expect(status.message).toMatch(words);
+        expect(status.message).toMatch(/Try again/);
+        expect(status.message).not.toMatch(
+          /state\.json|\.tmp|AppData|Users|ENOSPC|EACCES|EPERM|EBUSY|ENOENT|EIO|EROFS/,
+        );
+        // The raw error is still in the log, for support.
+        expect(log).toHaveBeenCalledWith('[persistence] save failed', expect.any(Error));
+        log.mockRestore();
+      },
+    );
+
+    it('treats an error it does not recognise as a generic failure that still says what to do', async () => {
+      const { store, persister } = createStore();
+      const log = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+      persister.failNext = new Error('something odd');
+      store.dispatch({ type: 'toggleBall', ball: 5 });
+      await flushPromises();
+      const status = store.getSnapshot().persistence;
+      expect(status).toMatchObject({ kind: 'error', problem: 'other' });
+      expect(status.kind === 'error' && status.message).toMatch(/Try again/);
+      log.mockRestore();
+    });
+
+    it('Try again saves the latest game again, and the warning goes away when it works', async () => {
+      const { store, persister } = createStore();
+      const log = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+      persister.failNext = fault('ENOSPC');
+      store.dispatch({ type: 'toggleBall', ball: 5 });
+      await flushPromises();
+      expect(store.getSnapshot().persistence.kind).toBe('error');
+      const savedBefore = persister.saved.length;
+
+      store.retrySave(); // the disk has been cleaned up
+      await flushPromises();
+      expect(store.getSnapshot().persistence).toEqual({ kind: 'ok' });
+      expect(persister.saved.length).toBe(savedBefore + 1);
+      expect(persister.saved.at(-1)?.game.calledNumbers).toEqual([5]);
+      log.mockRestore();
+    });
+
+    it('Try again does nothing when the game is already saved', async () => {
+      const { store, persister } = createStore();
+      store.dispatch({ type: 'toggleBall', ball: 5 });
+      await flushPromises();
+      const saves = persister.saved.length;
+      store.retrySave();
+      await flushPromises();
+      expect(persister.saved.length).toBe(saves);
+    });
   });
 
   it('does not emit for no-op runtime updates', () => {

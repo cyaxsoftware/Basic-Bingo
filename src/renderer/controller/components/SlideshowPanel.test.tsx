@@ -74,7 +74,11 @@ describe('Slideshow collection management', () => {
     const playing = api.current().slideshowPlayback;
     const settings = view.getByRole('button', { name: 'Countdown settings…' });
     await user.click(settings);
-    const dialog = within(screen.getByRole('dialog', { name: 'Slideshow countdown' }));
+    const modal = screen.getByRole('dialog', { name: 'Slideshow countdown' });
+    expect(modal).toHaveAccessibleDescription(
+      'Set the break timer and choose whether it appears on the slideshow.',
+    );
+    const dialog = within(modal);
     const visibility = dialog.getByRole('switch', { name: 'Show timer on slideshow' });
     expect(visibility).toBeChecked();
     await user.click(visibility);
@@ -153,8 +157,10 @@ describe('Slideshow collection management', () => {
     expect(within(rows()[1]!).getByRole('img', { name: 'Menu.png' })).toHaveAttribute('src', mediaUrl(B));
     expect(view.queryByText(gallery.name)).toBeNull();
     expect(view.getByRole('button', { name: 'Move Logo.png earlier' })).toBeDisabled();
-    await user.click(view.getByRole('button', { name: 'Move Menu.png earlier' }));
+    view.getByRole('button', { name: 'Move Menu.png earlier' }).focus();
+    await user.keyboard('{Enter}');
     expect(rows()[0]).toHaveTextContent('Menu.png');
+    expect(view.getByRole('button', { name: 'Move Menu.png later' })).toHaveFocus();
     await user.click(view.getByText('Collection settings'));
     await user.selectOptions(view.getByRole('combobox', { name: 'Default image fit' }), 'fill');
     const override = view.getByRole('combobox', { name: 'Image fit for Menu.png' });

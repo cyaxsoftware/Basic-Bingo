@@ -147,17 +147,22 @@ export function SingleImagePanel({
           <ul className={styles.thumbs}>
             {library.map((item) => {
               const isChosen = item.id === singleImage.imageId;
+              const missing = unloadable.has(item.id);
+              const fitLabel = item.fit === 'fit' ? null : FIT_LABEL[item.fit];
               return (
                 <li key={item.id}>
                   <button
                     type="button"
                     className={styles.thumb}
                     aria-pressed={isChosen}
-                    aria-label={`${item.name}, ${sizeText(item)}`}
                     title={item.name}
                     onClick={() => onSelect(item.id)}
                   >
-                    {unloadable.has(item.id) ? (
+                    <span className={styles.thumbLabel}>
+                      {item.name}, {sizeText(item)}
+                      {missing || fitLabel || isChosen ? ',' : ''}
+                    </span>{' '}
+                    {missing ? (
                       <span className={styles.thumbMissing}>Missing</span>
                     ) : (
                       <img
@@ -168,9 +173,7 @@ export function SingleImagePanel({
                         onError={() => markUnloadable(item.id)}
                       />
                     )}
-                    {item.fit === 'fit' ? null : (
-                      <span className={styles.thumbFit}>{FIT_LABEL[item.fit]}</span>
-                    )}
+                    {fitLabel ? <span className={styles.thumbFit}>{fitLabel}</span> : null}{' '}
                     {isChosen ? <span className={styles.thumbOn}>On projector</span> : null}
                   </button>
                 </li>

@@ -1,4 +1,4 @@
-import { screen, type BrowserWindow } from 'electron';
+import { app, screen, type BrowserWindow } from 'electron';
 import { createAppWindow } from './createAppWindow';
 import type { ControllerTheme } from '../../shared/theme/controllerTheme';
 
@@ -17,7 +17,7 @@ export function createControllerWindow(theme: ControllerTheme): BrowserWindow {
   const height = Math.min(PREFERRED_SIZE.height, area.height);
 
   const window = createAppWindow('controller', {
-    title: 'Basic Bingo — Controller',
+    title: `Basic Bingo v${app.getVersion()} — Controller`,
     x: Math.round(area.x + (area.width - width) / 2),
     y: Math.round(area.y + (area.height - height) / 2),
     width,
@@ -28,6 +28,8 @@ export function createControllerWindow(theme: ControllerTheme): BrowserWindow {
     backgroundColor: theme === 'dark' ? '#0e1116' : '#f4f5f7',
   });
 
+  // The renderer's static page title would otherwise replace the version in the Windows title bar.
+  window.on('page-title-updated', (event) => event.preventDefault());
   window.once('ready-to-show', () => {
     window.maximize();
     window.show();

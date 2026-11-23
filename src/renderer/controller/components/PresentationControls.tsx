@@ -84,19 +84,15 @@ export function PresentationControls({
 
       {/* One button in one place that flips: Project when nothing is showing, a red Stop while the projector or
           the Preview window is up. It stays Project while 'opening' so it flips once, with no flash in between. */}
-      {live ? (
-        <button type="button" className={styles.toggle} data-live="true" onClick={onStop}>
-          Stop
-        </button>
-      ) : candidates.length > 0 ? (
+      {live || candidates.length > 0 ? (
         <button
           type="button"
           className={styles.toggle}
-          data-live="false"
-          disabled={selectedId === null}
-          onClick={() => selectedId !== null && onProject(selectedId)}
+          data-live={live}
+          disabled={!live && selectedId === null}
+          onClick={live ? onStop : () => selectedId !== null && onProject(selectedId)}
         >
-          Project
+          {live ? 'Stop' : 'Project'}
         </button>
       ) : null}
 

@@ -22,6 +22,16 @@
   transform: scale(0.97);
 }
 
+@media (prefers-reduced-motion: reduce) {
+  .tab {
+    transition: none;
+  }
+
+  .tab:active {
+    transform: none;
+  }
+}
+
 .tab[aria-selected='true'] {
   border-color: var(--accent);
   background: var(--info-bg);
@@ -30,6 +40,6 @@
 }
 
 .tab:focus-visible {
-  outline: 3px solid var(--accent);
+  outline: 3px solid var(--focus-ring);
   outline-offset: 2px;
 }
