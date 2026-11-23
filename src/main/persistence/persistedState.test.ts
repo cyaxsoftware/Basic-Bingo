@@ -16,6 +16,7 @@ import stateV1Fixture from './fixtures/state-v1.json';
 import stateV2Fixture from './fixtures/state-v2.json';
 import stateV3Fixture from './fixtures/state-v3.json';
 import stateV4Fixture from './fixtures/state-v4.json';
+import stateV5Fixture from './fixtures/state-v5.json';
 import {
   CURRENT_SCHEMA_VERSION,
   createDefaultAppData,
@@ -97,6 +98,7 @@ const DEFAULT_PATTERNS = { library: createDefaultLibrary(), active: blankActiveP
 
 // A V1 file predates the banner, so it must come back with the banner hidden.
 const V1_FIXTURE_APP_DATA: AppData = {
+  branding: null,
   game: { calledNumbers: [3, 17, 9, 31, 52, 75], bingoBannerVisible: false, disabledRows: [] },
   presentation: { mode: 'gameBoard' },
   patterns: DEFAULT_PATTERNS,
@@ -108,6 +110,7 @@ const V1_FIXTURE_APP_DATA: AppData = {
 };
 
 const V2_FIXTURE_APP_DATA: AppData = {
+  branding: null,
   game: { calledNumbers: [3, 17, 9, 31, 52, 75], bingoBannerVisible: true, disabledRows: [] },
   presentation: { mode: 'slideshow' },
   patterns: DEFAULT_PATTERNS,
@@ -154,7 +157,7 @@ describe('V1 save format is frozen (audit finding 5, #22)', () => {
     ['a V1 game with calls', { calledNumbers: [4, 5] }, [4, 5]],
     ['a V1 game with no calls', { calledNumbers: [] }, []],
   ])(
-    'migrates %s to V3 with the banner hidden, the board showing and the default patterns',
+    'migrates %s with the banner hidden, the board showing and the default patterns',
     (_name, game, expectedCalls) => {
       const result = parsePersistedState({
         schemaVersion: 1,
@@ -166,7 +169,8 @@ describe('V1 save format is frozen (audit finding 5, #22)', () => {
         ok: true,
         warnings: [],
         state: {
-          schemaVersion: 4,
+          schemaVersion: CURRENT_SCHEMA_VERSION,
+          branding: null,
           savedAt: '2026-01-01T00:00:00.000Z',
           game: { calledNumbers: expectedCalls, bingoBannerVisible: false, disabledRows: [] },
           presentation: { mode: 'gameBoard' },
@@ -226,7 +230,7 @@ describe('V2 save format is frozen (released in milestone 2)', () => {
   it('migrates to the current version keeping the game and mode, and seeds the default library with an empty working pattern', () => {
     const parsed = parsePersistedState(stateV2Fixture);
     if (!parsed.ok) throw new Error(parsed.error);
-    expect(parsed.state.schemaVersion).toBe(4);
+    expect(parsed.state.schemaVersion).toBe(CURRENT_SCHEMA_VERSION);
     expect(parsed.state.game).toEqual({
       calledNumbers: [3, 17, 9, 31, 52, 75],
       bingoBannerVisible: true,
@@ -308,12 +312,13 @@ describe('V3 save format is frozen (released in milestone 3)', () => {
     expect(presentation.mode).toBe('slideshow');
   });
 
-  it('migrates the V3 fixture to V4 unchanged, with an empty media library', () => {
+  it('migrates the V3 fixture with an empty media library and branding off', () => {
     const parsed = loadFixture();
     const written = toPersistedState(fromPersistedState(parsed.state));
     expect({ ...written, savedAt: stateV3Fixture.savedAt }).toEqual({
       ...stateV3Fixture,
-      schemaVersion: 4,
+      schemaVersion: CURRENT_SCHEMA_VERSION,
+      branding: null,
       // A file from before the theme switch existed opens in the light theme.
       settings: { ...stateV3Fixture.settings, controllerTheme: 'light' },
       gameLog: {
@@ -609,7 +614,8 @@ describe('blacked-out rows in the save file', () => {
 describe('parsePersistedState', () => {
   it('accepts a valid current document', () => {
     const result = parsePersistedState({
-      schemaVersion: 4,
+      schemaVersion: CURRENT_SCHEMA_VERSION,
+      branding: null,
       savedAt: '2026-01-01T00:00:00.000Z',
       game: { calledNumbers: [3, 17, 9], bingoBannerVisible: true, disabledRows: [] },
       presentation: { mode: 'singleImage' },
@@ -621,7 +627,8 @@ describe('parsePersistedState', () => {
       ok: true,
       warnings: [],
       state: {
-        schemaVersion: 4,
+        schemaVersion: CURRENT_SCHEMA_VERSION,
+        branding: null,
         savedAt: '2026-01-01T00:00:00.000Z',
         game: { calledNumbers: [3, 17, 9], bingoBannerVisible: true, disabledRows: [] },
         presentation: { mode: 'singleImage' },
@@ -750,7 +757,8 @@ describe('parsePersistedState', () => {
   it('creates a default state: an empty game, the default patterns and an empty working pattern', () => {
     const state = createDefaultPersistedState(new Date('2026-01-01T00:00:00Z'));
     expect(state).toMatchObject({
-      schemaVersion: 4,
+      schemaVersion: CURRENT_SCHEMA_VERSION,
+      branding: null,
       savedAt: '2026-01-01T00:00:00.000Z',
       game: { calledNumbers: [], bingoBannerVisible: false, disabledRows: [] },
       presentation: { mode: 'gameBoard' },
@@ -878,6 +886,8 @@ describe('V4 save format (milestone 4: the media library)', () => {
     const written = toPersistedState(fromPersistedState(parsed.state));
     expect({ ...written, savedAt: stateV4Fixture.savedAt }).toEqual({
       ...stateV4Fixture,
+      schemaVersion: CURRENT_SCHEMA_VERSION,
+      branding: null,
       settings: { ...stateV4Fixture.settings, controllerTheme: 'light' },
       gameLog: {
         records: [],
@@ -1025,5 +1035,48 @@ describe('V4 save format (milestone 4: the media library)', () => {
         expect(result.state.media.singleImage).toEqual({ imageId: null });
       },
     );
+  });
+});
+
+describe('V5 branding', () => {
+  it('migrates V4 with branding off and preserves the game and selected image', () => {
+    const parsed = parsePersistedState(stateV4Fixture);
+    expect(parsed).toMatchObject({
+      ok: true,
+      warnings: [],
+      state: {
+        schemaVersion: 5,
+        branding: null,
+        game: stateV4Fixture.game,
+        media: { singleImage: stateV4Fixture.media.singleImage },
+      },
+    });
+  });
+
+  it('restores a name and logo from the V5 fixture and writes them back', () => {
+    const parsed = parsePersistedState(stateV5Fixture);
+    if (!parsed.ok) throw new Error(parsed.error);
+    expect(parsed.warnings).toEqual([]);
+    const data = fromPersistedState(parsed.state);
+    expect(data.branding).toEqual(stateV5Fixture.branding);
+    expect(toPersistedState(data).branding).toEqual(stateV5Fixture.branding);
+  });
+
+  it('recovers invalid branding without losing calls', () => {
+    const parsed = parsePersistedState({ ...stateV5Fixture, branding: { name: 7 } });
+    expect(parsed).toMatchObject({
+      ok: true,
+      warnings: ['Invalid branding settings were cleared.'],
+      state: { branding: null, game: stateV5Fixture.game },
+    });
+  });
+
+  it('keeps the name when the saved logo no longer resolves', () => {
+    const parsed = parsePersistedState({ ...stateV5Fixture, media: DEFAULT_MEDIA });
+    expect(parsed).toMatchObject({
+      ok: true,
+      warnings: ['The branding logo is no longer in the image library.'],
+      state: { branding: { name: stateV5Fixture.branding.name, logoId: null } },
+    });
   });
 });

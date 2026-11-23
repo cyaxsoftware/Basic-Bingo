@@ -187,17 +187,20 @@ if someone modified its page.
 
 `src/main/persistence/`:
 
-- `persistedState.ts`: the on-disk documents (`PersistedStateV1`, `V2` and `V3` are frozen; `PersistedStateV4`
-  adds the media library, Single Image choice, slideshow collections and countdown timer, and stays open to M4 changes until M4 ships), zod
+- `persistedState.ts`: the on-disk documents (V1 through V4 are frozen, and V5 is current), Zod
   validation, the migration table, and explicit conversion between the current document and
   `AppData` (the durable state the app uses). Documents never reference live domain types such as
   `GameState`, so growing the game model cannot change what an existing file means.
 - **Games played:** `src/shared/games/gameLog.ts` holds the pure rules (when a game starts and ends, what is
   logged, reading a saved log, formatting) and `AppStore.dispatch` feeds it every game command with the time, so
   `GameState` and `reduceGame` never see a clock. The log (`gameLog`: finished games plus the clock of the game in
-  progress) is saved as an optional field of the open V4 document; damaged entries are dropped with a warning.
+  progress) was added in V4. Damaged entries are dropped with a warning.
   `clearGameLog` is the only command that changes it directly.
-- `fixtures/state-v1.json` ... `state-v4.json`: representative files for each version; tests
+- V5 adds optional branding. V4 files migrate with branding off. Main validates the
+  `setBranding` command and resolves its logo ID against the Single Image library. Removing an
+  image clears its branding reference in the same snapshot and save. A malformed branding entry
+  falls back to off and leaves the game intact.
+- `fixtures/state-v1.json` ... `state-v5.json`: representative files for each version; tests
   load them on every run (an old file must keep loading, migrated up: V1 gets the banner hidden, V2 gets the
   default pattern library and an empty working pattern). Pattern data is checked entry by entry on load: one
   damaged pattern is dropped with a warning, and a missing section restores the defaults, never costing the game.

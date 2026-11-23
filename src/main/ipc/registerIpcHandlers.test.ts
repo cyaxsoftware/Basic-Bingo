@@ -384,6 +384,26 @@ describe('registerIpcHandlers', () => {
     );
   });
 
+  it('allows only the Controller to set or clear valid branding', () => {
+    const brand = { name: 'Community Bingo Night', logoId: null };
+    const invoke = (sender: number, ...args: unknown[]) =>
+      ctx.ipc.invoke(sender, IpcChannel.setBranding, ...args) as CommandResult;
+    expect(invoke(PRESENTATION_ID, brand).ok).toBe(false);
+    expect(invoke(STRANGER_ID, brand).ok).toBe(false);
+    expect(invoke(CONTROLLER_ID).ok).toBe(false);
+    expect(invoke(CONTROLLER_ID, brand, null).ok).toBe(false);
+    expect(invoke(CONTROLLER_ID, { ...brand, name: 'x'.repeat(61) }).ok).toBe(false);
+    expect(invoke(CONTROLLER_ID, { ...brand, logoId: 'file.png' }).ok).toBe(false);
+    expect(invoke(CONTROLLER_ID, { ...brand, logoId: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa' }).ok).toBe(
+      false,
+    );
+    expect(ctx.store.getSnapshot().branding).toBeNull();
+    expect(invoke(CONTROLLER_ID, brand)).toEqual(ok);
+    expect(ctx.store.getSnapshot().branding).toEqual(brand);
+    expect(invoke(CONTROLLER_ID, null)).toEqual(ok);
+    expect(ctx.store.getSnapshot().branding).toBeNull();
+  });
+
   it('validates display ids before opening a presentation', () => {
     const bad = ctx.ipc.invoke(CONTROLLER_ID, IpcChannel.openPresentation, 'primary') as CommandResult;
     expect(bad.ok).toBe(false);

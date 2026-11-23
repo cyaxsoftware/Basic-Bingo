@@ -51,6 +51,13 @@ No internet connection, cloud database, user account, local HTTP server, or sepa
 
 **Light and dark:** The Controller starts light. A sun/moon switch at the right end of the top bar flips it to a dark theme (for dim rooms) and the choice is remembered. It themes the Controller only: the projector, and the projector previews inside the Controller, never change.
 
+**Optional branding:** Open **Single Image**, then **Branding…** beside **Add images…**. Enter an
+organization or event name, choose a logo from the local image library, or do both. Apply the
+settings to show the brand in the Controller header and in a small band below each Presentation
+mode. Branding is off by default and survives a restart. **Clear branding** removes the name and
+logo from both windows and keeps the image in the library. Removing a logo image from the library
+keeps the name, if one was set.
+
 **Primary layout:**
 - Compact top bar with app name, presentation status (`Not projecting` / selected display), `Project`, and display selection.
 - Presentation mode tabs: **Game Board**, **Slideshow**, **Single Image**, **Countdown**.

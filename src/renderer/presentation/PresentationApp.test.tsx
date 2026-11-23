@@ -12,6 +12,24 @@ function renderPresentation(snapshot = makeSnapshot()) {
   return { api, view };
 }
 
+it('shows the same read-only branding in every Presentation mode', async () => {
+  const { api } = renderPresentation();
+  await screen.findByRole('main');
+  expect(screen.queryByTestId('branding')).toBeNull();
+  act(() =>
+    api.push(makeSnapshot({ revision: 2, branding: { name: 'Community Bingo Night', logoId: null } })),
+  );
+  for (const mode of ['gameBoard', 'slideshow', 'singleImage', 'countdown'] as const) {
+    await act(async () => {
+      await api.setPresentationMode(mode);
+    });
+    expect(within(screen.getByRole('main')).getByTestId('branding')).toHaveTextContent(
+      'Community Bingo Night',
+    );
+  }
+  expect(screen.queryByRole('button')).toBeNull();
+});
+
 const played = (number: number, title = 'Four Corners') => ({
   id: `g${number}`,
   number,

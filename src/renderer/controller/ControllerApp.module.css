@@ -73,13 +73,25 @@
   margin-top: var(--layout-gap);
 }
 
-.header {
+.headerArea {
   grid-area: header;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--space-2);
+}
+
+.header {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: var(--space-3);
   flex-wrap: wrap;
+}
+
+.branding {
+  justify-self: start;
+  max-width: 100%;
+  color: var(--text);
 }
 
 /* Not shown (the window title bar already names the app), but kept so the page has a top-level heading. */

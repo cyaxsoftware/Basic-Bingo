@@ -20,6 +20,7 @@ import type { GameState } from '../game/gameState';
 import type { ActivePattern, Pattern, PatternCells, ShownPattern } from '../patterns/pattern';
 import type { PresentationMode } from '../presentation/presentationMode';
 import type { ControllerTheme } from '../theme/controllerTheme';
+import type { Branding } from '../branding/branding';
 import type { GameLogState } from '../games/gameLog';
 import type { StorageProblemKind } from '../storage/storageProblem';
 import type { TimerState } from '../timer/timerState';
@@ -115,6 +116,8 @@ export interface AppSnapshot {
   readonly preferredDisplayId: number | null;
   /** Persisted: the Controller's colour theme. The Presentation window ignores it. */
   readonly controllerTheme: ControllerTheme;
+  /** Persisted: the optional name and image shared by both windows. */
+  readonly branding: Branding;
   readonly persistence: PersistenceStatus;
   readonly notices: readonly Notice[];
 }
@@ -136,6 +139,7 @@ export const IpcChannel = {
   newGame: 'bingo:new-game',
   setPresentationMode: 'bingo:set-presentation-mode',
   setControllerTheme: 'bingo:set-controller-theme',
+  setBranding: 'bingo:set-branding',
   clearGameLog: 'bingo:clear-game-log',
   retrySave: 'bingo:retry-save',
   showDataFolder: 'bingo:show-data-folder',
@@ -198,6 +202,8 @@ export interface ControllerApi extends PresentationApi {
   setPresentationMode(mode: PresentationMode): Promise<CommandResult>;
   /** Switch the Controller between its light and dark colours. Never changes the game or the projector. */
   setControllerTheme(theme: ControllerTheme): Promise<CommandResult>;
+  /** Set the optional organization or event name and logo. Null clears both. */
+  setBranding(branding: Branding): Promise<CommandResult>;
   /** Empty the games-played history. The caller is responsible for confirming with the operator. */
   clearGameLog(): Promise<CommandResult>;
   /** Try to save the game again after a failed save (a full disk, a locked folder). */

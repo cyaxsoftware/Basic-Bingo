@@ -98,7 +98,12 @@ function expectNoOverlaps(all: readonly Box[], what: string): void {
   expect(clashes, `${what} must not overlap`).toEqual([]);
 }
 
-async function measure(presentation: Page, size: { width: number; height: number }, state: GameState) {
+async function measure(
+  presentation: Page,
+  size: { width: number; height: number },
+  state: GameState,
+  branded: boolean,
+) {
   // Nothing scrolls (the window hides overflow, so a clipped element would otherwise go unnoticed).
   expect(await horizontalOverflow(presentation), 'horizontal overflow').toBe(0);
   expect(await verticalOverflow(presentation), 'vertical overflow').toBe(0);
@@ -111,7 +116,9 @@ async function measure(presentation: Page, size: { width: number; height: number
   // The pattern is on the projector only after the operator pushes it.
   const pattern = await boxes(presentation.getByLabel('Winning pattern', { exact: true }), 'pattern');
   expect(pattern, 'pattern shown only when pushed').toHaveLength(state === 'pattern shown' ? 1 : 0);
-  const regions = [...banner, ...callPanel, ...board, ...pattern];
+  const branding = await boxes(presentation.getByTestId('branding'), 'branding');
+  expect(branding).toHaveLength(branded ? 1 : 0);
+  const regions = [...banner, ...callPanel, ...board, ...pattern, ...branding];
   expect(callPanel).toHaveLength(1);
   expect(board).toHaveLength(1);
 
@@ -130,7 +137,7 @@ async function measure(presentation: Page, size: { width: number; height: number
   ];
 
   expectInside([...regions, ...letters, ...cells, ...callParts], size);
-  expectNoOverlaps(regions, 'banner, call display, pattern and board');
+  expectNoOverlaps(regions, 'banner, call display, pattern, board and branding');
   expectNoOverlaps([...letters, ...cells], 'board letters and balls');
   expectNoOverlaps(callParts, 'the call display contents');
   // Everything drawn in a region stays inside it.
@@ -181,8 +188,14 @@ async function measure(presentation: Page, size: { width: number; height: number
 
 // One Electron launch per game state: the same Preview window is resized through every resolution, which
 // keeps the full suite fast. Each resolution is its own step, so a failure names the size.
-for (const state of ['empty', 'mid-game', 'banner up', 'pattern shown'] as const) {
-  test(`projector layout at all four resolutions, ${state}`, async () => {
+for (const [state, branded] of [
+  ['empty', false],
+  ['mid-game', false],
+  ['banner up', false],
+  ['pattern shown', false],
+  ['pattern shown', true],
+] as const) {
+  test(`projector layout at all four resolutions, ${state}${branded ? ' with branding' : ''}`, async () => {
     const { app, controller } = await launchApp(userDataDir);
     if (state !== 'empty') {
       for (const label of ['B-3', 'I-17', 'N-33', 'G-48', 'O-61', 'B-9']) await tapBall(controller, label);
@@ -203,6 +216,15 @@ for (const state of ['empty', 'mid-game', 'banner up', 'pattern shown'] as const
         await api.showPatternOnProjector();
       });
     }
+    if (branded) {
+      await controller.getByRole('tab', { name: 'Single Image' }).click();
+      await controller.getByRole('button', { name: 'Branding…' }).click();
+      const dialog = controller.getByRole('dialog', { name: 'Branding' });
+      await dialog.getByRole('textbox', { name: 'Organization or event name' }).fill('Community Bingo Night');
+      await dialog.getByRole('button', { name: 'Apply branding' }).click();
+      await expect(controller.getByTestId('branding')).toHaveText('Community Bingo Night');
+      await controller.getByRole('tab', { name: 'Game Board' }).click();
+    }
     await controller.getByRole('button', { name: 'Preview' }).click();
     const presentation = await waitForPresentationWindow(app);
 
@@ -212,13 +234,13 @@ for (const state of ['empty', 'mid-game', 'banner up', 'pattern shown'] as const
         await presentation.waitForTimeout(300);
 
         const picture = await presentation.screenshot();
-        const fileName = `projector-${size.width}x${size.height}-${state.replace(' ', '-')}.png`;
+        const fileName = `projector-${size.width}x${size.height}-${state.replace(' ', '-')}${branded ? '-branded' : ''}.png`;
         await test.info().attach(fileName, { body: picture, contentType: 'image/png' });
         // Passing tests do not retain attachments, so BINGO_SCREENSHOT_DIR keeps the pictures.
         const keepIn = process.env['BINGO_SCREENSHOT_DIR'];
         if (keepIn) await writeFile(path.join(keepIn, fileName), picture);
 
-        await measure(presentation, actual, state);
+        await measure(presentation, actual, state, branded);
       });
     }
     await app.close();

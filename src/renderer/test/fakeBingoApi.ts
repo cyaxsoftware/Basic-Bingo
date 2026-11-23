@@ -3,6 +3,7 @@
  * Uses the real shared reducer so game behavior matches the main process.
  */
 import { vi } from 'vitest';
+import { keepAvailableBranding, parseBranding, type Branding } from '../../shared/branding/branding';
 import type { BingoLetter } from '../../shared/game/balls';
 import { reduceGame, type GameCommand } from '../../shared/game/gameState';
 import { reduceMedia, type FitMode, type MediaCommand } from '../../shared/media';
@@ -79,6 +80,7 @@ export function makeSnapshot(overrides: Partial<AppSnapshot> = {}): AppSnapshot 
     displays: [LAPTOP, PROJECTOR],
     preferredDisplayId: null,
     controllerTheme: 'light',
+    branding: null,
     persistence: { kind: 'ok' },
     notices: [],
     ...overrides,
@@ -146,6 +148,7 @@ export function createFakeBingoApi(initial: AppSnapshot = makeSnapshot()): FakeB
         publish({
           mediaLibrary: next.library,
           singleImage: next.singleImage,
+          branding: keepAvailableBranding(snapshot.branding, next.library),
           slideshow,
           slideshowPlayback: playbackFor(slideshow),
         });
@@ -246,6 +249,15 @@ export function createFakeBingoApi(initial: AppSnapshot = makeSnapshot()): FakeB
     setControllerTheme: vi.fn(async (theme: ControllerTheme) => {
       if (!isControllerTheme(theme)) return fail('Choose light or dark.');
       if (theme !== snapshot.controllerTheme) publish({ controllerTheme: theme });
+      return ok;
+    }),
+    setBranding: vi.fn(async (input: Branding) => {
+      const branding = parseBranding(input);
+      if (branding === undefined) return fail('Enter a valid branding name or choose a logo.');
+      if (keepAvailableBranding(branding, snapshot.mediaLibrary) !== branding) {
+        return fail('That logo is no longer in the image library.');
+      }
+      publish({ branding });
       return ok;
     }),
     selectPattern: vi.fn(async (patternId: string) => dispatchPattern({ type: 'selectPattern', patternId })),
