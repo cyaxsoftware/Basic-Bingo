@@ -178,6 +178,18 @@ The projector must reflect a single canonical state transaction. Both windows re
 - Reset must **not** delete saved patterns or media collections.
 - **Proposed default:** leave the selected presentation mode unchanged. If the operator resets during a slideshow, they can manually return to Game Board when ready.
 
+### 5.2b Games played
+
+The Game Board tab keeps a log of the night's games in a grid under the board: **game number, time of the first ball, pattern name, duration**, newest first.
+
+- A game **starts** when the first ball is called (the calls go from none to some). If every call is taken back the game is empty again and its clock starts over.
+- A game **ends** at the last **BINGO CALLED** press before New Game. A false bingo is one that play carried on past (balls were called afterwards), so it is simply not the last press and never counts. If BINGO CALLED was never pressed the duration shows "—".
+- **Duration** = first ball to that last BINGO CALLED press, as `m:ss` (`h:mm:ss` past an hour). **Game** is the working pattern's title when the game ended.
+- The game is **logged when New Game is pressed** with at least one ball called. New Game on an empty game logs nothing. The game in progress is not in the list.
+- Stored by the main process, saved with the game and kept across restarts and New Game; the last 200 games are kept. **Clear history…** (with a confirmation) empties the list and nothing else.
+- Limit: a false bingo that is the very last BINGO CALLED press before New Game (play stopped without a real win) looks the same as a true one, so it is timed as the end of that game.
+- The grid needs room: it appears where there are at least 150 px under the board (the wide layouts) and hides itself otherwise, for example on short or compact windows. Wide window sizes show it; the compact layout never does.
+
 ### 5.2a Blacked-out rows
 Some games do not use every row. Tapping a row's letter (B, I, N, G or O) on the Controller blacks that row out, and tapping it again brings it back. On the Controller the row's balls become dark discs that **cannot be tapped**; the rules refuse to call or un-call a ball in a blacked-out row, so nothing can be added to a row the game is not using. Calls already made in the row stay as they are, and the row has to be brought back to change them. On the projector the row's numbers **disappear** and only a quiet letter is left. It is a separate game field, `disabledRows`, in B, I, N, G, O order, persisted, surviving a restart, and kept by New Game like the pattern.
 

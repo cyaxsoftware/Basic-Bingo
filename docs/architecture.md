@@ -192,6 +192,11 @@ if someone modified its page.
   validation, the migration table, and explicit conversion between the current document and
   `AppData` (the durable state the app uses). Documents never reference live domain types such as
   `GameState`, so growing the game model cannot change what an existing file means.
+- **Games played:** `src/shared/games/gameLog.ts` holds the pure rules (when a game starts and ends, what is
+  logged, reading a saved log, formatting) and `AppStore.dispatch` feeds it every game command with the time, so
+  `GameState` and `reduceGame` never see a clock. The log (`gameLog`: finished games plus the clock of the game in
+  progress) is saved as an optional field of the open V4 document; damaged entries are dropped with a warning.
+  `clearGameLog` is the only command that changes it directly.
 - `fixtures/state-v1.json` ... `state-v4.json`: representative files for each version; tests
   load them on every run (an old file must keep loading, migrated up: V1 gets the banner hidden, V2 gets the
   default pattern library and an empty working pattern). Pattern data is checked entry by entry on load: one

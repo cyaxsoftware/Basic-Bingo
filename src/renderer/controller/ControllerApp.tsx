@@ -8,6 +8,7 @@ import { CallSummaryPanel } from './components/CallSummaryPanel';
 import { CountdownPanel } from './components/CountdownPanel';
 import { BingoBannerControl, NewGameControl } from './components/GameControls';
 import { CopyrightFooter } from './components/CopyrightFooter';
+import { GamesPlayed } from './components/GamesPlayed';
 import { modeTabId, ModeTabs } from './components/ModeTabs';
 import { NoticeArea } from './components/NoticeArea';
 import { PatternCard } from './components/PatternCard';
@@ -226,6 +227,13 @@ export function ControllerApp({ api, store }: ControllerAppProps) {
                 <PatternCard active={snapshot.activePattern} onOpen={() => setView('patterns')} />
               </div>
             )}
+          </div>
+        ) : null}
+
+        {/* Under the board, in the row the wide layouts leave empty. The stacked layout has no room for it. */}
+        {wideLayout && onGame && onBoard ? (
+          <div className={styles.log}>
+            <GamesPlayed records={snapshot.gameLog.records} onClear={actions.clearGameLog} />
           </div>
         ) : null}
       </main>

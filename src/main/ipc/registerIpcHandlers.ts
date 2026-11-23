@@ -147,6 +147,12 @@ export function registerIpcHandlers(ipc: IpcMainLike, deps: IpcDependencies): vo
     return store.setPresentationMode(mode);
   });
 
+  command(IpcChannel.clearGameLog, (...args) => {
+    if (args.length > 0) return fail('Clear history takes no arguments.');
+    store.clearGameLog();
+    return ok;
+  });
+
   command(IpcChannel.setControllerTheme, (theme) => {
     if (!isControllerTheme(theme)) return fail('Choose light or dark.');
     store.setControllerTheme(theme);

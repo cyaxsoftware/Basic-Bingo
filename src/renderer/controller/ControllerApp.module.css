@@ -101,6 +101,23 @@
   grid-area: tabs;
 }
 
+/*
+ * Games played, under the board, in the row the wide layouts leave under it. How tall that row is depends on the
+ * window and on the layout (the two-column layout spends some of it on the pattern strip), so the log measures its
+ * own row and hides itself when there is not room for a useful table, instead of squeezing or overflowing.
+ */
+.log {
+  grid-area: log;
+  min-height: 0;
+  container-type: size;
+}
+
+@container (max-height: 149px) {
+  .log > * {
+    display: none;
+  }
+}
+
 .notices {
   grid-area: notices;
 }
@@ -219,7 +236,7 @@
       'notices notices'
       'strip side'
       'panel side'
-      '. .';
+      'log .';
   }
 
   /* The Patterns screen and the mode placeholders take the whole height, not just the board's row. */
@@ -304,7 +321,7 @@
       'notices notices notices'
       'rail panel side'
       'rail panel side'
-      'rail . .';
+      'rail log .';
   }
 
   .layout[data-fill='true'] {

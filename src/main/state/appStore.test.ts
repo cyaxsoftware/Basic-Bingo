@@ -37,6 +37,25 @@ function createStore(calledNumbers: number[] = []) {
 
 const flushPromises = () => new Promise((resolve) => setTimeout(resolve, 0));
 
+/** A store with a clock the test moves by hand, for the games-played log. */
+function createTimedStore() {
+  const persister = new FakePersister();
+  let nowMs = Date.UTC(2026, 10, 22, 19, 0, 0);
+  let ids = 0;
+  const store = new AppStore({
+    initialData: createDefaultAppData(),
+    persister,
+    now: () => new Date(nowMs),
+    newId: () => `game-${++ids}`,
+  });
+  const snapshots: AppSnapshot[] = [];
+  store.subscribe((s) => snapshots.push(s));
+  const wait = (seconds: number) => {
+    nowMs += seconds * 1000;
+  };
+  return { store, persister, snapshots, wait, startedAt: nowMs };
+}
+
 describe('AppStore', () => {
   it('publishes and persists timer changes independently of New Game and presentation mode', () => {
     const { store, persister, snapshots } = createStore([3, 9]);
@@ -186,6 +205,76 @@ describe('AppStore', () => {
     store.setPreferredDisplay(7);
     await flushPromises();
     expect(persister.saved.at(-1)?.settings.preferredDisplayId).toBe(7);
+  });
+
+  describe('games played log', () => {
+    it('times a game from the first ball to the last BINGO CALLED press and logs it on New Game', async () => {
+      const { store, persister, wait, startedAt } = createTimedStore();
+      store.dispatchPattern({ type: 'selectPattern', patternId: store.getSnapshot().patternLibrary[1]!.id });
+      const title = store.getSnapshot().activePattern.title;
+
+      store.dispatch({ type: 'toggleBall', ball: 5 });
+      wait(90);
+      store.dispatch({ type: 'toggleBall', ball: 17 });
+      wait(30);
+      store.dispatch({ type: 'showBingoBanner' });
+      wait(20);
+      store.dispatch({ type: 'dismissBingoBanner' });
+      expect(store.getSnapshot().gameLog.records).toEqual([]);
+      store.dispatch({ type: 'newGame' });
+      await flushPromises();
+
+      const log = store.getSnapshot().gameLog;
+      expect(log.records).toEqual([{ id: 'game-1', startedAt, title, durationSeconds: 120 }]);
+      expect(log.current).toEqual({ firstBallAt: null, lastBingoAt: null });
+      expect(persister.saved.at(-1)?.gameLog.records).toHaveLength(1);
+    });
+
+    it('keeps a false bingo out of the duration', () => {
+      const { store, wait } = createTimedStore();
+      store.dispatch({ type: 'toggleBall', ball: 5 });
+      wait(60);
+      store.dispatch({ type: 'showBingoBanner' }); // false: play carries on
+      wait(10);
+      store.dispatch({ type: 'dismissBingoBanner' });
+      store.dispatch({ type: 'toggleBall', ball: 6 });
+      wait(50);
+      store.dispatch({ type: 'showBingoBanner' });
+      store.dispatch({ type: 'newGame' });
+      expect(store.getSnapshot().gameLog.records[0]?.durationSeconds).toBe(120);
+    });
+
+    it('does not log a New Game with no calls, and a rejected command changes nothing', () => {
+      const { store } = createTimedStore();
+      const before = store.getSnapshot().gameLog;
+      store.dispatch({ type: 'newGame' });
+      store.dispatch({ type: 'toggleBall', ball: 0 as never });
+      expect(store.getSnapshot().gameLog).toBe(before);
+    });
+
+    it('clears the history, persists that, and leaves the game in progress timed', async () => {
+      const { store, persister, wait } = createTimedStore();
+      store.dispatch({ type: 'toggleBall', ball: 5 });
+      store.dispatch({ type: 'newGame' });
+      wait(5);
+      store.dispatch({ type: 'toggleBall', ball: 7 });
+      expect(store.getSnapshot().gameLog.records).toHaveLength(1);
+
+      store.clearGameLog();
+      await flushPromises();
+      expect(store.getSnapshot().gameLog.records).toEqual([]);
+      expect(store.getSnapshot().gameLog.current.firstBallAt).not.toBeNull();
+      expect(persister.saved.at(-1)?.gameLog.records).toEqual([]);
+    });
+
+    it('publishes and saves nothing when there is no history to clear', async () => {
+      const { store, persister, snapshots } = createTimedStore();
+      const saves = persister.saved.length;
+      store.clearGameLog();
+      await flushPromises();
+      expect(snapshots).toHaveLength(0);
+      expect(persister.saved).toHaveLength(saves);
+    });
   });
 
   it('persists the Controller theme, and ignores setting the one already chosen', async () => {

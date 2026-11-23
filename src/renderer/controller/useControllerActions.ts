@@ -25,6 +25,8 @@ export interface ControllerActions {
   setPresentationMode(mode: PresentationMode): void;
   /** Switch the Controller between light and dark. Never changes the game or the projector. */
   setControllerTheme(theme: ControllerTheme): void;
+  /** Empties the games-played history. Callers must have confirmed with the operator first. */
+  clearGameLog(): void;
   /** What to do with unsaved edits to the working pattern before switching to another one. */
   switchPattern(patternId: string, unsavedEdits: UnsavedEdits): void;
   setPatternCell(index: number, on: boolean): void;
@@ -92,6 +94,7 @@ export function useControllerActions(api: ControllerApi): ControllerActions {
       newGame: () => run(() => api.newGame()),
       setPresentationMode: (mode: PresentationMode) => run(() => api.setPresentationMode(mode)),
       setControllerTheme: (theme: ControllerTheme) => run(() => api.setControllerTheme(theme)),
+      clearGameLog: () => run(() => api.clearGameLog()),
       // Save first, then switch; if the save fails the switch does not happen, so no edits are lost.
       switchPattern: (patternId: string, unsavedEdits: UnsavedEdits) =>
         run(async () => {

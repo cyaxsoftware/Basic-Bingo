@@ -93,6 +93,70 @@ describe('ControllerApp', () => {
     expect(api.current().presentationMode).toBe(presentationMode);
   });
 
+  describe('games played', () => {
+    function setWindowSize(width: number, height = 900) {
+      window.matchMedia = ((query: string) => {
+        const minWidth = Number(/min-width:\s*(\d+)px/.exec(query)?.[1] ?? 0);
+        const minHeight = Number(/min-height:\s*(\d+)px/.exec(query)?.[1] ?? 0);
+        return {
+          matches: width >= minWidth && height >= minHeight,
+          media: query,
+          addEventListener: () => undefined,
+          removeEventListener: () => undefined,
+        } as unknown as MediaQueryList;
+      }) as typeof window.matchMedia;
+    }
+    afterEach(() => {
+      // @ts-expect-error jsdom has no matchMedia; remove the stand-in so other tests see none
+      delete window.matchMedia;
+    });
+
+    it('logs a finished game under the board, and clears it after asking', async () => {
+      setWindowSize(1536, 864);
+      const api = renderController();
+      await screen.findByRole('group', { name: 'B row' });
+      const log = () => screen.getByRole('region', { name: 'Games played' });
+      expect(within(log()).getByText(/No games yet/)).toBeInTheDocument();
+
+      await tap(/^B-3,/);
+      await tap(/^I-17,/);
+      await userEvent.click(screen.getByRole('button', { name: 'BINGO CALLED' }));
+      await userEvent.click(screen.getByRole('button', { name: /^Dismiss/ }));
+      // Nothing is logged until the game is over.
+      expect(within(log()).getByText(/No games yet/)).toBeInTheDocument();
+
+      await userEvent.click(screen.getByRole('button', { name: 'New Game' }));
+      await userEvent.click(screen.getByRole('button', { name: 'Start New Game' }));
+      const row = await within(log()).findByRole('row', { name: /Untitled pattern/ });
+      expect(row).toHaveTextContent('1');
+      expect(row).toHaveTextContent(/\d:\d\d$/);
+      expect(api.current().gameLog.records).toHaveLength(1);
+
+      await userEvent.click(screen.getByRole('button', { name: 'Clear history…' }));
+      await userEvent.click(screen.getByRole('button', { name: 'Clear history' }));
+      expect(api.clearGameLog).toHaveBeenCalledTimes(1);
+      expect(await within(log()).findByText(/No games yet/)).toBeInTheDocument();
+    });
+
+    it('is not shown on the other tabs, on the Patterns screen or in the compact layout', async () => {
+      setWindowSize(1536, 864);
+      renderController();
+      await screen.findByRole('region', { name: 'Games played' });
+      await userEvent.click(screen.getByRole('tab', { name: 'Single Image' }));
+      expect(screen.queryByRole('region', { name: 'Games played' })).not.toBeInTheDocument();
+      await userEvent.click(screen.getByRole('tab', { name: 'Game Board' }));
+      await userEvent.click(screen.getByRole('button', { name: 'Edit patterns…' }));
+      expect(screen.queryByRole('region', { name: 'Games played' })).not.toBeInTheDocument();
+    });
+
+    it('is left out of the compact layout, which has no room under the board', async () => {
+      setWindowSize(1000, 700);
+      renderController();
+      await screen.findByRole('group', { name: 'B row' });
+      expect(screen.queryByRole('region', { name: 'Games played' })).not.toBeInTheDocument();
+    });
+  });
+
   it('shows notices and save failures', async () => {
     const api = renderController(
       makeSnapshot({

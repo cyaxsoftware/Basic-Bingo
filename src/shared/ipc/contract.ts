@@ -20,6 +20,7 @@ import type { GameState } from '../game/gameState';
 import type { ActivePattern, Pattern, PatternCells, ShownPattern } from '../patterns/pattern';
 import type { PresentationMode } from '../presentation/presentationMode';
 import type { ControllerTheme } from '../theme/controllerTheme';
+import type { GameLogState } from '../games/gameLog';
 import type { TimerState } from '../timer/timerState';
 import type { SlideshowCommand, SlideshowState } from '../media/slideshow';
 import type { SlideshowPlayback, SlideshowPlaybackCommand } from '../media/slideshowPlayback';
@@ -91,6 +92,8 @@ export interface AppSnapshot {
   readonly timer: TimerState;
   readonly slideshow: SlideshowState;
   readonly slideshowPlayback: SlideshowPlayback;
+  /** Persisted: the games played (when, which pattern, how long) and the clock of the game in progress. */
+  readonly gameLog: GameLogState;
   /** Runtime-only: what the Presentation window is doing. Never persisted. */
   readonly presentation: PresentationStatus;
   /** Runtime-only: currently connected displays. */
@@ -120,6 +123,7 @@ export const IpcChannel = {
   newGame: 'bingo:new-game',
   setPresentationMode: 'bingo:set-presentation-mode',
   setControllerTheme: 'bingo:set-controller-theme',
+  clearGameLog: 'bingo:clear-game-log',
   selectPattern: 'bingo:select-pattern',
   setActivePatternCell: 'bingo:set-active-pattern-cell',
   renameActivePattern: 'bingo:rename-active-pattern',
@@ -179,6 +183,8 @@ export interface ControllerApi extends PresentationApi {
   setPresentationMode(mode: PresentationMode): Promise<CommandResult>;
   /** Switch the Controller between its light and dark colours. Never changes the game or the projector. */
   setControllerTheme(theme: ControllerTheme): Promise<CommandResult>;
+  /** Empty the games-played history. The caller is responsible for confirming with the operator. */
+  clearGameLog(): Promise<CommandResult>;
   /** Show a library pattern: replaces the working copy with a fresh, unedited copy of it. */
   selectPattern(patternId: string): Promise<CommandResult>;
   /** Set one cell (0 to 24, the center included) of the working copy on or off. Never changes the library. */

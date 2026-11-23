@@ -51,6 +51,7 @@ import {
 } from '../../shared/media/slideshow';
 import { DEFAULT_PRESENTATION_MODE, type PresentationMode } from '../../shared/presentation/presentationMode';
 import { DEFAULT_CONTROLLER_THEME, type ControllerTheme } from '../../shared/theme/controllerTheme';
+import { EMPTY_GAME_LOG, normalizeGameLog, type GameLogState } from '../../shared/games/gameLog';
 import {
   DEFAULT_TIMER,
   isCountdownMessage,
@@ -202,6 +203,21 @@ export interface PersistedStateV4 extends Omit<PersistedStateV3, 'schemaVersion'
   readonly media: PersistedMediaV4;
   readonly timer: PersistedTimerV4;
   readonly slideshow: PersistedSlideshowV4;
+  /** Added while V4 was still open: a file without it has no games logged yet. */
+  readonly gameLog: PersistedGameLogV4;
+}
+
+interface PersistedGameLogV4 {
+  readonly records: readonly {
+    readonly id: string;
+    readonly startedAt: number;
+    readonly title: string;
+    readonly durationSeconds: number | null;
+  }[];
+  readonly current: {
+    readonly firstBallAt: number | null;
+    readonly lastBingoAt: number | null;
+  };
 }
 
 interface PersistedSlideshowV4 {
@@ -254,6 +270,8 @@ const PersistedStateV4Schema = z.object({
   media: z.unknown(),
   timer: z.unknown().optional(),
   slideshow: z.unknown().optional(),
+  // Checked entry by entry in normalizeSavedGameLog, so one damaged entry cannot cost the rest of the history.
+  gameLog: z.unknown().optional(),
   settings: z
     .object({
       preferredDisplayId: z.number().int().nullable().catch(null),
@@ -280,6 +298,8 @@ export interface AppData {
   readonly media: MediaState;
   readonly timer: TimerState;
   readonly slideshow: SlideshowState;
+  /** The games played so far, and the clock of the game in progress. */
+  readonly gameLog: GameLogState;
   readonly settings: {
     readonly preferredDisplayId: number | null;
     readonly controllerTheme: ControllerTheme;
@@ -293,6 +313,13 @@ function defaultPersistedPatterns(): PersistedStateV3['patterns'] {
 
 function defaultPersistedMedia(): PersistedMediaV4 {
   return { library: [], singleImage: { imageId: null } };
+}
+
+function toPersistedGameLog(log: GameLogState): PersistedGameLogV4 {
+  return {
+    records: log.records.map((record) => ({ ...record })),
+    current: { ...log.current },
+  };
 }
 
 function toPersistedSlideshow(state: SlideshowState): PersistedSlideshowV4 {
@@ -375,6 +402,7 @@ export function createDefaultPersistedState(now: Date = new Date()): PersistedSt
     media: defaultPersistedMedia(),
     timer: toPersistedTimer(DEFAULT_TIMER),
     slideshow: toPersistedSlideshow(EMPTY_SLIDESHOW),
+    gameLog: toPersistedGameLog(EMPTY_GAME_LOG),
     settings: { preferredDisplayId: null, controllerTheme: DEFAULT_CONTROLLER_THEME },
   };
 }
@@ -399,6 +427,7 @@ export function toPersistedState(data: AppData, now: Date = new Date()): Persist
     media: toPersistedMedia(data.media),
     timer: toPersistedTimer(data.timer),
     slideshow: toPersistedSlideshow(data.slideshow),
+    gameLog: toPersistedGameLog(data.gameLog),
     settings: {
       preferredDisplayId: data.settings.preferredDisplayId,
       controllerTheme: data.settings.controllerTheme,
@@ -429,6 +458,7 @@ export function fromPersistedState(document: PersistedState, now: Date = new Dat
     },
     timer: reduceTimer({ ...document.timer }, { type: 'expire' }, now.getTime()),
     slideshow: toPersistedSlideshow(document.slideshow),
+    gameLog: toPersistedGameLog(document.gameLog),
     settings: {
       preferredDisplayId: document.settings.preferredDisplayId,
       controllerTheme: document.settings.controllerTheme,
@@ -466,6 +496,7 @@ const MIGRATIONS: Record<number, (raw: Record<string, unknown>) => Record<string
     media: defaultPersistedMedia(),
     timer: undefined,
     slideshow: undefined,
+    gameLog: undefined,
   }),
 };
 
@@ -719,6 +750,16 @@ function normalizeTimer(raw: unknown, warnings: string[]): PersistedTimerV4 {
   return toPersistedTimer(DEFAULT_TIMER);
 }
 
+function normalizeSavedGameLog(raw: unknown, warnings: string[]): PersistedGameLogV4 {
+  const { state, dropped } = normalizeGameLog(raw);
+  if (dropped > 0) {
+    warnings.push(
+      `Dropped ${dropped} damaged ${dropped === 1 ? 'entry' : 'entries'} from the games-played history.`,
+    );
+  }
+  return toPersistedGameLog(state);
+}
+
 /** Validate and migrate parsed JSON into the current {@link PersistedState}. */
 export function parsePersistedState(raw: unknown): ParseResult {
   if (typeof raw !== 'object' || raw === null || Array.isArray(raw)) {
@@ -774,6 +815,7 @@ export function parsePersistedState(raw: unknown): ParseResult {
       media,
       timer: normalizeTimer(parsed.data.timer, warnings),
       slideshow: normalizeSlideshow(parsed.data.slideshow, media.library, warnings),
+      gameLog: normalizeSavedGameLog(parsed.data.gameLog, warnings),
       settings: {
         preferredDisplayId: parsed.data.settings.preferredDisplayId,
         controllerTheme: parsed.data.settings.controllerTheme,

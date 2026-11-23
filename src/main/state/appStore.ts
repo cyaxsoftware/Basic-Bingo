@@ -24,6 +24,7 @@ import {
 } from '../../shared/ipc/contract';
 import type { PresentationMode } from '../../shared/presentation/presentationMode';
 import type { ControllerTheme } from '../../shared/theme/controllerTheme';
+import { applyGameChange, clearGameRecords } from '../../shared/games/gameLog';
 import { toPersistedState, type AppData } from '../persistence/persistedState';
 import { reduceMedia, type MediaCommand, type MediaItem } from '../../shared/media';
 import {
@@ -91,6 +92,7 @@ export class AppStore {
       timer: options.initialData.timer,
       slideshow: options.initialData.slideshow,
       slideshowPlayback: STOPPED_SLIDESHOW,
+      gameLog: options.initialData.gameLog,
       presentation: { kind: 'closed' },
       displays: [],
       preferredDisplayId: options.initialData.settings.preferredDisplayId,
@@ -119,10 +121,28 @@ export class AppStore {
       return fail(error instanceof Error ? error.message : String(error));
     }
     if (next !== this.snapshot.game) {
-      this.update({ game: next });
+      // The log sees the same change at the same moment, so the first ball, the last BINGO CALLED press and
+      // New Game are timed exactly when they happen. The game rules themselves never see a clock.
+      const gameLog = applyGameChange(this.snapshot.gameLog, {
+        command,
+        before: this.snapshot.game,
+        after: next,
+        now: this.now().getTime(),
+        patternTitle: this.snapshot.activePattern.title,
+        newId: this.newId,
+      });
+      this.update({ game: next, gameLog });
       this.persist();
     }
     return ok;
+  }
+
+  /** Empty the games-played history. The game in progress keeps its timing. */
+  clearGameLog(): void {
+    const gameLog = clearGameRecords(this.snapshot.gameLog);
+    if (gameLog === this.snapshot.gameLog) return;
+    this.update({ gameLog });
+    this.persist();
   }
 
   /**
@@ -351,6 +371,7 @@ export class AppStore {
       media: { library: this.snapshot.mediaLibrary, singleImage: this.snapshot.singleImage },
       timer: this.snapshot.timer,
       slideshow: this.snapshot.slideshow,
+      gameLog: this.snapshot.gameLog,
       settings: {
         preferredDisplayId: this.snapshot.preferredDisplayId,
         controllerTheme: this.snapshot.controllerTheme,

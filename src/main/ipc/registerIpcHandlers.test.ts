@@ -239,6 +239,29 @@ describe('registerIpcHandlers', () => {
     });
   });
 
+  describe('clearGameLog', () => {
+    const clear = (sender: number, ...args: unknown[]) =>
+      ctx.ipc.invoke(sender, IpcChannel.clearGameLog, ...args) as CommandResult;
+    const playOneGame = () => {
+      ctx.ipc.invoke(CONTROLLER_ID, IpcChannel.toggleBall, 3);
+      ctx.ipc.invoke(CONTROLLER_ID, IpcChannel.newGame);
+    };
+
+    it('empties the history from the Controller', () => {
+      playOneGame();
+      expect(ctx.store.getSnapshot().gameLog.records).toHaveLength(1);
+      expect(clear(CONTROLLER_ID)).toEqual(ok);
+      expect(ctx.store.getSnapshot().gameLog.records).toEqual([]);
+    });
+
+    it('is rejected from the Presentation window and from strangers, and with arguments', () => {
+      playOneGame();
+      for (const sender of [PRESENTATION_ID, STRANGER_ID]) expect(clear(sender).ok).toBe(false);
+      expect(clear(CONTROLLER_ID, 'all').ok).toBe(false);
+      expect(ctx.store.getSnapshot().gameLog.records).toHaveLength(1);
+    });
+  });
+
   describe('Controller theme', () => {
     const invoke = (sender: number, ...args: unknown[]) =>
       ctx.ipc.invoke(sender, IpcChannel.setControllerTheme, ...args) as CommandResult;

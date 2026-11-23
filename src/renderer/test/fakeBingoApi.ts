@@ -15,6 +15,7 @@ import {
 } from '../../shared/patterns';
 import { isPresentationMode, type PresentationMode } from '../../shared/presentation/presentationMode';
 import { isControllerTheme, type ControllerTheme } from '../../shared/theme/controllerTheme';
+import { applyGameChange, clearGameRecords, EMPTY_GAME_LOG } from '../../shared/games/gameLog';
 import { DEFAULT_TIMER, reduceTimer, type TimerCommand } from '../../shared/timer/timerState';
 import {
   EMPTY_SLIDESHOW,
@@ -73,6 +74,7 @@ export function makeSnapshot(overrides: Partial<AppSnapshot> = {}): AppSnapshot 
     timer: DEFAULT_TIMER,
     slideshow: EMPTY_SLIDESHOW,
     slideshowPlayback: STOPPED_SLIDESHOW,
+    gameLog: EMPTY_GAME_LOG,
     presentation: { kind: 'closed' },
     displays: [LAPTOP, PROJECTOR],
     preferredDisplayId: null,
@@ -97,11 +99,22 @@ export function createFakeBingoApi(initial: AppSnapshot = makeSnapshot()): FakeB
     listeners.forEach((l) => l(snapshot));
   };
 
+  let fakeGameIds = 0;
   const dispatchGame = (command: GameCommand): CommandResult => {
     try {
       const game = reduceGame(snapshot.game, command);
-      // Like the real store: a no-op command publishes nothing.
-      if (game !== snapshot.game) publish({ game });
+      // Like the real store: a no-op command publishes nothing, and the games log hears about every change.
+      if (game !== snapshot.game) {
+        const gameLog = applyGameChange(snapshot.gameLog, {
+          command,
+          before: snapshot.game,
+          after: game,
+          now: Date.now(),
+          patternTitle: snapshot.activePattern.title,
+          newId: () => `fake-game-${++fakeGameIds}`,
+        });
+        publish({ game, gameLog });
+      }
       return ok;
     } catch (error) {
       return fail((error as Error).message);
@@ -221,6 +234,11 @@ export function createFakeBingoApi(initial: AppSnapshot = makeSnapshot()): FakeB
           presentationMode: mode,
           slideshowPlayback: stopSlideshow(snapshot.slideshowPlayback),
         });
+      return ok;
+    }),
+    clearGameLog: vi.fn(async () => {
+      const gameLog = clearGameRecords(snapshot.gameLog);
+      if (gameLog !== snapshot.gameLog) publish({ gameLog });
       return ok;
     }),
     setControllerTheme: vi.fn(async (theme: ControllerTheme) => {

@@ -11,6 +11,7 @@ import {
 } from '../../shared/patterns';
 import { DEFAULT_TIMER } from '../../shared/timer/timerState';
 import { EMPTY_SLIDESHOW, type SlideshowState } from '../../shared/media/slideshow';
+import { EMPTY_GAME_LOG } from '../../shared/games/gameLog';
 import stateV1Fixture from './fixtures/state-v1.json';
 import stateV2Fixture from './fixtures/state-v2.json';
 import stateV3Fixture from './fixtures/state-v3.json';
@@ -102,6 +103,7 @@ const V1_FIXTURE_APP_DATA: AppData = {
   media: DEFAULT_MEDIA,
   timer: DEFAULT_TIMER,
   slideshow: EMPTY_SLIDESHOW,
+  gameLog: EMPTY_GAME_LOG,
   settings: { preferredDisplayId: 2779098405, controllerTheme: 'light' },
 };
 
@@ -112,6 +114,7 @@ const V2_FIXTURE_APP_DATA: AppData = {
   media: DEFAULT_MEDIA,
   timer: DEFAULT_TIMER,
   slideshow: EMPTY_SLIDESHOW,
+  gameLog: EMPTY_GAME_LOG,
   settings: { preferredDisplayId: 2779098405, controllerTheme: 'light' },
 };
 
@@ -171,6 +174,7 @@ describe('V1 save format is frozen (audit finding 5, #22)', () => {
           media: createDefaultPersistedState().media,
           timer: DEFAULT_TIMER,
           slideshow: EMPTY_SLIDESHOW,
+          gameLog: { records: [], current: { firstBallAt: null, lastBingoAt: null } },
           settings: { preferredDisplayId: null, controllerTheme: 'light' },
         },
       });
@@ -309,6 +313,7 @@ describe('V3 save format is frozen (released in milestone 3)', () => {
       schemaVersion: 4,
       // A file from before the theme switch existed opens in the light theme.
       settings: { ...stateV3Fixture.settings, controllerTheme: 'light' },
+      gameLog: { records: [], current: { firstBallAt: null, lastBingoAt: null } },
       media: { library: [], singleImage: { imageId: null } },
       timer: DEFAULT_TIMER,
       slideshow: EMPTY_SLIDESHOW,
@@ -618,8 +623,54 @@ describe('parsePersistedState', () => {
         media: createDefaultPersistedState().media,
         timer: DEFAULT_TIMER,
         slideshow: EMPTY_SLIDESHOW,
+        gameLog: { records: [], current: { firstBallAt: null, lastBingoAt: null } },
         settings: { preferredDisplayId: 12, controllerTheme: 'light' },
       },
+    });
+  });
+
+  describe('the games-played log', () => {
+    const entry = { id: 'g1', startedAt: 1_700_000_000_000, title: 'Big L', durationSeconds: 754 };
+    const withLog = (gameLog: unknown) => ({ ...createDefaultPersistedState(), gameLog });
+    const load = (raw: unknown) => {
+      const result = parsePersistedState(raw);
+      if (!result.ok) throw new Error(result.error);
+      return result;
+    };
+
+    it('is empty for a new installation and for a file from before it existed', () => {
+      expect(fromPersistedState(createDefaultPersistedState()).gameLog.records).toEqual([]);
+      const { gameLog: _omitted, ...oldFile } = createDefaultPersistedState();
+      const result = load(oldFile);
+      expect(result.warnings).toEqual([]);
+      expect(fromPersistedState(result.state).gameLog).toEqual({
+        records: [],
+        current: { firstBallAt: null, lastBingoAt: null },
+      });
+    });
+
+    it('keeps the history and the game in progress through save and load', () => {
+      const data = fromPersistedState(createDefaultPersistedState());
+      const log = {
+        records: [entry, { ...entry, id: 'g2', durationSeconds: null }],
+        current: { firstBallAt: 1_700_000_100_000, lastBingoAt: 1_700_000_160_000 },
+      };
+      const saved = toPersistedState({ ...data, gameLog: log });
+      const reloaded = load(JSON.parse(JSON.stringify(saved)));
+      expect(reloaded.warnings).toEqual([]);
+      expect(fromPersistedState(reloaded.state).gameLog).toEqual(log);
+    });
+
+    it('drops a damaged entry with a warning and keeps the rest of the history', () => {
+      const result = load(
+        withLog({ records: [entry, { ...entry, id: 'bad', startedAt: 'noon' }, 7], current: null }),
+      );
+      expect(fromPersistedState(result.state).gameLog.records.map((r) => r.id)).toEqual(['g1']);
+      expect(result.warnings).toEqual(['Dropped 2 damaged entries from the games-played history.']);
+    });
+
+    it('falls back to an empty log when the whole section is nonsense', () => {
+      expect(fromPersistedState(load(withLog('garbage')).state).gameLog.records).toEqual([]);
     });
   });
 
@@ -813,6 +864,7 @@ describe('V4 save format (milestone 4: the media library)', () => {
     expect({ ...written, savedAt: stateV4Fixture.savedAt }).toEqual({
       ...stateV4Fixture,
       settings: { ...stateV4Fixture.settings, controllerTheme: 'light' },
+      gameLog: { records: [], current: { firstBallAt: null, lastBingoAt: null } },
       timer: DEFAULT_TIMER,
       slideshow: EMPTY_SLIDESHOW,
     });
