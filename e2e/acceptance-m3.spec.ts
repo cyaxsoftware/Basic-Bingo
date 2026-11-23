@@ -151,7 +151,8 @@ test('A new library pattern is made, named and kept; it is the pattern in play a
   await resizeController(second.app, second.controller, 1536, 864);
   const widget = second.controller.getByRole('region', { name: 'Pattern' });
   await expect(widget.getByRole('textbox', { name: /Pattern name/ })).toHaveValue('Corners');
-  await expect(widget.getByRole('combobox').locator('option', { hasText: 'Corners' })).toHaveCount(1);
+  // Exactly one saved pattern with this name (the built-in "Four Corners" is a different one).
+  await expect(widget.getByRole('option', { name: 'Corners', exact: true })).toHaveCount(1);
   for (const name of ['Row 1, column 1', 'Row 1, column 5', 'Row 5, column 1', 'Row 5, column 5']) {
     await expect(widget.getByRole('button', { name })).toHaveAttribute('aria-pressed', 'true');
   }
