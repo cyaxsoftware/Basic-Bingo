@@ -4,6 +4,7 @@ import {
   DEFAULT_SLIDE_SECONDS,
   EMPTY_SLIDESHOW,
   appendSlideshowImages,
+  showsSlideshowCountdown,
   reduceSlideshow,
   removeImageFromSlideshows,
   type SlideshowCommand,
@@ -36,6 +37,20 @@ function setup() {
 }
 
 describe('slideshow collections', () => {
+  it('shows the countdown by default and remembers visibility independently of collections', () => {
+    const { send, current } = setup();
+    const initial = current();
+    expect(showsSlideshowCountdown(initial)).toBe(true);
+    expect(send({ type: 'setCountdownVisible', visible: true })).toBe(initial);
+    const hidden = send({ type: 'setCountdownVisible', visible: false });
+    expect(hidden.collections).toBe(initial.collections);
+    expect(showsSlideshowCountdown(hidden)).toBe(false);
+    expect(showsSlideshowCountdown(send({ type: 'create', name: 'Events' }))).toBe(false);
+    expect(showsSlideshowCountdown(send({ type: 'delete', collectionId: SECOND }))).toBe(false);
+    expect(() => send({ type: 'setCountdownVisible', visible: 'false' })).toThrow(RangeError);
+    expect(showsSlideshowCountdown(send({ type: 'setCountdownVisible', visible: true }))).toBe(true);
+  });
+
   it('creates, renames, selects and deletes collections by id', () => {
     const { send, current } = setup();
     expect(current()).toEqual({

@@ -32,6 +32,12 @@ export interface SlideshowCollection {
 export interface SlideshowState {
   readonly collections: readonly SlideshowCollection[];
   readonly activeId: string | null;
+  /** Older saves show the countdown by default. */
+  readonly showCountdown?: boolean;
+}
+
+export function showsSlideshowCountdown(state: SlideshowState): boolean {
+  return state.showCountdown !== false;
 }
 
 export const EMPTY_SLIDESHOW: SlideshowState = Object.freeze({
@@ -44,6 +50,7 @@ const slideshowCommandSchema = z.discriminatedUnion('type', [
   z.strictObject({ type: z.literal('rename'), collectionId: collectionIdSchema, name: collectionName }),
   z.strictObject({ type: z.literal('delete'), collectionId: collectionIdSchema }),
   z.strictObject({ type: z.literal('select'), collectionId: collectionIdSchema.nullable() }),
+  z.strictObject({ type: z.literal('setCountdownVisible'), visible: z.boolean() }),
   z.strictObject({
     type: z.literal('setInterval'),
     collectionId: collectionIdSchema,
@@ -63,12 +70,18 @@ export function reduceSlideshow(state: SlideshowState, input: unknown, newId: ()
   const command = parsed.data;
   const { collections, activeId } = state;
 
+  if (command.type === 'setCountdownVisible') {
+    return showsSlideshowCountdown(state) === command.visible
+      ? state
+      : { ...state, showCountdown: command.visible };
+  }
   if (command.type === 'create') {
     const id = newId();
     if (!isValidMediaId(id) || collections.some((entry) => entry.id === id)) {
       throw new RangeError('Could not assign a unique slideshow collection id.');
     }
     return {
+      ...state,
       collections: [
         ...collections,
         { id, name: command.name, secondsPerSlide: DEFAULT_SLIDE_SECONDS, fit: 'fit', slides: [] },
@@ -86,6 +99,7 @@ export function reduceSlideshow(state: SlideshowState, input: unknown, newId: ()
     return activeId === collection.id ? state : { ...state, activeId: collection.id };
   if (command.type === 'delete') {
     return {
+      ...state,
       collections: collections.filter((entry) => entry !== collection),
       activeId: activeId === collection.id ? null : activeId,
     };
@@ -99,7 +113,7 @@ export function reduceSlideshow(state: SlideshowState, input: unknown, newId: ()
 
 function editCollection(
   collection: SlideshowCollection,
-  command: Exclude<SlideshowCommand, { type: 'create' | 'select' | 'delete' }>,
+  command: Exclude<SlideshowCommand, { type: 'create' | 'select' | 'delete' | 'setCountdownVisible' }>,
 ): SlideshowCollection {
   switch (command.type) {
     case 'rename':

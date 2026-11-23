@@ -73,8 +73,9 @@ and Countdown shows the shared timer. The Break Slideshow tab manages named coll
 ordered slides. Choose a collection and use **Add images…** to append files directly to it. The
 thumbnails show slide order and let you set Original, Fit, or Fill for each image. **Start** loops
 from the first slide. Tap a thumbnail to hold it on screen, then press **Continue** to resume after a
-full interval. **Stop** leaves the current slide on screen. The shared break countdown stays visible
-in the corner, and slides keep rotating when it reaches **Time to Play!**.
+full interval. **Stop** leaves the current slide on screen. Open **Countdown settings** to control
+the shared timer and toggle its corner overlay during projection. When a visible timer reaches
+**Time to Play!**, slides keep rotating.
 
 ### BINGO called and starting a new game
 

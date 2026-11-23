@@ -344,13 +344,19 @@ test('slideshow holds a chosen slide, continues from it, and loops after the cou
     await panel.getByRole('spinbutton', { name: 'Seconds per slide' }).fill('2');
     await panel.getByRole('combobox', { name: 'Image fit for Green.png' }).selectOption('original');
 
-    const countdown = await openCountdownTab(controller);
+    await panel.getByRole('button', { name: 'Start slideshow' }).click();
+    await panel.getByRole('button', { name: 'Countdown settings…' }).click();
+    const countdown = controller.getByRole('dialog', { name: 'Slideshow countdown' });
+    const visibility = countdown.getByRole('switch', { name: 'Show timer on slideshow' });
+    await visibility.uncheck();
+    await expect(stage.getByRole('group', { name: 'Break countdown' })).toHaveCount(0);
     await countdown.getByRole('spinbutton', { name: 'Minutes' }).fill('0');
     await countdown.getByRole('spinbutton', { name: 'Seconds' }).fill('4');
     await countdown.getByRole('button', { name: 'Set duration' }).click();
     await countdown.getByRole('button', { name: 'Start' }).click();
-    await controller.getByRole('tab', { name: 'Break Slideshow' }).click();
-    await panel.getByRole('button', { name: 'Start slideshow' }).click();
+    await visibility.check();
+    await expect(stage.getByRole('group', { name: 'Break countdown' })).toBeVisible();
+    await countdown.getByRole('button', { name: 'Done' }).click();
     await panel.getByRole('button', { name: 'Show Green.png' }).click();
     await expect(panel.getByRole('status')).toHaveText('Slide held');
     await expect(stage.getByRole('img', { name: 'Green.png' })).toBeVisible();

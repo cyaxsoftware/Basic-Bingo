@@ -543,6 +543,12 @@ describe('image commands over IPC', () => {
     expect(send({ type: 'hold', mediaId: ID_A }).ok).toBe(false);
     expect(ctx.store.getSnapshot()).toBe(before);
     expect(send({ type: 'start' })).toEqual(ok);
+    expect(ctx.store.dispatchTimer({ type: 'start' })).toEqual(ok);
+    const running = ctx.store.getSnapshot();
+    expect(invoke(IpcChannel.editSlideshow, { type: 'setCountdownVisible', visible: false })).toEqual(ok);
+    expect(ctx.store.getSnapshot().slideshow.showCountdown).toBe(false);
+    expect(ctx.store.getSnapshot().timer).toBe(running.timer);
+    expect(ctx.store.getSnapshot().slideshowPlayback).toBe(running.slideshowPlayback);
     expect(send({ type: 'hold', mediaId: image.id })).toEqual(ok);
     expect(ctx.store.getSnapshot().slideshowPlayback).toEqual({ status: 'held', mediaId: image.id });
     expect(send({ type: 'continue' })).toEqual(ok);

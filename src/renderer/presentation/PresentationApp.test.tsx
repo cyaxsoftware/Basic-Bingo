@@ -118,6 +118,24 @@ describe('PresentationApp', () => {
     expect(screen.getByRole('img')).toHaveAccessibleName('Sponsor.png');
     expect(overlay.getByText('Time to Play!')).toBeInTheDocument();
     expect(screen.queryAllByRole('button')).toHaveLength(0);
+
+    act(() =>
+      api.push({
+        ...api.current(),
+        revision: 4,
+        slideshow: { ...snapshot.slideshow, showCountdown: false },
+      }),
+    );
+    expect(screen.queryByRole('group', { name: 'Break countdown' })).toBeNull();
+    expect(screen.getByRole('img')).toHaveAccessibleName('Sponsor.png');
+    act(() =>
+      api.push({
+        ...api.current(),
+        revision: 5,
+        slideshow: { ...snapshot.slideshow, showCountdown: true },
+      }),
+    );
+    expect(screen.getByText('Time to Play!')).toBeInTheDocument();
   });
 
   it('shows the empty collection placeholder', async () => {

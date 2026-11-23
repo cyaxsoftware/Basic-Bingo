@@ -52,6 +52,15 @@ export function ControllerApp({ api, store }: ControllerAppProps) {
   }
 
   const { snapshot } = state;
+  const countdown = {
+    timer: snapshot.timer,
+    onDuration: actions.setTimerDuration,
+    onMessage: actions.setCountdownMessage,
+    onStart: actions.startTimer,
+    onPause: actions.pauseTimer,
+    onResume: actions.resumeTimer,
+    onReset: actions.resetTimer,
+  };
   const { calledNumbers, bingoBannerVisible } = snapshot.game;
   const mode = snapshot.presentationMode;
   // Anything but the ball board (the Patterns screen, a mode placeholder) takes the full height of its area.
@@ -138,19 +147,12 @@ export function ControllerApp({ api, store }: ControllerAppProps) {
               onRemove={actions.removeImage}
             />
           ) : mode === 'countdown' ? (
-            <CountdownPanel
-              timer={snapshot.timer}
-              onDuration={actions.setTimerDuration}
-              onMessage={actions.setCountdownMessage}
-              onStart={actions.startTimer}
-              onPause={actions.pauseTimer}
-              onResume={actions.resumeTimer}
-              onReset={actions.resetTimer}
-            />
+            <CountdownPanel {...countdown} />
           ) : (
             <SlideshowPanel
               slideshow={snapshot.slideshow}
               playback={snapshot.slideshowPlayback}
+              countdown={countdown}
               library={snapshot.mediaLibrary}
               onEdit={actions.editSlideshow}
               onPlayback={actions.controlSlideshow}

@@ -268,7 +268,7 @@ export function registerIpcHandlers(ipc: IpcMainLike, deps: IpcDependencies): vo
     const before = store.getSnapshot().slideshow;
     const result = store.dispatchSlideshow(args[0]);
     const after = store.getSnapshot().slideshow;
-    if (before === after) return result;
+    if (before.collections === after.collections) return result;
     const remaining = new Set(slideshowImages(after).map(({ id }) => id));
     const removed = slideshowImages(before).filter(({ id }) => !remaining.has(id));
     if (removed.length > 0) {

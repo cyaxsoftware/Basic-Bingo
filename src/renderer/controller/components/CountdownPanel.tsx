@@ -12,7 +12,7 @@ import styles from './CountdownPanel.module.css';
 const PRESETS = [1, 2, 5, 10, 15, 20];
 const STATUS_LABELS = { idle: 'Not started', running: 'Running', paused: 'Paused', expired: "Time's up" };
 
-interface CountdownPanelProps {
+export interface CountdownPanelProps {
   readonly timer: TimerState;
   readonly onDuration: (seconds: number) => void;
   readonly onMessage: (message: string) => void;
@@ -20,6 +20,7 @@ interface CountdownPanelProps {
   readonly onPause: () => void;
   readonly onResume: () => void;
   readonly onReset: () => void;
+  readonly compact?: boolean;
 }
 
 function DurationControls({
@@ -165,10 +166,11 @@ export function CountdownPanel({
   onPause,
   onResume,
   onReset,
+  compact = false,
 }: CountdownPanelProps) {
   const { time, status } = useCountdown(timer);
   return (
-    <section className={styles.panel} aria-label="Countdown controls">
+    <section className={styles.panel} data-compact={compact} aria-label="Countdown controls">
       <div className={styles.controls}>
         <div className={styles.readout}>
           <p className={styles.time} role="timer" aria-label="Time remaining">
@@ -205,12 +207,14 @@ export function CountdownPanel({
         />
         <MessageField key={timer.message} message={timer.message} onMessage={onMessage} />
       </div>
-      <figure className={styles.preview}>
-        <figcaption>Projector preview</figcaption>
-        <div className={styles.previewStage}>
-          <CountdownDisplay label="Projector preview" message={timer.message} time={time} status={status} />
-        </div>
-      </figure>
+      {compact ? null : (
+        <figure className={styles.preview}>
+          <figcaption>Projector preview</figcaption>
+          <div className={styles.previewStage}>
+            <CountdownDisplay label="Projector preview" message={timer.message} time={time} status={status} />
+          </div>
+        </figure>
+      )}
     </section>
   );
 }

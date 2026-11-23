@@ -200,6 +200,7 @@ export interface PersistedStateV4 extends Omit<PersistedStateV3, 'schemaVersion'
 
 interface PersistedSlideshowV4 {
   readonly activeId: string | null;
+  readonly showCountdown?: boolean;
   readonly collections: readonly {
     readonly id: string;
     readonly name: string;
@@ -288,6 +289,7 @@ function defaultPersistedMedia(): PersistedMediaV4 {
 function toPersistedSlideshow(state: SlideshowState): PersistedSlideshowV4 {
   return {
     activeId: state.activeId,
+    ...(state.showCountdown === undefined ? {} : { showCountdown: state.showCountdown }),
     collections: state.collections.map(({ id, name, secondsPerSlide, fit, slides }) => ({
       id,
       name,
@@ -682,7 +684,8 @@ function normalizeSlideshow(
   if (damaged > 0) warnings.push('Skipped damaged, duplicate or missing slideshow entries.');
   if (activeId === null && savedActiveId !== null && savedActiveId !== undefined)
     warnings.push('Cleared the unavailable active slideshow.');
-  return { collections, activeId };
+  const showCountdown = raw['showCountdown'];
+  return { collections, activeId, ...(typeof showCountdown === 'boolean' ? { showCountdown } : {}) };
 }
 
 function normalizeTimer(raw: unknown, warnings: string[]): PersistedTimerV4 {

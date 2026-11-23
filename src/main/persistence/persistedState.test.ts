@@ -690,6 +690,7 @@ describe('V4 save format (milestone 4: the media library)', () => {
     const owned = { ...sample, id: COLLECTION_ID, name: 'Collection cover.png' };
     const withOwned: SlideshowState = {
       ...slideshow,
+      showCountdown: false,
       collections: slideshow.collections.map((entry) => ({
         ...entry,
         slides: [...entry.slides, { mediaId: owned.id, fit: 'original', image: owned }],

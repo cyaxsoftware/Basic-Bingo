@@ -6,6 +6,7 @@ import {
   collectionName,
   slideFit,
   slideSeconds,
+  showsSlideshowCountdown,
   slideshowFit,
   type SlideshowCollection,
   type SlideshowCommand,
@@ -17,12 +18,14 @@ import {
   type SlideshowPlayback,
   type SlideshowPlaybackCommand,
 } from '../../../shared/media/slideshowPlayback';
-import { ConfirmDialog } from './ConfirmDialog';
+import { ConfirmDialog, ModalDialog } from './ConfirmDialog';
+import { CountdownPanel, type CountdownPanelProps } from './CountdownPanel';
 import styles from './SlideshowPanel.module.css';
 
 interface SlideshowPanelProps {
   readonly slideshow: SlideshowState;
   readonly playback: SlideshowPlayback;
+  readonly countdown: CountdownPanelProps;
   readonly library: readonly MediaItem[];
   readonly onEdit: (command: SlideshowCommand) => void;
   readonly onImport: (collectionId: string) => void;
@@ -64,7 +67,11 @@ function CollectionEditor({
   onImport,
   playback,
   onPlayback,
-}: Omit<SlideshowPanelProps, 'slideshow'> & { readonly collection: SlideshowCollection }) {
+  onOpenCountdown,
+}: Omit<SlideshowPanelProps, 'slideshow' | 'countdown'> & {
+  readonly collection: SlideshowCollection;
+  readonly onOpenCountdown: () => void;
+}) {
   const { id: collectionId, slides } = collection;
   const [confirmDelete, setConfirmDelete] = useState(false);
   // Snapshots contain valid values, while an input may be temporarily blank or contain trailing spaces.
@@ -113,6 +120,9 @@ function CollectionEditor({
         <p role="status">
           {playback.status === 'held' ? 'Slide held' : playback.status === 'playing' ? 'Playing' : 'Stopped'}
         </p>
+        <button type="button" aria-haspopup="dialog" onClick={onOpenCountdown}>
+          Countdown settings…
+        </button>
       </div>
       {slides.length === 0 ? (
         <p className={styles.empty}>This collection is empty. Add images to create its first slides.</p>
@@ -256,79 +266,108 @@ function CollectionEditor({
 export function SlideshowPanel({
   slideshow,
   playback,
+  countdown,
   library,
   onEdit,
   onImport,
   onPlayback,
 }: SlideshowPanelProps) {
   const [creating, setCreating] = useState(false);
+  const [countdownOpen, setCountdownOpen] = useState(false);
   const active = activeSlideshow(slideshow);
   return (
-    <section className={styles.panel} aria-label="Slideshow collections">
-      <aside className={styles.sidebar} aria-label="Collections">
-        <h2>Collections</h2>
-        {slideshow.collections.length > 0 ? (
-          <ul className={styles.collections}>
-            {slideshow.collections.map((entry) => (
-              <li key={entry.id}>
-                <button
-                  type="button"
-                  aria-pressed={entry.id === slideshow.activeId}
-                  onClick={() => onEdit({ type: 'select', collectionId: entry.id })}
-                >
-                  {entry.name}
+    <>
+      <section className={styles.panel} aria-label="Slideshow collections">
+        <aside className={styles.sidebar} aria-label="Collections">
+          <h2>Collections</h2>
+          {slideshow.collections.length > 0 ? (
+            <ul className={styles.collections}>
+              {slideshow.collections.map((entry) => (
+                <li key={entry.id}>
+                  <button
+                    type="button"
+                    aria-pressed={entry.id === slideshow.activeId}
+                    onClick={() => onEdit({ type: 'select', collectionId: entry.id })}
+                  >
+                    {entry.name}
+                  </button>
+                </li>
+              ))}
+            </ul>
+          ) : null}
+          {creating ? (
+            <form
+              aria-label="New collection"
+              className={styles.create}
+              onSubmit={(event) => {
+                const name = readField(event, 'newName');
+                onEdit({ type: 'create', name });
+                if (name) setCreating(false);
+              }}
+            >
+              <label>
+                Collection name
+                <input name="newName" required maxLength={MAX_COLLECTION_NAME} autoFocus />
+              </label>
+              <div className={styles.slideActions}>
+                <button type="submit">Create</button>
+                <button type="button" onClick={() => setCreating(false)}>
+                  Cancel
                 </button>
-              </li>
-            ))}
-          </ul>
-        ) : null}
-        {creating ? (
-          <form
-            aria-label="New collection"
-            className={styles.create}
-            onSubmit={(event) => {
-              const name = readField(event, 'newName');
-              onEdit({ type: 'create', name });
-              if (name) setCreating(false);
-            }}
-          >
-            <label>
-              Collection name
-              <input name="newName" required maxLength={MAX_COLLECTION_NAME} autoFocus />
-            </label>
-            <div className={styles.slideActions}>
-              <button type="submit">Create</button>
-              <button type="button" onClick={() => setCreating(false)}>
-                Cancel
-              </button>
-            </div>
-          </form>
+              </div>
+            </form>
+          ) : (
+            <button type="button" onClick={() => setCreating(true)}>
+              New collection
+            </button>
+          )}
+        </aside>
+        {active ? (
+          <CollectionEditor
+            key={active.id}
+            collection={active}
+            library={library}
+            onEdit={onEdit}
+            onImport={onImport}
+            playback={playback}
+            onPlayback={onPlayback}
+            onOpenCountdown={() => setCountdownOpen(true)}
+          />
         ) : (
-          <button type="button" onClick={() => setCreating(true)}>
-            New collection
-          </button>
+          <div className={styles.editor}>
+            <h2>Break Slideshow</h2>
+            <p className={styles.empty}>
+              {slideshow.collections.length === 0
+                ? 'Create a collection to start adding images.'
+                : 'Choose a collection to view its slides.'}
+            </p>
+            <button
+              className={styles.countdownSettings}
+              type="button"
+              aria-haspopup="dialog"
+              onClick={() => setCountdownOpen(true)}
+            >
+              Countdown settings…
+            </button>
+          </div>
         )}
-      </aside>
-      {active ? (
-        <CollectionEditor
-          key={active.id}
-          collection={active}
-          library={library}
-          onEdit={onEdit}
-          onImport={onImport}
-          playback={playback}
-          onPlayback={onPlayback}
-        />
-      ) : (
-        <div className={styles.editor}>
-          <h2>Break Slideshow</h2>
-          <p className={styles.empty}>
-            {slideshow.collections.length === 0
-              ? 'Create a collection to start adding images.'
-              : 'Choose a collection to view its slides.'}
-          </p>
-        </div>
-      )}
-    </section>
+      </section>
+      {countdownOpen ? (
+        <ModalDialog title="Slideshow countdown" closeLabel="Done" onClose={() => setCountdownOpen(false)}>
+          <label className={styles.countdownToggle}>
+            <input
+              type="checkbox"
+              role="switch"
+              checked={showsSlideshowCountdown(slideshow)}
+              onChange={(event) =>
+                onEdit({ type: 'setCountdownVisible', visible: event.currentTarget.checked })
+              }
+            />
+            Show timer on slideshow
+          </label>
+          <CountdownPanel {...countdown} compact />
+        </ModalDialog>
+      ) : null}
+    </>
   );
 }

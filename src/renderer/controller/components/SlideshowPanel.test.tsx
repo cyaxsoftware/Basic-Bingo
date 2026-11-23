@@ -48,6 +48,33 @@ async function setup(library: readonly MediaItem[] = [], pickedImages: readonly 
 }
 
 describe('Break Slideshow collection management', () => {
+  it('edits the shared countdown and toggles its overlay while playing without leaving slideshow', async () => {
+    const { api, view, create, user } = await setup([], [image(A, 'Logo.png')]);
+    await create('Sponsors');
+    await user.click(view.getByRole('button', { name: 'Add images…' }));
+    await user.click(view.getByRole('button', { name: 'Start slideshow' }));
+    const playing = api.current().slideshowPlayback;
+    const settings = view.getByRole('button', { name: 'Countdown settings…' });
+    await user.click(settings);
+    const dialog = within(screen.getByRole('dialog', { name: 'Slideshow countdown' }));
+    const visibility = dialog.getByRole('switch', { name: 'Show timer on slideshow' });
+    expect(visibility).toBeChecked();
+    await user.click(visibility);
+    expect(visibility).not.toBeChecked();
+    expect(api.current().slideshow.showCountdown).toBe(false);
+    await user.click(dialog.getByRole('button', { name: '2 min' }));
+    await user.click(dialog.getByRole('button', { name: 'Start' }));
+    expect(api.current().timer).toMatchObject({ status: 'running', durationSeconds: 120 });
+    await user.click(visibility);
+    expect(visibility).toBeChecked();
+    await user.click(dialog.getByRole('button', { name: 'Done' }));
+    expect(screen.queryByRole('dialog')).toBeNull();
+    expect(settings).toHaveFocus();
+    expect(api.current().presentationMode).toBe('slideshow');
+    expect(api.current().slideshowPlayback).toBe(playing);
+    expect(api.setPresentationMode).not.toHaveBeenCalled();
+  });
+
   it('starts playback, holds a tapped thumbnail, continues, and stops on the held selection', async () => {
     const { api, view, create, user } = await setup([], [image(A, 'Logo.png'), image(B, 'Menu.png')]);
     await create('Sponsors');

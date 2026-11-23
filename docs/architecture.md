@@ -114,7 +114,9 @@ Images the operator imports (PNG, JPEG, WebP, GIF, up to 20 MB each) are copied 
   advances and loops the ordered slides. Playback status starts stopped on each launch.
 - Presentation resolves the current slide by image ID and applies its fit override or the
   collection default. Both media modes use the same image stage. The slideshow also renders the
-  shared countdown from `snapshot.timer`. Playback deadlines and countdown expiry are independent.
+  shared countdown from `snapshot.timer` when the V4 slideshow visibility preference is on
+  (the default). The Controller's slideshow dialog reuses the standalone countdown controls.
+  Playback deadlines and countdown expiry are independent of overlay visibility.
 
 ## Countdown timer
 

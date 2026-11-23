@@ -18,6 +18,22 @@
   min-width: 0;
 }
 
+.panel[data-compact='true'] {
+  grid-template-columns: minmax(0, 1fr);
+  height: auto;
+  padding: 0;
+  border: 0;
+  overflow: visible;
+}
+
+.panel[data-compact='true'] .controls {
+  gap: var(--space-4);
+}
+
+.panel[data-compact='true'] .time {
+  font-size: 2.75rem;
+}
+
 .readout {
   display: grid;
   justify-items: start;

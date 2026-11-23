@@ -105,8 +105,10 @@ No internet connection, cloud database, user account, local HTTP server, or sepa
 - Choosing a different collection, leaving Break Slideshow, or removing the current slide stops
   rotation. The first slide of a newly selected collection appears as a still. Changing the interval
   during playback gives the current slide a fresh interval.
-- The shared break countdown appears in the corner. Its controls are on the Countdown tab. It
-  continues across slide holds, mode changes and New Game. At zero, the overlay shows
+- The shared break countdown appears in the corner by default. Open **Countdown settings** within
+  Break Slideshow to adjust it during projection or turn off **Show timer on slideshow**. The
+  visibility preference is remembered across restarts. The shared timer also has a Countdown tab
+  and continues across slide holds, mode changes and New Game. At zero, a visible overlay shows
   **Time to Play!** and any playing slideshow keeps rotating.
 - Handle empty collections gracefully with an operator-facing explanation and a clean presentation placeholder, never a broken image icon.
 
