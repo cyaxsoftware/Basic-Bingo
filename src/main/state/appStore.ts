@@ -11,7 +11,6 @@
  * Nothing here imports Electron, so it is fully unit-testable.
  */
 import { randomUUID } from 'node:crypto';
-import { keepAvailableBranding, parseBranding } from '../../shared/branding/branding';
 import { reduceGame, type GameCommand, type GameState } from '../../shared/game/gameState';
 import {
   fail,
@@ -99,7 +98,6 @@ export class AppStore {
       displays: [],
       preferredDisplayId: options.initialData.settings.preferredDisplayId,
       controllerTheme: options.initialData.settings.controllerTheme,
-      branding: options.initialData.branding,
       persistence: { kind: 'ok' },
       notices: options.initialNotices ?? [],
     });
@@ -191,7 +189,6 @@ export class AppStore {
       this.update({
         mediaLibrary: next.library,
         singleImage: next.singleImage,
-        branding: keepAvailableBranding(this.snapshot.branding, next.library),
         slideshow,
         slideshowPlayback: this.reconcileSlideshow(slideshow),
       });
@@ -312,20 +309,6 @@ export class AppStore {
     this.persist();
   }
 
-  setBranding(input: unknown): CommandResult {
-    const branding = parseBranding(input);
-    if (branding === undefined) return fail('Enter a valid branding name or choose a logo.');
-    if (keepAvailableBranding(branding, this.snapshot.mediaLibrary) !== branding) {
-      return fail('That logo is no longer in the image library.');
-    }
-    const previous = this.snapshot.branding;
-    if (branding?.name !== previous?.name || branding?.logoId !== previous?.logoId) {
-      this.update({ branding });
-      this.persist();
-    }
-    return ok;
-  }
-
   /** Add or replace (by id) an operator notice. */
   addNotice(notice: Notice): void {
     const others = this.snapshot.notices.filter((n) => n.id !== notice.id);
@@ -390,7 +373,6 @@ export class AppStore {
       timer: this.snapshot.timer,
       slideshow: this.snapshot.slideshow,
       gameLog: this.snapshot.gameLog,
-      branding: this.snapshot.branding,
       settings: {
         preferredDisplayId: this.snapshot.preferredDisplayId,
         controllerTheme: this.snapshot.controllerTheme,

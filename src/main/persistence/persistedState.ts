@@ -10,13 +10,13 @@
  * document and AppData field by field, so adding a field to GameState cannot
  * silently change or leak into an existing file format.
  *
- * To change the format:
- *   1. Add a new document version (with its own new shapes) and a zod schema.
+ * To change the format (this is how V4 added the media library):
+ *   1. Add PersistedStateV4 (with its own new shapes) and a zod schema.
  *      Point `PersistedState` at it and bump CURRENT_SCHEMA_VERSION.
- *   2. Add a migration from the previous version, filling new fields with defaults.
+ *   2. Add MIGRATIONS[3]: a V3 document -> a V4 document (fill new fields with defaults).
  *   3. Update toPersistedState / fromPersistedState. The compiler flags them
  *      when AppData gains a required field.
- *   4. Add a fixture for the new version and keep the older fixture tests passing:
+ *   4. Add a fixtures/state-v4.json and keep the older fixture tests passing:
  *      old files must still load.
  * Never edit a released document type, schema, or migration.
  *
@@ -24,7 +24,6 @@
  * (presentation window, displays, notices) is intentionally excluded.
  */
 import { z } from 'zod';
-import { keepAvailableBranding, parseBranding, type Branding } from '../../shared/branding/branding';
 import type { BingoLetter } from '../../shared/game/balls';
 import { normalizeCalledNumbers } from '../../shared/game/calledNumbers';
 import { normalizeDisabledRows, type GameState } from '../../shared/game/gameState';
@@ -291,17 +290,13 @@ const PersistedStateV4Schema = z.object({
 // ---------------------------------------------------------------------------
 
 /** The document version this build writes. */
-export interface PersistedStateV5 extends Omit<PersistedStateV4, 'schemaVersion'> {
+export interface PersistedState extends Omit<PersistedStateV4, 'schemaVersion'> {
   readonly schemaVersion: 5;
-  readonly branding: { readonly name: string; readonly logoId: string | null } | null;
+  /** Reserved by the short-lived branding build. The rollback clears it on the next save. */
+  readonly branding: null;
 }
 
-const PersistedStateV5Schema = PersistedStateV4Schema.extend({
-  schemaVersion: z.literal(5),
-  branding: z.unknown(),
-});
-
-export type PersistedState = PersistedStateV5;
+const PersistedStateV5Schema = PersistedStateV4Schema.extend({ schemaVersion: z.literal(5) });
 
 /** Durable state as the running app uses it (independent of the file format). */
 export interface AppData {
@@ -315,7 +310,6 @@ export interface AppData {
   readonly slideshow: SlideshowState;
   /** The games played so far, and the clock of the game in progress. */
   readonly gameLog: GameLogState;
-  readonly branding: Branding;
   readonly settings: {
     readonly preferredDisplayId: number | null;
     readonly controllerTheme: ControllerTheme;
@@ -433,7 +427,7 @@ export function createDefaultAppData(): AppData {
 export function toPersistedState(data: AppData, now: Date = new Date()): PersistedState {
   return {
     schemaVersion: CURRENT_SCHEMA_VERSION,
-    branding: data.branding && { name: data.branding.name, logoId: data.branding.logoId },
+    branding: null,
     savedAt: now.toISOString(),
     game: {
       calledNumbers: [...data.game.calledNumbers],
@@ -477,7 +471,6 @@ export function fromPersistedState(document: PersistedState, now: Date = new Dat
     timer: reduceTimer({ ...document.timer }, { type: 'expire' }, now.getTime()),
     slideshow: toPersistedSlideshow(document.slideshow),
     gameLog: toPersistedGameLog(document.gameLog),
-    branding: document.branding && { name: document.branding.name, logoId: document.branding.logoId },
     settings: {
       preferredDisplayId: document.settings.preferredDisplayId,
       controllerTheme: document.settings.controllerTheme,
@@ -517,8 +510,8 @@ const MIGRATIONS: Record<number, (raw: Record<string, unknown>) => Record<string
     slideshow: undefined,
     gameLog: undefined,
   }),
-  // V4 -> V5: previous installations start with the default, unbranded layout.
-  4: (raw) => ({ ...raw, schemaVersion: 5, branding: null }),
+  // V5 differs from V4 only by the reserved branding field, which the parser discards.
+  4: (raw) => ({ ...raw, schemaVersion: 5 }),
 };
 
 export type ParseResult =
@@ -819,17 +812,13 @@ export function parsePersistedState(raw: unknown): ParseResult {
   warnings.push(...patternWarnings);
   const { media, warnings: mediaWarnings } = normalizeMedia(parsed.data.media);
   warnings.push(...mediaWarnings);
-  const savedBranding = parseBranding(parsed.data.branding);
-  const branding = keepAvailableBranding(savedBranding ?? null, media.library);
-  if (savedBranding === undefined) warnings.push('Invalid branding settings were cleared.');
-  else if (branding !== savedBranding) warnings.push('The branding logo is no longer in the image library.');
 
   return {
     ok: true,
     warnings,
     state: {
       schemaVersion: CURRENT_SCHEMA_VERSION,
-      branding,
+      branding: null,
       savedAt: parsed.data.savedAt,
       game: {
         calledNumbers,

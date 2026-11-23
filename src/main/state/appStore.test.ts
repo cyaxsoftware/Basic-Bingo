@@ -672,35 +672,6 @@ describe('AppStore media', () => {
     expect(store.getSnapshot().singleImage).toEqual({ imageId: null });
   });
 
-  it('persists set and clear without touching the game or image library', async () => {
-    const { store, persister } = createStore([3, 17]);
-    store.dispatchMedia({ type: 'addMedia', items: [entry(ID_A)] });
-    const before = store.getSnapshot();
-    const branding = { name: 'Community Bingo Night', logoId: ID_A };
-    expect(store.setBranding({ ...branding, name: '  Community Bingo Night  ' })).toEqual({ ok: true });
-    await flushPromises();
-    const saved = persister.saved.at(-1)!;
-    const restarted = new AppStore({ initialData: fromPersistedState(saved), persister });
-    expect(restarted.getSnapshot().branding).toEqual(branding);
-    expect(store.getSnapshot().game).toBe(before.game);
-    expect(store.getSnapshot().mediaLibrary).toBe(before.mediaLibrary);
-    expect(store.setBranding(null)).toEqual({ ok: true });
-    await flushPromises();
-    expect(persister.saved.at(-1)?.branding).toBeNull();
-    expect(store.getSnapshot().mediaLibrary).toBe(before.mediaLibrary);
-  });
-
-  it.each(['Community Bingo Night', ''])('drops a deleted logo from branding with name %j', (name) => {
-    const { store, persister, snapshots } = createStore();
-    store.dispatchMedia({ type: 'addMedia', items: [entry(ID_A)] });
-    store.setBranding({ name, logoId: ID_A });
-    store.dispatchMedia({ type: 'removeMedia', mediaId: ID_A });
-    const expected = name ? { name, logoId: null } : null;
-    expect(store.getSnapshot().branding).toEqual(expected);
-    expect(snapshots.at(-1)).toMatchObject({ branding: expected, mediaLibrary: [] });
-    expect(persister.saved.at(-1)?.branding).toEqual(expected);
-  });
-
   it('adds, chooses and saves: one snapshot and one save per accepted command', async () => {
     const { store, persister, snapshots } = createStore();
     expect(store.dispatchMedia({ type: 'addMedia', items: [entry(ID_A)] })).toEqual({ ok: true });

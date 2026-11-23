@@ -33,16 +33,6 @@
   flex-direction: column;
 }
 
-.branding {
-  flex: none;
-  align-self: center;
-  max-width: 100%;
-  color: var(--stage-text);
-  background: var(--stage);
-  font-size: clamp(0.875rem, 2.5vmin, 2rem);
-  min-height: 1.8em;
-}
-
 /*
  * The game board layout, wide screens (16:9): the 75-number board across the top, with the winning pattern
  * to its left, and the current and previous calls in a band along the bottom. With no pattern pushed, the

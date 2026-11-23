@@ -1,5 +1,4 @@
 import { useCallback, useMemo, useState } from 'react';
-import type { Branding } from '../../shared/branding/branding';
 import type { BingoLetter } from '../../shared/game/balls';
 import type { FitMode } from '../../shared/media';
 import type { SlideshowCommand } from '../../shared/media/slideshow';
@@ -26,7 +25,6 @@ export interface ControllerActions {
   setPresentationMode(mode: PresentationMode): void;
   /** Switch the Controller between light and dark. Never changes the game or the projector. */
   setControllerTheme(theme: ControllerTheme): void;
-  setBranding(branding: Branding): void;
   /** Empties the games-played history. Callers must have confirmed with the operator first. */
   clearGameLog(): void;
   /** Tries to save the game again after a failed save. */
@@ -100,7 +98,6 @@ export function useControllerActions(api: ControllerApi): ControllerActions {
       newGame: () => run(() => api.newGame()),
       setPresentationMode: (mode: PresentationMode) => run(() => api.setPresentationMode(mode)),
       setControllerTheme: (theme: ControllerTheme) => run(() => api.setControllerTheme(theme)),
-      setBranding: (branding: Branding) => run(() => api.setBranding(branding)),
       clearGameLog: () => run(() => api.clearGameLog()),
       retrySave: () => run(() => api.retrySave()),
       showDataFolder: () => run(() => api.showDataFolder()),

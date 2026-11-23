@@ -31,7 +31,7 @@ No internet connection, cloud database, user account, local HTTP server, or sepa
 7. **Still-image mode** uses a reusable local image library; support fit and crop presentation options.
 8. Target **Windows 11**. Laptop model is approximately a 15-inch HP touchscreen; exact resolution is unknown. Design and test for multiple logical resolutions and Windows scaling settings.
 9. Backup/export/import of settings, patterns, or media is **out of MVP scope**.
-10. Provide a polished generic default appearance and limited optional event/organization branding. Avoid an elaborate theme designer in MVP.
+10. Give Basic Bingo a consistent default appearance.
 
 ## 3. Roles and physical setup
 
@@ -50,13 +50,6 @@ No internet connection, cloud database, user account, local HTTP server, or sepa
 **Visual intent:** Light neutral surfaces, high contrast text, clear color cues, no visual clutter. Optimize for fingers, not mouse hover.
 
 **Light and dark:** The Controller starts light. A sun/moon switch at the right end of the top bar flips it to a dark theme (for dim rooms) and the choice is remembered. It themes the Controller only: the projector, and the projector previews inside the Controller, never change.
-
-**Optional branding:** Open **Single Image**, then **Branding…** beside **Add images…**. Enter an
-organization or event name, choose a logo from the local image library, or do both. Apply the
-settings to show the brand in the Controller header and in a small band below each Presentation
-mode. Branding is off by default and survives a restart. **Clear branding** removes the name and
-logo from both windows and keeps the image in the library. Removing a logo image from the library
-keeps the name, if one was set.
 
 **Primary layout:**
 - Compact top bar with app name, presentation status (`Not projecting` / selected display), `Project`, and display selection.
@@ -317,7 +310,6 @@ Consider a single subscribed `APP_STATE_UPDATED` snapshot with monotonically inc
 - Named slideshow collections, image ordering, slide intervals, countdown
 - Reusable still-image library with fit/crop
 - Optional standalone countdown
-- Limited optional organization/event name and logo (if it does not compromise milestone delivery)
 - Local persistence and crash/relaunch recovery
 
 ### Not MVP

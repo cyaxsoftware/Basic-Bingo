@@ -1,6 +1,5 @@
 import type { SnapshotStore } from '../shared/snapshotStore';
 import { useSnapshotState } from '../shared/useSnapshotState';
-import { BrandMark } from '../shared/components/BrandMark';
 import { AudienceBoard } from './components/AudienceBoard';
 import { BingoBanner } from './components/BingoBanner';
 import { CallDisplay } from './components/CallDisplay';
@@ -89,7 +88,6 @@ export function PresentationApp({ store }: PresentationAppProps) {
           />
         )}
       </div>
-      <BrandMark branding={snapshot.branding} library={snapshot.mediaLibrary} className={styles.branding} />
     </main>
   );
 }

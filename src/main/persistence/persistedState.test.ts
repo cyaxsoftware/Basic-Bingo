@@ -98,7 +98,6 @@ const DEFAULT_PATTERNS = { library: createDefaultLibrary(), active: blankActiveP
 
 // A V1 file predates the banner, so it must come back with the banner hidden.
 const V1_FIXTURE_APP_DATA: AppData = {
-  branding: null,
   game: { calledNumbers: [3, 17, 9, 31, 52, 75], bingoBannerVisible: false, disabledRows: [] },
   presentation: { mode: 'gameBoard' },
   patterns: DEFAULT_PATTERNS,
@@ -110,7 +109,6 @@ const V1_FIXTURE_APP_DATA: AppData = {
 };
 
 const V2_FIXTURE_APP_DATA: AppData = {
-  branding: null,
   game: { calledNumbers: [3, 17, 9, 31, 52, 75], bingoBannerVisible: true, disabledRows: [] },
   presentation: { mode: 'slideshow' },
   patterns: DEFAULT_PATTERNS,
@@ -157,7 +155,7 @@ describe('V1 save format is frozen (audit finding 5, #22)', () => {
     ['a V1 game with calls', { calledNumbers: [4, 5] }, [4, 5]],
     ['a V1 game with no calls', { calledNumbers: [] }, []],
   ])(
-    'migrates %s with the banner hidden, the board showing and the default patterns',
+    'migrates %s to V3 with the banner hidden, the board showing and the default patterns',
     (_name, game, expectedCalls) => {
       const result = parsePersistedState({
         schemaVersion: 1,
@@ -312,7 +310,7 @@ describe('V3 save format is frozen (released in milestone 3)', () => {
     expect(presentation.mode).toBe('slideshow');
   });
 
-  it('migrates the V3 fixture with an empty media library and branding off', () => {
+  it('migrates the V3 fixture to the current version with an empty media library', () => {
     const parsed = loadFixture();
     const written = toPersistedState(fromPersistedState(parsed.state));
     expect({ ...written, savedAt: stateV3Fixture.savedAt }).toEqual({
@@ -1038,45 +1036,15 @@ describe('V4 save format (milestone 4: the media library)', () => {
   });
 });
 
-describe('V5 branding', () => {
-  it('migrates V4 with branding off and preserves the game and selected image', () => {
-    const parsed = parsePersistedState(stateV4Fixture);
-    expect(parsed).toMatchObject({
-      ok: true,
-      warnings: [],
-      state: {
-        schemaVersion: 5,
-        branding: null,
-        game: stateV4Fixture.game,
-        media: { singleImage: stateV4Fixture.media.singleImage },
-      },
-    });
-  });
-
-  it('restores a name and logo from the V5 fixture and writes them back', () => {
-    const parsed = parsePersistedState(stateV5Fixture);
-    if (!parsed.ok) throw new Error(parsed.error);
-    expect(parsed.warnings).toEqual([]);
-    const data = fromPersistedState(parsed.state);
-    expect(data.branding).toEqual(stateV5Fixture.branding);
-    expect(toPersistedState(data).branding).toEqual(stateV5Fixture.branding);
-  });
-
-  it('recovers invalid branding without losing calls', () => {
-    const parsed = parsePersistedState({ ...stateV5Fixture, branding: { name: 7 } });
-    expect(parsed).toMatchObject({
-      ok: true,
-      warnings: ['Invalid branding settings were cleared.'],
-      state: { branding: null, game: stateV5Fixture.game },
-    });
-  });
-
-  it('keeps the name when the saved logo no longer resolves', () => {
-    const parsed = parsePersistedState({ ...stateV5Fixture, media: DEFAULT_MEDIA });
-    expect(parsed).toMatchObject({
-      ok: true,
-      warnings: ['The branding logo is no longer in the image library.'],
-      state: { branding: { name: stateV5Fixture.branding.name, logoId: null } },
-    });
-  });
+it('opens a branding-build save and keeps the game and image library across the next save', () => {
+  const parsed = parsePersistedState(stateV5Fixture);
+  if (!parsed.ok) throw new Error(parsed.error);
+  expect(parsed.warnings).toEqual([]);
+  const data = fromPersistedState(parsed.state);
+  expect(data.game).toEqual(stateV5Fixture.game);
+  expect(data.media).toEqual(stateV5Fixture.media);
+  const written = toPersistedState(data);
+  expect(written.branding).toBeNull();
+  expect(written.game).toEqual(stateV5Fixture.game);
+  expect(written.media).toEqual(stateV5Fixture.media);
 });

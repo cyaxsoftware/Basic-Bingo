@@ -42,18 +42,6 @@ describe('JsonStateRepository', () => {
     expect(reloaded.state.settings.preferredDisplayId).toBe(42);
   });
 
-  it('keeps branding and clearing it across repository restarts', async () => {
-    const state = stateWith([3, 17, 9]);
-    const branding = { name: 'Community Bingo Night', logoId: null };
-    await repo.save({ ...state, branding });
-    const restarted = new JsonStateRepository(repo.directory);
-    expect((await restarted.load()).state.branding).toEqual(branding);
-    await restarted.save({ ...state, branding: null });
-    const cleared = await new JsonStateRepository(repo.directory).load();
-    expect(cleared.state.branding).toBeNull();
-    expect(cleared.state.game.calledNumbers).toEqual([3, 17, 9]);
-  });
-
   it('keeps the previous good state as a backup and leaves no temp file', async () => {
     await repo.save(stateWith([1]));
     await repo.save(stateWith([1, 2]));

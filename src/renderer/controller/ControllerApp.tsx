@@ -4,8 +4,6 @@ import type { SnapshotStore } from '../shared/snapshotStore';
 import { useMediaQuery } from '../shared/useMediaQuery';
 import { useSnapshotState } from '../shared/useSnapshotState';
 import { BallGrid } from './components/BallGrid';
-import { BrandMark } from '../shared/components/BrandMark';
-import { BrandingSettings } from './components/BrandingSettings';
 import { CallSummaryPanel } from './components/CallSummaryPanel';
 import { CountdownPanel } from './components/CountdownPanel';
 import { BingoBannerControl, NewGameControl } from './components/GameControls';
@@ -39,7 +37,6 @@ export function ControllerApp({ api, store }: ControllerAppProps) {
   // Which screen the operator is on. Only the layout cares: the game, the patterns and the projector all
   // live in the main process, so switching screens never changes (or loses) any of them.
   const [view, setView] = useState<'game' | 'patterns'>('game');
-  const [brandingOpen, setBrandingOpen] = useState(false);
   const back = useRef<HTMLButtonElement>(null);
   const editPatterns = useRef<HTMLButtonElement>(null);
   const movingFocus = useRef(false);
@@ -161,29 +158,22 @@ export function ControllerApp({ api, store }: ControllerAppProps) {
         data-fill={fill}
         data-mode={onBoard ? 'board' : 'panel'}
       >
-        <header className={styles.headerArea}>
-          <div className={styles.header}>
-            <h1 className={styles.title}>Basic Bingo</h1>
-            {topRow ? tabs : null}
-            {topRow ? clock : null}
-            <div className={styles.projector}>
-              <PresentationControls
-                displays={snapshot.displays}
-                presentation={snapshot.presentation}
-                preferredDisplayId={snapshot.preferredDisplayId}
-                onProject={actions.openPresentation}
-                onPreview={actions.openPreview}
-                onStop={actions.closePresentation}
-              />
-            </div>
-            {railLayout || !onBoard ? null : newGame}
-            <ThemeSwitch theme={snapshot.controllerTheme} onChange={actions.setControllerTheme} />
+        <header className={styles.header}>
+          <h1 className={styles.title}>Basic Bingo</h1>
+          {topRow ? tabs : null}
+          {topRow ? clock : null}
+          <div className={styles.projector}>
+            <PresentationControls
+              displays={snapshot.displays}
+              presentation={snapshot.presentation}
+              preferredDisplayId={snapshot.preferredDisplayId}
+              onProject={actions.openPresentation}
+              onPreview={actions.openPreview}
+              onStop={actions.closePresentation}
+            />
           </div>
-          <BrandMark
-            branding={snapshot.branding}
-            library={snapshot.mediaLibrary}
-            className={styles.branding}
-          />
+          {railLayout || !onBoard ? null : newGame}
+          <ThemeSwitch theme={snapshot.controllerTheme} onChange={actions.setControllerTheme} />
         </header>
 
         {topRow ? null : tabs}
@@ -248,7 +238,6 @@ export function ControllerApp({ api, store }: ControllerAppProps) {
                 onFit={actions.setImageFit}
                 onImport={actions.importImages}
                 onRemove={actions.removeImage}
-                onOpenBranding={() => setBrandingOpen(true)}
               />
             ) : mode === 'countdown' ? (
               <CountdownPanel {...countdown} />
@@ -293,17 +282,6 @@ export function ControllerApp({ api, store }: ControllerAppProps) {
           </div>
         ) : null}
       </main>
-      {brandingOpen ? (
-        <BrandingSettings
-          branding={snapshot.branding}
-          library={snapshot.mediaLibrary}
-          onApply={(branding) => {
-            actions.setBranding(branding);
-            setBrandingOpen(false);
-          }}
-          onClose={() => setBrandingOpen(false)}
-        />
-      ) : null}
       <CopyrightFooter />
     </div>
   );

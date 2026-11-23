@@ -31,31 +31,6 @@ function renderPanel(overrides: Parameters<typeof makeSnapshot>[0] = {}) {
 
 const panel = () => screen.findByRole('region', { name: 'Single image' });
 
-it('sets and clears branding from the image library and returns focus to its opener', async () => {
-  const api = renderPanel({ mediaLibrary: [LOGO, MENU] });
-  const user = userEvent.setup();
-  const opener = within(await panel()).getByRole('button', { name: 'Branding…' });
-  const brand = () => within(screen.getByRole('banner')).queryByTestId('branding');
-  expect(brand()).toBeNull();
-  await user.click(opener);
-  const dialog = await screen.findByRole('dialog', { name: 'Branding' });
-  const form = within(dialog);
-  await user.type(form.getByRole('textbox', { name: 'Organization or event name' }), 'Community Bingo Night');
-  await user.selectOptions(form.getByRole('combobox', { name: 'Logo' }), ID_LOGO);
-  await user.click(form.getByRole('button', { name: 'Apply branding' }));
-  expect(api.setBranding).toHaveBeenCalledWith({ name: 'Community Bingo Night', logoId: ID_LOGO });
-  expect(brand()).toHaveTextContent('Community Bingo Night');
-  expect(brand()?.querySelector('img')).toHaveAttribute('src', `bingo-media://${ID_LOGO}`);
-  expect(opener).toHaveFocus();
-
-  await user.click(opener);
-  await user.click(screen.getByRole('button', { name: 'Clear branding' }));
-  expect(brand()).toBeNull();
-  expect(api.setBranding).toHaveBeenLastCalledWith(null);
-  expect(api.current().mediaLibrary).toEqual([LOGO, MENU]);
-  expect(opener).toHaveFocus();
-});
-
 describe('Single Image panel', () => {
   describe('with no images', () => {
     it('explains how to add some, and has nothing to remove', async () => {

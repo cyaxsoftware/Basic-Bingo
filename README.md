@@ -87,11 +87,6 @@ full interval. **Stop** leaves the current slide on screen. Open **Countdown set
 the shared timer and toggle its upper-right overlay during projection. When a visible timer reaches
 **Time to Play!**, slides keep rotating.
 
-For an optional event name or logo, open **Single Image** and choose **Branding…**. Add a logo to
-the local image library first if you want to use one. The name and logo appear in the Controller
-header and below the Presentation, and are remembered across restarts. **Clear branding** restores
-the default appearance.
-
 **Import PowerPoint…** appends every slide from a local `.pptx` to the selected collection as a PNG.
 It uses desktop Microsoft PowerPoint on Windows during conversion. The imported slides play from
 local images after PowerPoint is closed. Importing the same file again adds a second set of slides.

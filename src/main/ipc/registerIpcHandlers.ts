@@ -195,10 +195,6 @@ export function registerIpcHandlers(ipc: IpcMainLike, deps: IpcDependencies): vo
     return ok;
   });
 
-  command(IpcChannel.setBranding, (...args) =>
-    args.length === 1 ? store.setBranding(args[0]) : fail('Expected one branding setting.'),
-  );
-
   // Pattern commands. Here only the TYPES of the arguments are checked; the rules (cell 0 to 24, title 1 to 60
   // characters, unknown ids, exactly 25 cells) live in the shared reducer, which the store runs, so they apply
   // to every caller and come back as an ordinary failed result.

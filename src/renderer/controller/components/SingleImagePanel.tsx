@@ -17,7 +17,6 @@ export interface SingleImagePanelProps {
   readonly onFit: (mediaId: string, fit: FitMode) => void;
   readonly onImport: () => void;
   readonly onRemove: (mediaId: string) => void;
-  readonly onOpenBranding: () => void;
 }
 
 const FIT_CHOICES: readonly { readonly fit: FitMode; readonly label: string }[] = [
@@ -54,7 +53,6 @@ export function SingleImagePanel({
   onFit,
   onImport,
   onRemove,
-  onOpenBranding,
 }: SingleImagePanelProps) {
   const [removing, setRemoving] = useState(false);
   // Images whose file would not load (missing or damaged): shown as a plain placeholder, never a broken icon.
@@ -135,9 +133,6 @@ export function SingleImagePanel({
           </h3>
           <button type="button" className={styles.primary} onClick={onImport}>
             Add images…
-          </button>
-          <button type="button" className={styles.segment} aria-haspopup="dialog" onClick={onOpenBranding}>
-            Branding…
           </button>
           {library.length > 0 ? <span className={styles.hint}>Tap an image to show it</span> : null}
         </div>

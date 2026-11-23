@@ -196,10 +196,8 @@ if someone modified its page.
   `GameState` and `reduceGame` never see a clock. The log (`gameLog`: finished games plus the clock of the game in
   progress) was added in V4. Damaged entries are dropped with a warning.
   `clearGameLog` is the only command that changes it directly.
-- V5 adds optional branding. V4 files migrate with branding off. Main validates the
-  `setBranding` command and resolves its logo ID against the Single Image library. Removing an
-  image clears its branding reference in the same snapshot and save. A malformed branding entry
-  falls back to off and leaves the game intact.
+- V5 reserved a field for the rolled-back branding feature. Saves from that build still load,
+  and the next save clears the reserved field while preserving the game, media library, and other settings.
 - `fixtures/state-v1.json` ... `state-v5.json`: representative files for each version; tests
   load them on every run (an old file must keep loading, migrated up: V1 gets the banner hidden, V2 gets the
   default pattern library and an empty working pattern). Pattern data is checked entry by entry on load: one
