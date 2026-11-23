@@ -225,6 +225,9 @@ Deliberately **not** in milestone 1 (see [docs/product-design.md §8](docs/produ
 `npm run make` builds a per-user Squirrel installer (no admin rights) and a portable ZIP. The installer
 is unsigned, so Windows SmartScreen will warn on first run; code signing is planned for M5.
 
+The Windows packages ship only Electron’s US and UK English locale packs. The packaging hook
+keeps the US English fallback available on Windows systems configured for other languages.
+
 The app icon lives in `build/` (`icon.ico` for the .exe and installer, `icon.png` for reference, plus the
 SVG sources). To change it, edit the drawing in `scripts/make-icon.mjs` and run `node scripts/make-icon.mjs`.
 

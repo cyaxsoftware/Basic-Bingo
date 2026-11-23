@@ -5,6 +5,7 @@ import { AutoUnpackNativesPlugin } from '@electron-forge/plugin-auto-unpack-nati
 import { VitePlugin } from '@electron-forge/plugin-vite';
 import { FusesPlugin } from '@electron-forge/plugin-fuses';
 import { FuseV1Options, FuseVersion } from '@electron/fuses';
+import { keepEnglishLocalePacks } from './scripts/packaging/englishLocales';
 
 /**
  * Build/packaging configuration.
@@ -17,6 +18,11 @@ import { FuseV1Options, FuseVersion } from '@electron/fuses';
 const config: ForgeConfig = {
   packagerConfig: {
     asar: true,
+    afterExtract: [
+      async ({ buildPath, platform }) => {
+        if (platform === 'win32') await keepEnglishLocalePacks(buildPath);
+      },
+    ],
     executableName: 'basic-bingo',
     // No extension: Packager appends .ico on Windows.
     icon: 'build/icon',
