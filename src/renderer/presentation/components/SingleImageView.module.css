@@ -1,5 +1,6 @@
 /* The whole screen is the image: black behind it, so Fit's bars are black on every projector. */
 .stage {
+  position: relative;
   flex: 1;
   min-height: 0;
   display: grid;
@@ -7,7 +8,13 @@
   background: #000;
 }
 
+/*
+ * Pinned to the stage's edges so the image's box is always the whole screen. With a box that is the picture's own
+ * shape, Fit and Fill look the same; with the screen-shaped box, contain shows all of it and cover fills it.
+ */
 .image {
+  position: absolute;
+  inset: 0;
   width: 100%;
   height: 100%;
   object-fit: contain;

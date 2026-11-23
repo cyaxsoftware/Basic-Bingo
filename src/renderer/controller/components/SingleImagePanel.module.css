@@ -45,7 +45,10 @@
   border-radius: var(--radius-sm);
 }
 
+/* Pinned to the preview's edges (see the projector's SingleImageView): the preview must be screen-shaped. */
 .previewImage {
+  position: absolute;
+  inset: 0;
   width: 100%;
   height: 100%;
   object-fit: contain;
@@ -205,6 +208,8 @@
 }
 
 .thumbImage {
+  position: absolute;
+  inset: 0;
   width: 100%;
   height: 100%;
   object-fit: contain;
