@@ -287,6 +287,21 @@ A failed save sets `snapshot.persistence` to `error`; the Controller shows it un
   The headless preview and `e2e/accessibility.spec.ts` exercise contrast in Chromium. Follow the
   [end-to-end test policy](../AGENTS.md) before running the Electron spec.
 
+## Windows release smoke
+
+`.github/workflows/windows-ci.yml` runs the quality gates and the ordinary Electron Playwright suite
+on a GitHub-hosted Windows VM with a 1920×1080 desktop. `npm run test:e2e` creates the production
+package first. The release smoke reuses that exact `basic-bingo.exe` and checks the six production
+fuses on disk before starting it.
+
+Playwright uses Electron's debug/inspection entry points, which are unavailable in the release
+executable. `scripts/test-release-smoke.ps1` uses native Windows UI Automation and the renderer's
+accessible labels. It calls B-3, verifies it in the separate Preview window, and closes the
+Controller so the ordinary save path runs. The fresh GitHub-hosted VM supplies a disposable
+Windows user profile. The smoke test verifies that both the current and legacy app data folders
+are absent before launch and keeps production storage behavior. No test build or app-side test
+switch is needed.
+
 ## Recipe: adding a command end to end
 
 Example: `newGame` (added in milestone 2). Touch these files in order:

@@ -28,6 +28,7 @@
     "test:coverage": "vitest run --coverage",
     "test:e2e": "electron-forge package && playwright test",
     "test:e2e:smoke": "electron-forge package && playwright test --grep @smoke",
+    "test:release-smoke": "powershell.exe -NoProfile -MTA -File scripts/test-release-smoke.ps1",
     "check": "npm run typecheck && npm run lint && npm run format:check && npm run test"
   },
   "dependencies": {

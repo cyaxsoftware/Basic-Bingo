@@ -35,19 +35,20 @@ npm start
 
 ## Scripts
 
-| Command                  | What it does                                                                 |
-| ------------------------ | ---------------------------------------------------------------------------- |
-| `npm start`              | Run the app in development with hot reload                                   |
-| `npm run check`          | **All quality gates:** typecheck, lint, format check, unit/component tests   |
-| `npm run typecheck`      | TypeScript, checked separately for main-process and renderer code            |
-| `npm run lint`           | oxlint, including import-boundary rules between processes                    |
-| `npm run format`         | Format with oxfmt (`format:check` to verify only)                            |
-| `npm test`               | Unit and component tests (Vitest)                                            |
-| `npm run test:e2e`       | Builds the app, then drives the real Electron app with Playwright            |
-| `npm run test:e2e:smoke` | Same, but only the five key tests tagged `@smoke` (the per-card check)       |
-| `npm run test:coverage`  | Unit tests with a coverage report in `coverage/`                             |
-| `npm run package`        | Build an unpacked app in `out/`                                              |
-| `npm run make`           | Build Windows distributables (Squirrel `Setup.exe` and a ZIP) in `out/make/` |
+| Command                      | What it does                                                                     |
+| ---------------------------- | -------------------------------------------------------------------------------- |
+| `npm start`                  | Run the app in development with hot reload                                       |
+| `npm run check`              | **All quality gates:** typecheck, lint, format check, unit/component tests       |
+| `npm run typecheck`          | TypeScript, checked separately for main-process and renderer code                |
+| `npm run lint`               | oxlint, including import-boundary rules between processes                        |
+| `npm run format`             | Format with oxfmt (`format:check` to verify only)                                |
+| `npm test`                   | Unit and component tests (Vitest)                                                |
+| `npm run test:e2e`           | Builds the app, then drives the real Electron app with Playwright                |
+| `npm run test:e2e:smoke`     | Same, but only the five key tests tagged `@smoke` (the per-card check)           |
+| `npm run test:release-smoke` | GitHub-hosted Windows only. Exercises the packaged executable via UI Automation. |
+| `npm run test:coverage`      | Unit tests with a coverage report in `coverage/`                                 |
+| `npm run package`            | Build an unpacked app in `out/`                                                  |
+| `npm run make`               | Build Windows distributables (Squirrel `Setup.exe` and a ZIP) in `out/make/`     |
 
 ## Using the app
 
@@ -171,13 +172,16 @@ The full dual-display checklist is in [docs/manual-acceptance-m1.md](docs/manual
 
 - **Unit and component tests** (`npm test`) live next to the code as `*.test.ts(x)`: game rules,
   persistence and recovery, the store, IPC validation, display selection, and the React views.
-- **When to run what.** Per card: `npm run check`, plus `npm run test:e2e:smoke` (five key end-to-end tests
-  tagged `@smoke`) when main, preload, windows or the UI changed. The full end-to-end suite runs at milestone
-  boundaries, before a release, or when asked, the same timing as AGENTS.md.
+- Run `npm run check` during development. The local end-to-end scripts open real windows, so follow
+  the [end-to-end test policy](AGENTS.md) before running them on the operator's PC.
 - **End-to-end tests** (`npm run test:e2e`) launch the real app with Playwright: Controller → Preview
   sync, toggle ordering, restart persistence, renderer sandboxing, the read-only Presentation bridge,
   and the single-instance lock. Each run uses a throwaway data folder (`BINGO_USER_DATA_DIR`, honored
   only in unpackaged builds), so tests never touch a real saved game.
+- **Windows CI** runs `npm run check`, `npm run test:e2e`, and `npm run test:release-smoke` for pull
+  requests on a disposable GitHub-hosted Windows VM. The release smoke checks the production fuses,
+  opens Preview in the packaged app, and verifies that a called ball reaches it and is saved. It
+  refuses to launch on a local or self-hosted machine.
 - **Controller layout checks** (`e2e/controllerLayout.spec.ts`) resize the real Controller to the logical
   sizes a Windows laptop gives the app (1024×640, 1280×720, 1280×800, 1366×768, 1536×864), plus a short
   150% window (910×480) and widths either side of the one-/two-column breakpoint (1101 to 1160 wide), with a
