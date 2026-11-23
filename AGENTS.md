@@ -34,7 +34,10 @@ node scripts/board.mjs add 17 12          # put new issue #17 on the board after
 - `npm run test:e2e:smoke` passes if you touched main, preload, windows or the UI. It runs five key
   end-to-end tests tagged `@smoke` (about 15 s with the build). Do not run the full suite on every card.
 - `npm run test:e2e` (the full suite, including the layout and acceptance matrices) runs at milestone
-  boundaries, before a release, or when asked. Not on every card.
+  boundaries, before a release, or when asked. **Not after every change, and not on every card**: while
+  working, run `npx vitest run` plus only the one e2e spec you touched (for example
+  `npm run test:e2e -- e2e/controllerLayout.spec.ts`), and never rerun a test that already passed on
+  unchanged code.
 - New behavior has tests next to the code (`*.test.ts` / `*.test.tsx`).
 - Docs updated if you changed architecture, commands, scripts or user-visible behavior.
 
