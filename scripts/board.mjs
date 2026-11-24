@@ -11,7 +11,7 @@
 import { execFileSync } from 'node:child_process';
 
 const OWNER = 'cyaxsoftware';
-const REPO = 'cyaxsoftware/bingo-2026';
+const REPO = `${OWNER}/Basic-Bingo`;
 const PROJECT_NUMBER = '8';
 const STATUSES = ['Todo', 'In Progress', 'Awaiting Human Review', 'Done'];
 

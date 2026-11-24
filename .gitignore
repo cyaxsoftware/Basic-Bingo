@@ -28,5 +28,9 @@ Thumbs.db
 .backlog-tmp/
 .recovery/
 
+# Local coding-agent instructions
+/AGENTS.md
+/CLAUDE.md
+
 # Local hand-off file between the builder and the PR reviewer (working state, not source)
 review-queue.txt

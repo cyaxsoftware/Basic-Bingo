@@ -19,7 +19,7 @@ state locally so you can resume after restarting.
 - Product requirements: [docs/product-design.md](docs/product-design.md)
 - Milestone 1 brief: [docs/milestone-1-brief.md](docs/milestone-1-brief.md)
 - How the code fits together: [docs/architecture.md](docs/architecture.md)
-- Contributor and AI-agent guide: [AGENTS.md](AGENTS.md)
+- Contributor guide: [CONTRIBUTING.md](CONTRIBUTING.md)
 - Backlog: [GitHub Project "Bingo-2026"](https://github.com/users/cyaxsoftware/projects/8)
 
 ## Development requirements
@@ -181,7 +181,7 @@ The full dual-display checklist is in [docs/manual-acceptance-m1.md](docs/manual
 - **Unit and component tests** (`npm test`) live next to the code as `*.test.ts(x)`: game rules,
   persistence and recovery, the store, IPC validation, display selection, and the React views.
 - Run `npm run check` during development. The local end-to-end scripts open real windows, so follow
-  the [end-to-end test policy](AGENTS.md) before running them on the operator's PC.
+  the [end-to-end test policy](CONTRIBUTING.md#definition-of-done-for-any-change) before running them on the operator's PC.
 - **End-to-end tests** (`npm run test:e2e`) launch the real app with Playwright: Controller → Preview
   sync, toggle ordering, restart persistence, renderer sandboxing, the read-only Presentation bridge,
   and the single-instance lock. Each run uses a throwaway data folder (`BINGO_USER_DATA_DIR`, honored
