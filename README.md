@@ -4,9 +4,17 @@ A fully offline Windows 11 desktop app for running 75-ball bingo. A touchscreen 
 **Controller**; a separate **Presentation** window shows the board to the audience on a second display
 (projector or monitor). No internet, cloud service, account or local web server is involved.
 
-> **Status: Milestone 1 — foundation and projection proof.** Ball calling, the two windows, display
-> selection and persistence work. Visual polish, BINGO banner, patterns and slideshows come in later
-> milestones (see [What is deferred](#what-is-deferred)).
+## Download for Windows 11
+
+Get `BasicBingoSetup.exe` from [GitHub Releases](https://github.com/cyaxsoftware/Basic-Bingo/releases)
+for a per-user installation. To run the portable version, download the Windows x64 ZIP, extract it,
+and open `basic-bingo.exe`. The downloads are unsigned, so Windows may show a SmartScreen warning.
+
+Basic Bingo includes ball calling, a BINGO verification banner, saved patterns, a games-played log,
+slideshows, single-image display, a countdown, and light and dark Controller themes. It saves game
+state locally so you can resume after restarting.
+
+## Project resources
 
 - Product requirements: [docs/product-design.md](docs/product-design.md)
 - Milestone 1 brief: [docs/milestone-1-brief.md](docs/milestone-1-brief.md)
@@ -14,7 +22,7 @@ A fully offline Windows 11 desktop app for running 75-ball bingo. A touchscreen 
 - Contributor and AI-agent guide: [AGENTS.md](AGENTS.md)
 - Backlog: [GitHub Project "Bingo-2026"](https://github.com/users/cyaxsoftware/projects/8)
 
-## Requirements
+## Development requirements
 
 - Windows 11 (development also works on macOS/Linux, but the target is Windows)
 - Node.js **22.22.2+ (22.x)**, **24.15.0+ (24.x)**, or **26+**, with npm. Odd-numbered releases are not
@@ -25,8 +33,8 @@ A fully offline Windows 11 desktop app for running 75-ball bingo. A touchscreen 
 ## Setup
 
 ```powershell
-git clone https://github.com/cyaxsoftware/bingo-2026.git
-cd bingo-2026
+git clone https://github.com/cyaxsoftware/Basic-Bingo.git
+cd Basic-Bingo
 npm install
 npm start
 ```
@@ -213,16 +221,6 @@ e2e/             Playwright tests against the real app
 scripts/         Developer utilities (project board helper)
 docs/            Product design, milestone brief, architecture, acceptance checklists
 ```
-
-## What is deferred
-
-Deliberately **not** in milestone 1 (see [docs/product-design.md §8](docs/product-design.md)):
-
-- Final projector board polish (M2). The touch-first Controller with mode tabs, the BINGO and New Game
-  controls and the projector banner are in.
-- Winning patterns and the pattern library (M3)
-- Image import, slideshows, single image, countdown timer (M4)
-- Installer polish, accessibility pass, and extended recovery testing (M5)
 
 ## Packaging notes
 
