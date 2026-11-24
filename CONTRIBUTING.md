@@ -1,6 +1,6 @@
-# Guide for contributors and coding agents
+# Contributing to Basic Bingo
 
-Read this before changing code. It applies to humans and AI agents (Claude, Codex, etc.).
+Read this before changing code.
 
 1. Product behavior: [docs/product-design.md](docs/product-design.md) is the source of truth.
 2. Code structure: [docs/architecture.md](docs/architecture.md), especially the
@@ -31,11 +31,9 @@ node scripts/board.mjs add 17 12          # put new issue #17 on the board after
 
 - `npm run check` passes (typecheck, lint, format, unit tests). Never disable a rule to get it passing
   without explaining why in the code.
-- End-to-end tests (`npm run test:e2e`, `npm run test:e2e:smoke`, or a single spec) launch the real app, so real
-  windows flash open and close on the owner's screen. **Do not run them while working.** Run them only at a
-  major milestone boundary, before a release, or when the owner asks or says the work is done. In between, rely on
-  `npx vitest run` and `npm run check`, which open no windows. Never rerun a test that already passed on unchanged
-  code. (The `@smoke` set is five key e2e tests, about 15 s with the build, for that milestone-time check.)
+- The Windows CI workflow runs the Electron end-to-end suite on a hosted runner. Local end-to-end tests
+  (`npm run test:e2e`, `npm run test:e2e:smoke`, or a single spec) open real windows. Run them locally only
+  with the project owner's approval. Use `npx vitest run` and `npm run check` during development.
 - New behavior has tests next to the code (`*.test.ts` / `*.test.tsx`).
 - Docs updated if you changed architecture, commands, scripts or user-visible behavior.
 

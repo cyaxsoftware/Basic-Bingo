@@ -285,7 +285,7 @@ A failed save sets `snapshot.persistence` to `error`; the Controller shows it un
 - Renderer accessibility tests mount both apps with `fakeBingoApi.ts` and run axe against the visible
   app states. The jsdom suite disables `color-contrast` because it has no browser layout or compositing.
   The headless preview and `e2e/accessibility.spec.ts` exercise contrast in Chromium. Follow the
-  [end-to-end test policy](../AGENTS.md) before running the Electron spec.
+  [end-to-end test policy](../CONTRIBUTING.md#definition-of-done-for-any-change) before running the Electron spec.
 
 ## Windows release smoke
 
@@ -318,7 +318,7 @@ Example: `newGame` (added in milestone 2). Touch these files in order:
 6. **Test fake** — `src/renderer/test/fakeBingoApi.ts`: implement the method.
 7. **UI** — `src/renderer/controller/useControllerActions.ts` and a component.
 8. **E2E test** (if the operator would notice a regression) — `e2e/`.
-9. Run `npm run check`. Follow the end-to-end test policy in [AGENTS.md](../AGENTS.md).
+9. Run `npm run check`. Follow the [end-to-end test policy](../CONTRIBUTING.md#definition-of-done-for-any-change).
 
 If the command changes **persisted** data, follow the steps at the top of `persistedState.ts`: add a new
 document version with its own game shape, a migration from the previous version, updated
