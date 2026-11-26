@@ -12,7 +12,8 @@
  */
 import { isBingoLetter, isValidBall } from '../../shared/game/balls';
 import { findMedia, isFitMode, isValidMediaId, type MediaItem } from '../../shared/media';
-import { slideshowImages } from '../../shared/media/slideshow';
+import { slideshowCommandSchema, slideshowImages } from '../../shared/media/slideshow';
+import { slideshowPlaybackCommandSchema } from '../../shared/media/slideshowPlayback';
 import { isValidPatternId } from '../../shared/patterns';
 import { isPresentationMode } from '../../shared/presentation/presentationMode';
 import { isControllerTheme } from '../../shared/theme/controllerTheme';
@@ -153,24 +154,28 @@ export function registerIpcHandlers(ipc: IpcMainLike, deps: IpcDependencies): vo
 
   command(IpcChannel.toggleBall, (ball) => {
     if (!isValidBall(ball)) return fail(`Invalid ball ${String(ball)}: expected an integer from 1 to 75.`);
-    return store.dispatch({ type: 'toggleBall', ball });
+    return store.dispatch({ area: 'game', command: { type: 'toggleBall', ball } });
   });
 
   command(IpcChannel.toggleRowDisabled, (letter) =>
     isBingoLetter(letter)
-      ? store.dispatch({ type: 'toggleRowDisabled', letter })
+      ? store.dispatch({ area: 'game', command: { type: 'toggleRowDisabled', letter } })
       : fail('Invalid row: expected B, I, N, G or O.'),
   );
 
-  command(IpcChannel.showBingoBanner, () => store.dispatch({ type: 'showBingoBanner' }));
+  command(IpcChannel.showBingoBanner, () =>
+    store.dispatch({ area: 'game', command: { type: 'showBingoBanner' } }),
+  );
 
-  command(IpcChannel.dismissBingoBanner, () => store.dispatch({ type: 'dismissBingoBanner' }));
+  command(IpcChannel.dismissBingoBanner, () =>
+    store.dispatch({ area: 'game', command: { type: 'dismissBingoBanner' } }),
+  );
 
-  command(IpcChannel.newGame, () => store.dispatch({ type: 'newGame' }));
+  command(IpcChannel.newGame, () => store.dispatch({ area: 'game', command: { type: 'newGame' } }));
 
   command(IpcChannel.setPresentationMode, (mode) => {
     if (!isPresentationMode(mode)) return fail('Choose a valid presentation mode.');
-    return store.setPresentationMode(mode);
+    return store.dispatch({ area: 'presentationMode', command: { type: 'setMode', mode } });
   });
 
   command(IpcChannel.retrySave, (...args) => {
@@ -185,14 +190,12 @@ export function registerIpcHandlers(ipc: IpcMainLike, deps: IpcDependencies): vo
 
   command(IpcChannel.clearGameLog, (...args) => {
     if (args.length > 0) return fail('Clear history takes no arguments.');
-    store.clearGameLog();
-    return ok;
+    return store.dispatch({ area: 'gameLog', command: { type: 'clear' } });
   });
 
   command(IpcChannel.setControllerTheme, (theme) => {
     if (!isControllerTheme(theme)) return fail('Choose light or dark.');
-    store.setControllerTheme(theme);
-    return ok;
+    return store.dispatch({ area: 'settings', command: { type: 'setControllerTheme', theme } });
   });
 
   // Pattern commands. Here only the TYPES of the arguments are checked; the rules (cell 0 to 24, title 1 to 60
@@ -200,58 +203,69 @@ export function registerIpcHandlers(ipc: IpcMainLike, deps: IpcDependencies): vo
   // to every caller and come back as an ordinary failed result.
   command(IpcChannel.selectPattern, (patternId) =>
     isValidPatternId(patternId)
-      ? store.dispatchPattern({ type: 'selectPattern', patternId })
+      ? store.dispatch({ area: 'patterns', command: { type: 'selectPattern', patternId } })
       : fail('Invalid pattern id.'),
   );
 
   command(IpcChannel.setActivePatternCell, (index, on) =>
     typeof index === 'number' && typeof on === 'boolean'
-      ? store.dispatchPattern({ type: 'setActivePatternCell', index, on })
+      ? store.dispatch({ area: 'patterns', command: { type: 'setActivePatternCell', index, on } })
       : fail('Choose a pattern cell and whether it is on or off.'),
   );
 
   command(IpcChannel.renameActivePattern, (title) =>
     typeof title === 'string'
-      ? store.dispatchPattern({ type: 'renameActivePattern', title })
+      ? store.dispatch({ area: 'patterns', command: { type: 'renameActivePattern', title } })
       : fail('A pattern title must be text.'),
   );
 
-  command(IpcChannel.updateSavedPattern, () => store.dispatchPattern({ type: 'updateSavedPattern' }));
+  command(IpcChannel.updateSavedPattern, () =>
+    store.dispatch({ area: 'patterns', command: { type: 'updateSavedPattern' } }),
+  );
 
   command(IpcChannel.saveActivePatternAsNew, (title) => {
     if (title !== undefined && typeof title !== 'string') return fail('A pattern title must be text.');
-    return store.dispatchPattern(
-      title === undefined ? { type: 'saveActivePatternAsNew' } : { type: 'saveActivePatternAsNew', title },
-    );
+    return store.dispatch({
+      area: 'patterns',
+      command:
+        title === undefined ? { type: 'saveActivePatternAsNew' } : { type: 'saveActivePatternAsNew', title },
+    });
   });
 
   command(IpcChannel.createPattern, (title, cells) =>
     typeof title === 'string' && Array.isArray(cells)
-      ? store.dispatchPattern({ type: 'createPattern', title, cells: cells as boolean[] })
+      ? store.dispatch({
+          area: 'patterns',
+          command: { type: 'createPattern', title, cells: cells as boolean[] },
+        })
       : fail('A new pattern needs a title and its 25 cells.'),
   );
 
   command(IpcChannel.renamePattern, (patternId, title) =>
     isValidPatternId(patternId) && typeof title === 'string'
-      ? store.dispatchPattern({ type: 'renamePattern', patternId, title })
+      ? store.dispatch({ area: 'patterns', command: { type: 'renamePattern', patternId, title } })
       : fail('Choose a saved pattern and a new title.'),
   );
 
   command(IpcChannel.duplicatePattern, (patternId) =>
     isValidPatternId(patternId)
-      ? store.dispatchPattern({ type: 'duplicatePattern', patternId })
+      ? store.dispatch({ area: 'patterns', command: { type: 'duplicatePattern', patternId } })
       : fail('Invalid pattern id.'),
   );
 
   command(IpcChannel.deletePattern, (patternId) =>
     isValidPatternId(patternId)
-      ? store.dispatchPattern({ type: 'deletePattern', patternId })
+      ? store.dispatch({ area: 'patterns', command: { type: 'deletePattern', patternId } })
       : fail('Invalid pattern id.'),
   );
 
   // No arguments: it pushes whatever the working pattern is right now.
-  command(IpcChannel.showPatternOnProjector, () => store.dispatchPattern({ type: 'showPatternOnProjector' }));
-  command(IpcChannel.hidePatternOnProjector, () => store.dispatchPattern({ type: 'hidePatternOnProjector' }));
+  command(IpcChannel.showPatternOnProjector, () =>
+    store.dispatch({ area: 'patterns', command: { type: 'showPatternOnProjector' } }),
+  );
+  command(IpcChannel.hidePatternOnProjector, () =>
+    store.dispatch({ area: 'patterns', command: { type: 'hidePatternOnProjector' } }),
+  );
 
   command(IpcChannel.importImages, () => media.importImages());
   const importToCollection =
@@ -275,20 +289,20 @@ export function registerIpcHandlers(ipc: IpcMainLike, deps: IpcDependencies): vo
 
   command(IpcChannel.selectSingleImage, (mediaId) =>
     mediaId === null || isValidMediaId(mediaId)
-      ? store.dispatchMedia({ type: 'selectSingleImage', mediaId })
+      ? store.dispatch({ area: 'media', command: { type: 'selectSingleImage', mediaId } })
       : fail('Invalid image id.'),
   );
 
   command(IpcChannel.setImageFit, (mediaId, fit) =>
     isValidMediaId(mediaId) && isFitMode(fit)
-      ? store.dispatchMedia({ type: 'setImageFit', mediaId, fit })
+      ? store.dispatch({ area: 'media', command: { type: 'setImageFit', mediaId, fit } })
       : fail('Choose an image and Fit, Fill or Original.'),
   );
 
   command(IpcChannel.removeImage, (mediaId) => {
     if (!isValidMediaId(mediaId)) return fail('Invalid image id.');
     const item = findMedia(store.getSnapshot().mediaLibrary, mediaId);
-    const result = store.dispatchMedia({ type: 'removeMedia', mediaId });
+    const result = store.dispatch({ area: 'media', command: { type: 'removeMedia', mediaId } });
     // The entry is gone; delete its file too. A file that cannot be deleted is only logged by the service.
     if (result.ok && item) void media.deleteFile(item);
     return result;
@@ -297,14 +311,14 @@ export function registerIpcHandlers(ipc: IpcMainLike, deps: IpcDependencies): vo
   command(IpcChannel.setTimerDuration, (...args) => {
     const [durationSeconds] = args;
     return args.length === 1 && isTimerDuration(durationSeconds)
-      ? store.dispatchTimer({ type: 'setDuration', durationSeconds })
+      ? store.dispatch({ area: 'timer', command: { type: 'setDuration', durationSeconds } })
       : fail('Choose a duration from 0:01 to 99:59.');
   });
 
   command(IpcChannel.setCountdownMessage, (...args) => {
     const [message] = args;
     return args.length === 1 && isCountdownMessage(message)
-      ? store.dispatchTimer({ type: 'setMessage', message })
+      ? store.dispatch({ area: 'timer', command: { type: 'setMessage', message } })
       : fail('Enter a countdown message between 1 and 80 characters.');
   });
 
@@ -315,18 +329,27 @@ export function registerIpcHandlers(ipc: IpcMainLike, deps: IpcDependencies): vo
     [IpcChannel.resetTimer, 'reset'],
   ] as const) {
     command(channel, (...args) =>
-      args.length === 0 ? store.dispatchTimer({ type }) : fail('This timer command takes no arguments.'),
+      args.length === 0
+        ? store.dispatch({ area: 'timer', command: { type } })
+        : fail('This timer command takes no arguments.'),
     );
   }
 
-  command(IpcChannel.controlSlideshow, (...args) =>
-    args.length === 1 ? store.dispatchSlideshowPlayback(args[0]) : fail('Expected one playback command.'),
-  );
+  command(IpcChannel.controlSlideshow, (...args) => {
+    if (args.length !== 1) return fail('Expected one playback command.');
+    // Parsed here, so a renderer can never send the deadline service's internal `advance`.
+    const parsed = slideshowPlaybackCommandSchema.safeParse(args[0]);
+    if (!parsed.success) return fail('Invalid slideshow playback command.');
+    return store.dispatch({ area: 'playback', command: parsed.data });
+  });
 
   command(IpcChannel.editSlideshow, (...args) => {
     if (args.length !== 1) return fail('Expected one slideshow command.');
+    // Parsed here, so a renderer can never send main's internal `addImages`.
+    const parsed = slideshowCommandSchema.safeParse(args[0]);
+    if (!parsed.success) return fail('Invalid slideshow command or settings.');
     const before = store.getSnapshot().slideshow;
-    const result = store.dispatchSlideshow(args[0]);
+    const result = store.dispatch({ area: 'slideshow', command: parsed.data });
     const after = store.getSnapshot().slideshow;
     if (before.collections === after.collections) return result;
     const remaining = new Set(slideshowImages(after).map(({ id }) => id));

@@ -84,7 +84,7 @@ export class PresentationWindowManager implements PresentationService {
       window.showInactive();
       store.setPresentation({ kind: 'projecting', displayId, displayLabel: info.label });
     });
-    store.setPreferredDisplay(displayId);
+    store.dispatch({ area: 'settings', command: { type: 'setPreferredDisplay', displayId } });
     return ok;
   }
 

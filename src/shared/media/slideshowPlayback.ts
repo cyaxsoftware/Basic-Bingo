@@ -13,13 +13,14 @@ export function stopSlideshow(playback: SlideshowPlayback): SlideshowPlayback {
   return playback.status === 'stopped' ? playback : { status: 'stopped', mediaId: playback.mediaId };
 }
 
-const playbackCommand = z.discriminatedUnion('type', [
+/** Checks a playback command from a renderer (untrusted input). */
+export const slideshowPlaybackCommandSchema = z.discriminatedUnion('type', [
   z.strictObject({ type: z.literal('start') }),
   z.strictObject({ type: z.literal('stop') }),
   z.strictObject({ type: z.literal('continue') }),
   z.strictObject({ type: z.literal('hold'), mediaId: z.string().refine(isValidMediaId) }),
 ]);
-export type SlideshowPlaybackCommand = z.infer<typeof playbackCommand>;
+export type SlideshowPlaybackCommand = z.infer<typeof slideshowPlaybackCommandSchema>;
 
 export function activeSlideshow(state: SlideshowState): SlideshowCollection | undefined {
   return state.collections.find(({ id }) => id === state.activeId);
@@ -42,7 +43,7 @@ export function reduceSlideshowPlayback(
   input: unknown,
   now: number,
 ): SlideshowPlayback {
-  const parsed = playbackCommand.safeParse(input);
+  const parsed = slideshowPlaybackCommandSchema.safeParse(input);
   if (!parsed.success) throw new RangeError('Invalid slideshow playback command.');
   const command = parsed.data;
   if (command.type === 'stop') {

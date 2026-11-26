@@ -59,7 +59,7 @@ export function startTimerService(store: AppStore, clock: TimerClock = systemClo
       const { timer } = store.getSnapshot();
       return timer.status === 'running' ? timer.targetAt : null;
     },
-    () => store.dispatchTimer({ type: 'expire' }),
+    () => store.dispatch({ area: 'timer', command: { type: 'expire' } }),
     clock,
   );
 }
@@ -71,7 +71,7 @@ export function startSlideshowService(store: AppStore, clock: TimerClock = syste
       const { slideshowPlayback } = store.getSnapshot();
       return slideshowPlayback.status === 'playing' ? slideshowPlayback.advanceAt : null;
     },
-    (deadline) => store.advanceSlideshow(deadline),
+    (deadline) => store.dispatch({ area: 'playback', command: { type: 'advance', deadline } }),
     clock,
   );
 }

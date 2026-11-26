@@ -45,7 +45,8 @@ export const EMPTY_SLIDESHOW: SlideshowState = Object.freeze({
   activeId: null,
 });
 
-const slideshowCommandSchema = z.discriminatedUnion('type', [
+/** Checks a slideshow edit from a renderer (untrusted input). */
+export const slideshowCommandSchema = z.discriminatedUnion('type', [
   z.strictObject({ type: z.literal('create'), name: collectionName }),
   z.strictObject({ type: z.literal('rename'), collectionId: collectionIdSchema, name: collectionName }),
   z.strictObject({ type: z.literal('delete'), collectionId: collectionIdSchema }),

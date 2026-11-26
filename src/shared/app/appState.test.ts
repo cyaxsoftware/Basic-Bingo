@@ -204,23 +204,86 @@ describe('reduceAppState', () => {
       expect(s.state.gameLog.current.firstBallAt).toBe(START);
     });
 
-    it('game commands touch no other area, and other areas never touch the game', () => {
+    it('leaves the checking time of a false bingo out of the duration', () => {
       const s = session();
-      const start = s.state;
-      s.run(ball(3), newGame);
-      const { game, gameLog, ...rest } = s.state;
-      const { game: _g, gameLog: _l, ...restBefore } = start;
-      expect(rest).toEqual(restBefore);
-      const afterGame = s.state;
+      s.run(ball(5));
+      s.wait(60);
+      s.run(bingo); // false: play carries on
+      s.wait(10);
+      s.run({ area: 'game', command: { type: 'dismissBingoBanner' } }, ball(6));
+      s.wait(50);
+      s.run(bingo, newGame);
+      // 120 s of wall time, minus the 10 s the false bingo was up.
+      expect(s.state.gameLog.records[0]?.durationSeconds).toBe(110);
+    });
+
+    it('ends the game when New Game is confirmed if BINGO CALLED was never pressed', () => {
+      const s = session();
+      s.run(ball(5));
+      s.wait(90);
+      s.run(ball(17));
+      s.wait(45);
+      s.run(newGame);
+      expect(s.state.gameLog.records[0]?.durationSeconds).toBe(135);
+    });
+
+    it('does not log a New Game with no calls', () => {
+      const s = session();
+      const before = s.state.gameLog;
+      s.run(newGame);
+      expect(s.state.gameLog).toBe(before);
+    });
+
+    it('a new game keeps the working pattern with its edits, the library and the presentation mode', () => {
+      const s = session();
       s.run(
-        { area: 'presentationMode', command: { type: 'setMode', mode: 'countdown' } },
-        { area: 'patterns', command: { type: 'setActivePatternCell', index: 0, on: true } },
+        { area: 'patterns', command: { type: 'selectPattern', patternId: 'seed-big-l' } },
+        { area: 'patterns', command: { type: 'setActivePatternCell', index: 12, on: true } },
+        { area: 'patterns', command: { type: 'renameActivePattern', title: 'Big L plus' } },
+        { area: 'presentationMode', command: { type: 'setMode', mode: 'slideshow' } },
+        ball(7),
+        bingo,
+      );
+      const before = s.state;
+      s.run(newGame);
+      expect(s.state.game).toEqual({ calledNumbers: [], bingoBannerVisible: false, disabledRows: [] });
+      expect(s.state.activePattern).toBe(before.activePattern);
+      expect(s.state.activePattern).toMatchObject({ title: 'Big L plus', editedFromLibrary: true });
+      expect(s.state.patternLibrary).toBe(before.patternLibrary);
+      expect(s.state.presentationMode).toBe('slideshow');
+    });
+
+    it('mode switches, pattern, media and timer commands never touch the game or its log', () => {
+      const s = session(withSlideshow({ presentationMode: 'gameBoard' }));
+      s.run(ball(3), bingo);
+      const { game, gameLog } = s.state;
+      s.run(
+        ...(['slideshow', 'singleImage', 'countdown', 'gameBoard'] as const).map((mode): AppCommand => ({
+          area: 'presentationMode',
+          command: { type: 'setMode', mode },
+        })),
+        { area: 'patterns', command: { type: 'selectPattern', patternId: 'seed-four-corners' } },
+        { area: 'media', command: { type: 'selectSingleImage', mediaId: A } },
         { area: 'timer', command: { type: 'start' } },
       );
-      expect(s.state.game).toBe(afterGame.game);
-      expect(s.state.gameLog).toBe(afterGame.gameLog);
-      expect(game).toBe(afterGame.game);
-      expect(gameLog).toBe(afterGame.gameLog);
+      expect(s.state.game).toBe(game);
+      expect(s.state.gameLog).toBe(gameLog);
+    });
+
+    it('the game, patterns and mode switches never touch media, and patterns never change the mode', () => {
+      const s = session(withSlideshow({ presentationMode: 'slideshow' }));
+      s.run({ area: 'media', command: { type: 'selectSingleImage', mediaId: A } });
+      const { mediaLibrary, singleImage } = s.state;
+      s.run(ball(7), newGame, {
+        area: 'patterns',
+        command: { type: 'selectPattern', patternId: 'seed-big-l' },
+      });
+      expect(s.state.presentationMode).toBe('slideshow');
+      const { activePattern } = s.state;
+      s.run({ area: 'presentationMode', command: { type: 'setMode', mode: 'singleImage' } });
+      expect(s.state.activePattern).toBe(activePattern);
+      expect(s.state.mediaLibrary).toBe(mediaLibrary);
+      expect(s.state.singleImage).toBe(singleImage);
     });
   });
 

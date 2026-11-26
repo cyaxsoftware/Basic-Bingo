@@ -22,7 +22,7 @@ afterEach(async () => {
 function setup() {
   const repository = new JsonStateRepository(directory);
   const store = new AppStore({ initialData: createDefaultAppData(), persister: repository });
-  store.dispatchSlideshow({ type: 'create', name: 'Sponsors' });
+  store.dispatch({ area: 'slideshow', command: { type: 'create', name: 'Sponsors' } });
   const collectionId = store.getSnapshot().slideshow.activeId;
   if (collectionId === null) throw new Error('Expected an active collection.');
   const mediaDirectory = path.join(directory, 'media');
@@ -35,7 +35,10 @@ describe('PowerPoint slideshow import', () => {
     const { store, collectionId, media, mediaDirectory } = setup();
     const source = path.join(directory, 'Sponsor’s night (2026).PPTX');
     await writeFile(source, 'Source stays as selected.');
-    store.dispatchSlideshow({ type: 'setInterval', collectionId, secondsPerSlide: 13 });
+    store.dispatch({
+      area: 'slideshow',
+      command: { type: 'setInterval', collectionId, secondsPerSlide: 13 },
+    });
     const options = { count: 12, width: 1920, height: 1080 };
     const workspaces: string[] = [];
     const convert = vi.fn(async (_input: string, output: string) => {
@@ -55,8 +58,11 @@ describe('PowerPoint slideshow import', () => {
     const originals = store.getSnapshot().slideshow.collections[0]?.slides ?? [];
     const first = originals[0];
     if (!first) throw new Error('No slides were imported.');
-    store.dispatchSlideshow({ type: 'setSlideFit', collectionId, mediaId: first.mediaId, fit: 'original' });
-    store.dispatchSlideshow({ type: 'create', name: 'Other collection' });
+    store.dispatch({
+      area: 'slideshow',
+      command: { type: 'setSlideFit', collectionId, mediaId: first.mediaId, fit: 'original' },
+    });
+    store.dispatch({ area: 'slideshow', command: { type: 'create', name: 'Other collection' } });
     expect(await importer.importDeck(collectionId)).toEqual({ ok: true });
     expect(await store.settleSaves(2000)).toBe('saved');
 
@@ -179,7 +185,7 @@ describe('PowerPoint slideshow import', () => {
       ok: false,
       error: 'A PowerPoint import is already in progress.',
     });
-    store.dispatchSlideshow({ type: 'delete', collectionId });
+    store.dispatch({ area: 'slideshow', command: { type: 'delete', collectionId } });
     resumeExport?.();
     expect(await pending).toMatchObject({ ok: false, error: expect.stringContaining('no longer exists') });
     expect(await readdir(mediaDirectory)).toEqual([]);

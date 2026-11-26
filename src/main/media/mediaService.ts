@@ -123,8 +123,11 @@ export class ImageLibraryService implements MediaService {
     if (added.length > 0) {
       const result =
         collectionId === undefined
-          ? this.store.dispatchMedia({ type: 'addMedia', items: added })
-          : this.store.addSlideshowImages(collectionId, added);
+          ? this.store.dispatch({ area: 'media', command: { type: 'addMedia', items: added } })
+          : this.store.dispatch({
+              area: 'slideshow',
+              command: { type: 'addImages', collectionId, images: added },
+            });
       if (!result.ok) {
         // The destination may have been deleted while its file dialog was open.
         await Promise.all(added.map((item) => this.deleteFile(item)));
@@ -136,7 +139,7 @@ export class ImageLibraryService implements MediaService {
       // The first image added to an empty Single Image choice is shown, so "Add images" visibly does something.
       const first = added[0];
       if (collectionId === undefined && first && this.store.getSnapshot().singleImage.imageId === null) {
-        this.store.dispatchMedia({ type: 'selectSingleImage', mediaId: first.id });
+        this.store.dispatch({ area: 'media', command: { type: 'selectSingleImage', mediaId: first.id } });
       }
     }
     return { added, skipped };

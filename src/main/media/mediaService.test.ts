@@ -88,10 +88,10 @@ describe('importing images', () => {
     const logo = await usbFile('Logo.png', pngBytes(640, 480));
     const menu = await usbFile('Menu.jpg', jpegBytes(800, 600));
     const { store, service } = setup([logo, menu]);
-    store.dispatchSlideshow({ type: 'create', name: 'Sponsors' });
+    store.dispatch({ area: 'slideshow', command: { type: 'create', name: 'Sponsors' } });
     const target = store.getSnapshot().slideshow.activeId;
     if (!target) throw new Error('No collection was created.');
-    store.dispatchSlideshow({ type: 'create', name: 'Events' });
+    store.dispatch({ area: 'slideshow', command: { type: 'create', name: 'Events' } });
     const active = store.getSnapshot().slideshow.activeId;
     expect(await service.importImages(target)).toEqual({ ok: true });
     const { mediaLibrary, singleImage, slideshow } = store.getSnapshot();
@@ -109,10 +109,10 @@ describe('importing images', () => {
   it('cleans up copied files when their destination no longer exists', async () => {
     const logo = await usbFile('Logo.png', pngBytes(640, 480));
     const { store, service } = setup([logo]);
-    store.dispatchSlideshow({ type: 'create', name: 'Sponsors' });
+    store.dispatch({ area: 'slideshow', command: { type: 'create', name: 'Sponsors' } });
     const target = store.getSnapshot().slideshow.activeId;
     if (!target) throw new Error('No collection was created.');
-    store.dispatchSlideshow({ type: 'delete', collectionId: target });
+    store.dispatch({ area: 'slideshow', command: { type: 'delete', collectionId: target } });
     const result = await service.importImages(target);
     expect(result).toMatchObject({ ok: false, error: expect.stringContaining('no longer exists') });
     expect(await readdir(mediaDirectory)).toEqual([]);
@@ -246,7 +246,7 @@ describe('importing images', () => {
     expect(store.getSnapshot().singleImage.imageId).toBe(ID_1);
 
     // A later import does not change what is already chosen.
-    store.dispatchMedia({ type: 'selectSingleImage', mediaId: ID_2 });
+    store.dispatch({ area: 'media', command: { type: 'selectSingleImage', mediaId: ID_2 } });
     const third = await usbFile('third.png', pngBytes(10, 10));
     const again = await service.importFiles([third]);
     expect(again.added).toHaveLength(1);
