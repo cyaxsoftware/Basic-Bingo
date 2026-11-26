@@ -8,7 +8,7 @@ defined in [product-design.md](product-design.md); this file covers the code.
 ```
 Electron main process  (the single source of truth)
  ├─ AppStore ............ canonical state, applies commands, publishes snapshots   src/main/state
- ├─ JsonStateRepository . atomic save/load of the durable subset                    src/main/persistence
+ ├─ JsonStateRepository . atomic save/load of the app data                          src/main/persistence
  ├─ IPC handlers ........ validated entry points from renderers                      src/main/ipc
  ├─ DisplayManager ...... watches Windows displays                                   src/main/windows
  ├─ PresentationWindowManager .. the one Presentation window (project / preview)     src/main/windows
@@ -27,10 +27,11 @@ window is created through `createAppWindow()`, which applies these settings and 
  tap B-3 in Controller
    → window.bingo.toggleBall(3)                     preload (typed function, no raw IPC)
    → ipcMain 'bingo:toggle-ball'                    sender must be the Controller; arg validated
-   → AppStore.dispatch({ type: 'toggleBall', ball })
-       → reduceGame()                               shared pure rules
+   → AppStore.dispatch({ area: 'game', command: { type: 'toggleBall', ball } })
+       → reduceAppState()                           shared pure rules (src/shared/app)
+           → reduceGame(), applyGameChange()        the game and its games-played log
        → new snapshot, revision + 1
-       → repository.save()   (async, coalesced)     never blocks the tap
+       → repository.save()   (async, coalesced)     only when app data changed; never blocks the tap
    → registry.broadcast(snapshot)                   'bingo:snapshot-updated' to both windows
    → renderer snapshotStore accepts it if revision is newer
    → React re-renders via useSyncExternalStore
@@ -38,6 +39,13 @@ window is created through `createAppWindow()`, which applies these settings and 
 
 Key rules:
 
+- **One function changes the app state.** `reduceAppState` (`src/shared/app/appState.ts`) applies every app
+  command, labelled by area (game, gameLog, patterns, media, slideshow, playback, timer, presentationMode,
+  settings), including the ones main sends itself (an import finishing, a deadline passing). It holds the rules
+  that tie areas together: a game change is logged in the games-played log, removing an image drops its slides and
+  reconciles playback, a mode change stops the slideshow, playback needs Slideshow mode. `AppStore.dispatch` runs
+  it, then publishes and saves; the renderer test fake runs the same function, so renderer tests see the real
+  rules. `GLOSSARY.md` defines app state, app data, window state and app snapshot.
 - **Renderers never own state.** They send commands and render snapshots.
 - **One snapshot type** (`AppSnapshot` in `src/shared/ipc/contract.ts`) goes to every window, with a
   strictly increasing `revision`. Renderers drop anything not newer, so they can never show stale or
@@ -50,7 +58,7 @@ Key rules:
   `snapshot.presentationMode` (which view the audience sees; `src/shared/presentation`) are persisted
   but independent: changing the mode never touches the game, and a new game leaves the mode alone.
   `snapshot.timer` is persisted independently of the game and the selected mode.
-  `presentation` (window status), `displays` and `notices` are runtime-only.
+  `presentation` (window status), `displays`, `persistence` and `notices` are window state, never saved.
 - **Patterns are pure rules in `src/shared/patterns`, applied by one reducer (`reducePatterns`).** The active pattern is a working COPY of a library
   template: selecting and editing change only the copy, and the library changes only on an explicit update or
   save-as-new. Every one of the 25 cells, the center included, is an ordinary editable cell (no free-space
@@ -99,8 +107,8 @@ Images the operator imports (PNG, JPEG, WebP, GIF, up to 20 MB each) are copied 
   a default Fit or Fill setting, and an ordered list of slides. A slide can inherit the default or use
   Original, Fit, or Fill.
 - The Controller's `editSlideshow` bridge method sends a typed command. The handler checks the sender
-  and arity, and `AppStore.dispatchSlideshow` applies the shared payload and state validation before
-  publishing or saving. Deleting an image from the library drops its slide references in the same snapshot.
+  and arity and parses the payload (so a renderer cannot send main's own `addImages`), and
+  `AppStore.dispatch` applies the shared state validation before publishing or saving. Deleting an image from the library drops its slide references in the same snapshot.
 - `importSlideshowImages(collectionId)` opens the native picker and appends managed copies to the
   chosen collection. Collection-owned metadata lives on its slides and the media protocol serves the
   thumbnails by UUID. The Single Image gallery has its own metadata and selection.
@@ -136,7 +144,7 @@ use the same collection-owned file storage as imported images. Repeated imports 
   (`targetAt`), and a paused timer stores its millisecond remainder. Start uses the full duration, resume
   makes a deadline from the exact paused remainder, and reset returns to idle with the configured duration.
 - The Controller bridge exposes `setTimerDuration`, `setCountdownMessage`, `startTimer`, `pauseTimer`,
-  `resumeTimer` and `resetTimer`. IPC validates the sender and arguments. `AppStore.dispatchTimer` publishes
+  `resumeTimer` and `resetTimer`. IPC validates the sender and arguments. `AppStore.dispatch` publishes
   and saves each changed state, including expiration. New Game and mode switches leave the timer alone.
 - `src/main/timer/timerService.ts` schedules the deadline, cancels it on pause or reset, and dispatches
   expiration when the deadline is reached. The service receives an injectable clock and scheduler.
@@ -189,10 +197,10 @@ if someone modified its page.
 
 - `persistedState.ts`: the on-disk documents (V1 through V4 are frozen, and V5 is current), Zod
   validation, the migration table, and explicit conversion between the current document and
-  `AppData` (the durable state the app uses). Documents never reference live domain types such as
+  `AppData` (the app data: the saved part of the app state). Documents never reference live domain types such as
   `GameState`, so growing the game model cannot change what an existing file means.
 - **Games played:** `src/shared/games/gameLog.ts` holds the pure rules (when a game starts and ends, what is
-  logged, reading a saved log, formatting) and `AppStore.dispatch` feeds it every game command with the time, so
+  logged, reading a saved log, formatting) and `reduceAppState` feeds it every game command with the time, so
   `GameState` and `reduceGame` never see a clock. The log (`gameLog`: finished games plus the clock of the game in
   progress) was added in V4. Damaged entries are dropped with a warning.
   `clearGameLog` is the only command that changes it directly.
@@ -307,15 +315,19 @@ switch is needed.
 Example: `newGame` (added in milestone 2). Touch these files in order:
 
 1. **Rule** — `src/shared/game/gameState.ts`: add `{ type: 'newGame' }` to `GameCommand` and handle it
-   in `reduceGame`. The `never` check in the `default` branch fails to compile until you do.
+   in `reduceGame`. The `never` check in the `default` branch fails to compile until you do. A command for a new
+   area also needs a variant in `AppCommand` and a case in `reduceAppState` (`src/shared/app/appState.ts`); a rule
+   that ties two areas together goes there too, with a test in `appState.test.ts`.
 2. **Rule tests** — `src/shared/game/gameState.test.ts`.
 3. **Contract** — `src/shared/ipc/contract.ts`: add a channel to `IpcChannel` and a method to
    `ControllerApi`.
 4. **Main handler** — `src/main/ipc/registerIpcHandlers.ts`: register it with `command(...)`, validate
-   arguments, call `store.dispatch(...)`. Add a test in `registerIpcHandlers.test.ts`.
+   arguments, call `store.dispatch({ area: 'game', command: { type: 'newGame' } })`. Add a test in
+   `registerIpcHandlers.test.ts`.
 5. **Preload** — `src/preload/exposeBridge.ts`: add the method to `createControllerApi()`. TypeScript
    reports an error until it matches `ControllerApi`.
-6. **Test fake** — `src/renderer/test/fakeBingoApi.ts`: implement the method.
+6. **Test fake** — `src/renderer/test/fakeBingoApi.ts`: implement the method as one `dispatch(...)` call, the
+   same app command the main handler sends.
 7. **UI** — `src/renderer/controller/useControllerActions.ts` and a component.
 8. **E2E test** (if the operator would notice a regression) — `e2e/`.
 9. Run `npm run check`. Follow the [end-to-end test policy](../CONTRIBUTING.md#definition-of-done-for-any-change).
