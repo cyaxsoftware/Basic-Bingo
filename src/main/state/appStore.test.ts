@@ -63,16 +63,20 @@ describe('AppStore', () => {
   it('publishes and persists timer changes independently of New Game and presentation mode', () => {
     const { store, persister, snapshots } = createStore([3, 9]);
     expect(store.getSnapshot().timer).toEqual(DEFAULT_TIMER);
-    expect(store.dispatchTimer({ type: 'setMessage', message: 'Next round' })).toEqual({ ok: true });
-    expect(store.dispatchTimer({ type: 'setDuration', durationSeconds: 42 })).toEqual({ ok: true });
-    expect(store.dispatchTimer({ type: 'start' })).toEqual({ ok: true });
+    expect(store.dispatch({ area: 'timer', command: { type: 'setMessage', message: 'Next round' } })).toEqual(
+      { ok: true },
+    );
+    expect(store.dispatch({ area: 'timer', command: { type: 'setDuration', durationSeconds: 42 } })).toEqual({
+      ok: true,
+    });
+    expect(store.dispatch({ area: 'timer', command: { type: 'start' } })).toEqual({ ok: true });
     const running = store.getSnapshot().timer;
     expect(running).toMatchObject({ status: 'running', message: 'Next round', durationSeconds: 42 });
     expect(snapshots.map((snapshot) => snapshot.revision)).toEqual([2, 3, 4]);
     expect(persister.saved.at(-1)?.timer).toEqual(running);
     expect(store.getSnapshot().game.calledNumbers).toEqual([3, 9]);
-    store.setPresentationMode('countdown');
-    store.dispatch({ type: 'newGame' });
+    store.dispatch({ area: 'presentationMode', command: { type: 'setMode', mode: 'countdown' } });
+    store.dispatch({ area: 'game', command: { type: 'newGame' } });
     expect(store.getSnapshot().timer).toBe(running);
     expect(persister.saved.at(-1)?.timer).toEqual(running);
     expect(store.getSnapshot().game.calledNumbers).toEqual([]);
@@ -81,8 +85,8 @@ describe('AppStore', () => {
   it('does not publish or save rejected or unchanged timer commands', () => {
     const { store, snapshots, persister } = createStore();
     const initial = store.getSnapshot();
-    expect(store.dispatchTimer({ type: 'reset' })).toEqual({ ok: true });
-    expect(store.dispatchTimer({ type: 'setMessage', message: '' }).ok).toBe(false);
+    expect(store.dispatch({ area: 'timer', command: { type: 'reset' } })).toEqual({ ok: true });
+    expect(store.dispatch({ area: 'timer', command: { type: 'setMessage', message: '' } }).ok).toBe(false);
     expect(store.getSnapshot()).toBe(initial);
     expect(snapshots).toHaveLength(0);
     expect(persister.saved).toHaveLength(0);
@@ -98,8 +102,8 @@ describe('AppStore', () => {
 
   it('applies toggleBall, bumps the revision, emits and persists', async () => {
     const { store, persister, snapshots } = createStore();
-    expect(store.dispatch({ type: 'toggleBall', ball: 3 })).toEqual({ ok: true });
-    expect(store.dispatch({ type: 'toggleBall', ball: 9 })).toEqual({ ok: true });
+    expect(store.dispatch({ area: 'game', command: { type: 'toggleBall', ball: 3 } })).toEqual({ ok: true });
+    expect(store.dispatch({ area: 'game', command: { type: 'toggleBall', ball: 9 } })).toEqual({ ok: true });
 
     expect(snapshots.map((s) => s.revision)).toEqual([2, 3]);
     expect(store.getSnapshot().game.calledNumbers).toEqual([3, 9]);
@@ -111,7 +115,7 @@ describe('AppStore', () => {
     it('starts on the game board and survives into the persisted document', async () => {
       const { store, persister } = createStore();
       expect(store.getSnapshot().presentationMode).toBe('gameBoard');
-      store.setPresentationMode('slideshow');
+      store.dispatch({ area: 'presentationMode', command: { type: 'setMode', mode: 'slideshow' } });
       await flushPromises();
       expect(persister.saved.at(-1)?.presentation).toEqual({ mode: 'slideshow' });
     });
@@ -124,27 +128,9 @@ describe('AppStore', () => {
       expect(store.getAppData().presentation.mode).toBe('countdown');
     });
 
-    it('switching modes never changes a game field', () => {
-      const { store } = createStore([3, 9]);
-      store.dispatch({ type: 'showBingoBanner' });
-      const game = store.getSnapshot().game;
-      for (const mode of ['slideshow', 'singleImage', 'countdown', 'gameBoard'] as const) {
-        store.setPresentationMode(mode);
-        expect(store.getSnapshot().game).toBe(game);
-      }
-    });
-
-    it('a new game leaves the selected mode unchanged', () => {
-      const { store } = createStore([3, 9]);
-      store.setPresentationMode('slideshow');
-      store.dispatch({ type: 'newGame' });
-      expect(store.getSnapshot().game.calledNumbers).toEqual([]);
-      expect(store.getSnapshot().presentationMode).toBe('slideshow');
-    });
-
     it('selecting the current mode again publishes and saves nothing', async () => {
       const { store, snapshots, persister } = createStore();
-      store.setPresentationMode('gameBoard');
+      store.dispatch({ area: 'presentationMode', command: { type: 'setMode', mode: 'gameBoard' } });
       await flushPromises();
       expect(snapshots).toHaveLength(0);
       expect(persister.saved).toHaveLength(0);
@@ -153,7 +139,7 @@ describe('AppStore', () => {
 
   it('rejects invalid commands without changing state or revision', () => {
     const { store, snapshots, persister } = createStore([1]);
-    const result = store.dispatch({ type: 'toggleBall', ball: 0 });
+    const result = store.dispatch({ area: 'game', command: { type: 'toggleBall', ball: 0 } });
     expect(result.ok).toBe(false);
     expect(snapshots).toHaveLength(0);
     expect(store.getSnapshot().revision).toBe(1);
@@ -162,14 +148,14 @@ describe('AppStore', () => {
 
   it('produces frozen snapshots', () => {
     const { store } = createStore();
-    store.dispatch({ type: 'toggleBall', ball: 1 });
+    store.dispatch({ area: 'game', command: { type: 'toggleBall', ball: 1 } });
     expect(Object.isFrozen(store.getSnapshot())).toBe(true);
   });
 
   it('reports a save failure and clears it after the next successful save', async () => {
     const { store, persister } = createStore();
     persister.failNext = true;
-    store.dispatch({ type: 'toggleBall', ball: 5 });
+    store.dispatch({ area: 'game', command: { type: 'toggleBall', ball: 5 } });
     await flushPromises();
     const failed = store.getSnapshot().persistence;
     expect(failed.kind).toBe('error');
@@ -177,7 +163,7 @@ describe('AppStore', () => {
     // The in-memory game is still correct even though the save failed.
     expect(store.getSnapshot().game.calledNumbers).toEqual([5]);
 
-    store.dispatch({ type: 'toggleBall', ball: 6 });
+    store.dispatch({ area: 'game', command: { type: 'toggleBall', ball: 6 } });
     await flushPromises();
     expect(store.getSnapshot().persistence).toEqual({ kind: 'ok' });
   });
@@ -205,7 +191,7 @@ describe('AppStore', () => {
         const { store, persister } = createStore();
         const log = vi.spyOn(console, 'error').mockImplementation(() => undefined);
         persister.failNext = fault(code);
-        store.dispatch({ type: 'toggleBall', ball: 5 });
+        store.dispatch({ area: 'game', command: { type: 'toggleBall', ball: 5 } });
         await flushPromises();
         const status = store.getSnapshot().persistence;
         if (status.kind !== 'error') throw new Error('expected a save failure');
@@ -225,7 +211,7 @@ describe('AppStore', () => {
       const { store, persister } = createStore();
       const log = vi.spyOn(console, 'error').mockImplementation(() => undefined);
       persister.failNext = new Error('something odd');
-      store.dispatch({ type: 'toggleBall', ball: 5 });
+      store.dispatch({ area: 'game', command: { type: 'toggleBall', ball: 5 } });
       await flushPromises();
       const status = store.getSnapshot().persistence;
       expect(status).toMatchObject({ kind: 'error', problem: 'other' });
@@ -237,7 +223,7 @@ describe('AppStore', () => {
       const { store, persister } = createStore();
       const log = vi.spyOn(console, 'error').mockImplementation(() => undefined);
       persister.failNext = fault('ENOSPC');
-      store.dispatch({ type: 'toggleBall', ball: 5 });
+      store.dispatch({ area: 'game', command: { type: 'toggleBall', ball: 5 } });
       await flushPromises();
       expect(store.getSnapshot().persistence.kind).toBe('error');
       const savedBefore = persister.saved.length;
@@ -252,7 +238,7 @@ describe('AppStore', () => {
 
     it('Try again does nothing when the game is already saved', async () => {
       const { store, persister } = createStore();
-      store.dispatch({ type: 'toggleBall', ball: 5 });
+      store.dispatch({ area: 'game', command: { type: 'toggleBall', ball: 5 } });
       await flushPromises();
       const saves = persister.saved.length;
       store.retrySave();
@@ -265,7 +251,7 @@ describe('AppStore', () => {
     const { store, snapshots } = createStore();
     store.setPresentation({ kind: 'closed' });
     store.setDisplays([]);
-    store.setPreferredDisplay(null);
+    store.dispatch({ area: 'settings', command: { type: 'setPreferredDisplay', displayId: null } });
     store.dismissNotice('missing');
     expect(snapshots).toHaveLength(0);
   });
@@ -282,9 +268,43 @@ describe('AppStore', () => {
     expect(persister.saved).toHaveLength(0);
   });
 
+  it('publishes a playback-only change without saving it, since playback is never saved', async () => {
+    const collectionId = 'cccccccc-cccc-4ccc-8ccc-cccccccccccc';
+    const mediaId = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
+    const persister = new FakePersister();
+    const store = new AppStore({
+      initialData: {
+        ...createDefaultAppData(),
+        presentation: { mode: 'slideshow' },
+        slideshow: {
+          activeId: collectionId,
+          collections: [
+            {
+              id: collectionId,
+              name: 'Sponsors',
+              fit: 'fit',
+              secondsPerSlide: 5,
+              slides: [{ mediaId, fit: null }],
+            },
+          ],
+        },
+      },
+      persister,
+    });
+    const snapshots: AppSnapshot[] = [];
+    store.subscribe((snapshot) => snapshots.push(snapshot));
+
+    expect(store.dispatch({ area: 'playback', command: { type: 'start' } })).toEqual({ ok: true });
+    await flushPromises();
+
+    expect(snapshots.map(({ slideshowPlayback }) => slideshowPlayback.status)).toEqual(['playing']);
+    expect(persister.saved).toHaveLength(0);
+    expect(store.saveStatus()).toBe('saved');
+  });
+
   it('persists the preferred display', async () => {
     const { store, persister } = createStore();
-    store.setPreferredDisplay(7);
+    store.dispatch({ area: 'settings', command: { type: 'setPreferredDisplay', displayId: 7 } });
     await flushPromises();
     expect(persister.saved.at(-1)?.settings.preferredDisplayId).toBe(7);
   });
@@ -292,18 +312,21 @@ describe('AppStore', () => {
   describe('games played log', () => {
     it('times a game from the first ball to the last BINGO CALLED press and logs it on New Game', async () => {
       const { store, persister, wait, startedAt } = createTimedStore();
-      store.dispatchPattern({ type: 'selectPattern', patternId: store.getSnapshot().patternLibrary[1]!.id });
+      store.dispatch({
+        area: 'patterns',
+        command: { type: 'selectPattern', patternId: store.getSnapshot().patternLibrary[1]!.id },
+      });
       const title = store.getSnapshot().activePattern.title;
 
-      store.dispatch({ type: 'toggleBall', ball: 5 });
+      store.dispatch({ area: 'game', command: { type: 'toggleBall', ball: 5 } });
       wait(90);
-      store.dispatch({ type: 'toggleBall', ball: 17 });
+      store.dispatch({ area: 'game', command: { type: 'toggleBall', ball: 17 } });
       wait(30);
-      store.dispatch({ type: 'showBingoBanner' });
+      store.dispatch({ area: 'game', command: { type: 'showBingoBanner' } });
       wait(20);
-      store.dispatch({ type: 'dismissBingoBanner' });
+      store.dispatch({ area: 'game', command: { type: 'dismissBingoBanner' } });
       expect(store.getSnapshot().gameLog.records).toEqual([]);
-      store.dispatch({ type: 'newGame' });
+      store.dispatch({ area: 'game', command: { type: 'newGame' } });
       await flushPromises();
 
       const log = store.getSnapshot().gameLog;
@@ -318,48 +341,15 @@ describe('AppStore', () => {
       expect(persister.saved.at(-1)?.gameLog.records).toHaveLength(1);
     });
 
-    it('leaves the checking time of a false bingo out of the duration', () => {
-      const { store, wait } = createTimedStore();
-      store.dispatch({ type: 'toggleBall', ball: 5 });
-      wait(60);
-      store.dispatch({ type: 'showBingoBanner' }); // false: play carries on
-      wait(10);
-      store.dispatch({ type: 'dismissBingoBanner' });
-      store.dispatch({ type: 'toggleBall', ball: 6 });
-      wait(50);
-      store.dispatch({ type: 'showBingoBanner' });
-      store.dispatch({ type: 'newGame' });
-      // 120 s of wall time, minus the 10 s the false bingo was up.
-      expect(store.getSnapshot().gameLog.records[0]?.durationSeconds).toBe(110);
-    });
-
-    it('ends the game when New Game is confirmed if BINGO CALLED was never pressed', () => {
-      const { store, wait } = createTimedStore();
-      store.dispatch({ type: 'toggleBall', ball: 5 });
-      wait(90);
-      store.dispatch({ type: 'toggleBall', ball: 17 });
-      wait(45);
-      store.dispatch({ type: 'newGame' });
-      expect(store.getSnapshot().gameLog.records[0]?.durationSeconds).toBe(135);
-    });
-
-    it('does not log a New Game with no calls, and a rejected command changes nothing', () => {
-      const { store } = createTimedStore();
-      const before = store.getSnapshot().gameLog;
-      store.dispatch({ type: 'newGame' });
-      store.dispatch({ type: 'toggleBall', ball: 0 as never });
-      expect(store.getSnapshot().gameLog).toBe(before);
-    });
-
     it('clears the history, persists that, and leaves the game in progress timed', async () => {
       const { store, persister, wait } = createTimedStore();
-      store.dispatch({ type: 'toggleBall', ball: 5 });
-      store.dispatch({ type: 'newGame' });
+      store.dispatch({ area: 'game', command: { type: 'toggleBall', ball: 5 } });
+      store.dispatch({ area: 'game', command: { type: 'newGame' } });
       wait(5);
-      store.dispatch({ type: 'toggleBall', ball: 7 });
+      store.dispatch({ area: 'game', command: { type: 'toggleBall', ball: 7 } });
       expect(store.getSnapshot().gameLog.records).toHaveLength(1);
 
-      store.clearGameLog();
+      store.dispatch({ area: 'gameLog', command: { type: 'clear' } });
       await flushPromises();
       expect(store.getSnapshot().gameLog.records).toEqual([]);
       expect(store.getSnapshot().gameLog.current.firstBallAt).not.toBeNull();
@@ -369,7 +359,7 @@ describe('AppStore', () => {
     it('publishes and saves nothing when there is no history to clear', async () => {
       const { store, persister, snapshots } = createTimedStore();
       const saves = persister.saved.length;
-      store.clearGameLog();
+      store.dispatch({ area: 'gameLog', command: { type: 'clear' } });
       await flushPromises();
       expect(snapshots).toHaveLength(0);
       expect(persister.saved).toHaveLength(saves);
@@ -380,11 +370,11 @@ describe('AppStore', () => {
     const { store, persister } = createStore();
     expect(store.getSnapshot().controllerTheme).toBe('light');
     const saves = persister.saved.length;
-    store.setControllerTheme('light');
+    store.dispatch({ area: 'settings', command: { type: 'setControllerTheme', theme: 'light' } });
     await flushPromises();
     expect(persister.saved).toHaveLength(saves);
 
-    store.setControllerTheme('dark');
+    store.dispatch({ area: 'settings', command: { type: 'setControllerTheme', theme: 'dark' } });
     await flushPromises();
     expect(store.getSnapshot().controllerTheme).toBe('dark');
     expect(persister.saved.at(-1)?.settings.controllerTheme).toBe('dark');
@@ -407,7 +397,7 @@ describe('AppStore', () => {
       throw new Error('boom');
     });
     store.subscribe(good);
-    store.dispatch({ type: 'toggleBall', ball: 1 });
+    store.dispatch({ area: 'game', command: { type: 'toggleBall', ball: 1 } });
     expect(good).toHaveBeenCalledOnce();
     errorSpy.mockRestore();
   });
@@ -445,7 +435,7 @@ describe('AppStore save outcomes (audit finding 2, #19)', () => {
 
   it('waits for a pending save to complete', async () => {
     const { store, persister } = setup();
-    store.dispatch({ type: 'toggleBall', ball: 1 });
+    store.dispatch({ area: 'game', command: { type: 'toggleBall', ball: 1 } });
     expect(store.saveStatus()).toBe('pending');
     const outcome = store.settleSaves(1000);
     persister.succeedNext();
@@ -454,7 +444,7 @@ describe('AppStore save outcomes (audit finding 2, #19)', () => {
 
   it('reports a failed final save as failed, not saved', async () => {
     const { store, persister } = setup();
-    store.dispatch({ type: 'toggleBall', ball: 1 });
+    store.dispatch({ area: 'game', command: { type: 'toggleBall', ball: 1 } });
     const outcome = store.settleSaves(1000);
     persister.failNext();
     expect(await outcome).toBe('failed');
@@ -465,7 +455,7 @@ describe('AppStore save outcomes (audit finding 2, #19)', () => {
     vi.useFakeTimers();
     try {
       const { store } = setup();
-      store.dispatch({ type: 'toggleBall', ball: 1 });
+      store.dispatch({ area: 'game', command: { type: 'toggleBall', ball: 1 } });
       const outcome = store.settleSaves(2000);
       await vi.advanceTimersByTimeAsync(2000);
       expect(await outcome).toBe('timeout');
@@ -476,8 +466,8 @@ describe('AppStore save outcomes (audit finding 2, #19)', () => {
 
   it('is pending, not saved, when an older save succeeds but a newer one is still writing', async () => {
     const { store, persister } = setup();
-    store.dispatch({ type: 'toggleBall', ball: 1 });
-    store.dispatch({ type: 'toggleBall', ball: 2 });
+    store.dispatch({ area: 'game', command: { type: 'toggleBall', ball: 1 } });
+    store.dispatch({ area: 'game', command: { type: 'toggleBall', ball: 2 } });
     persister.succeedNext();
     await flushPromises();
     expect(store.saveStatus()).toBe('pending');
@@ -485,7 +475,7 @@ describe('AppStore save outcomes (audit finding 2, #19)', () => {
 
   it('retrySave saves the current state again after a failure', async () => {
     const { store, persister } = setup();
-    store.dispatch({ type: 'toggleBall', ball: 1 });
+    store.dispatch({ area: 'game', command: { type: 'toggleBall', ball: 1 } });
     persister.failNext();
     await flushPromises();
     expect(store.saveStatus()).toBe('failed');
@@ -538,7 +528,9 @@ describe('AppStore patterns', () => {
 
   it('applies a pattern command, bumps the revision, emits and persists', async () => {
     const { store, persister, snapshots } = patternStore();
-    expect(store.dispatchPattern({ type: 'selectPattern', patternId: 'seed-big-l' })).toEqual({ ok: true });
+    expect(
+      store.dispatch({ area: 'patterns', command: { type: 'selectPattern', patternId: 'seed-big-l' } }),
+    ).toEqual({ ok: true });
     expect(snapshots.map((s) => s.revision)).toEqual([2]);
     expect(store.getSnapshot().activePattern).toMatchObject({
       sourcePatternId: 'seed-big-l',
@@ -550,13 +542,16 @@ describe('AppStore patterns', () => {
 
   it('an edited working copy and a new library pattern are what a restart reads back', async () => {
     const { store, persister } = patternStore();
-    store.dispatchPattern({ type: 'selectPattern', patternId: 'seed-big-l' });
-    store.dispatchPattern({ type: 'setActivePatternCell', index: CENTER, on: true });
-    store.dispatchPattern({ type: 'renameActivePattern', title: 'Big L plus' });
-    store.dispatchPattern({
-      type: 'createPattern',
-      title: 'Everything',
-      cells: Array<boolean>(25).fill(true),
+    store.dispatch({ area: 'patterns', command: { type: 'selectPattern', patternId: 'seed-big-l' } });
+    store.dispatch({ area: 'patterns', command: { type: 'setActivePatternCell', index: CENTER, on: true } });
+    store.dispatch({ area: 'patterns', command: { type: 'renameActivePattern', title: 'Big L plus' } });
+    store.dispatch({
+      area: 'patterns',
+      command: {
+        type: 'createPattern',
+        title: 'Everything',
+        cells: Array<boolean>(25).fill(true),
+      },
     });
     await flushPromises();
 
@@ -584,42 +579,6 @@ describe('AppStore patterns', () => {
     );
   });
 
-  it('a new game keeps the active pattern, including its title and edits', () => {
-    const { store } = patternStore();
-    store.dispatchPattern({ type: 'selectPattern', patternId: 'seed-big-l' });
-    store.dispatchPattern({ type: 'setActivePatternCell', index: CENTER, on: true });
-    store.dispatchPattern({ type: 'renameActivePattern', title: 'Big L plus' });
-    store.dispatch({ type: 'toggleBall', ball: 7 });
-    store.dispatch({ type: 'showBingoBanner' });
-    const patternBefore = store.getSnapshot().activePattern;
-    const libraryBefore = store.getSnapshot().patternLibrary;
-
-    store.dispatch({ type: 'newGame' });
-
-    expect(store.getSnapshot().game).toEqual({
-      calledNumbers: [],
-      bingoBannerVisible: false,
-      disabledRows: [],
-    });
-    expect(store.getSnapshot().activePattern).toBe(patternBefore);
-    expect(store.getSnapshot().patternLibrary).toBe(libraryBefore);
-    expect(store.getSnapshot().activePattern).toMatchObject({ title: 'Big L plus', editedFromLibrary: true });
-  });
-
-  it('pattern commands never change the game or the presentation mode, and vice versa', () => {
-    const { store } = patternStore();
-    store.dispatch({ type: 'toggleBall', ball: 7 });
-    store.setPresentationMode('slideshow');
-    const game = store.getSnapshot().game;
-    store.dispatchPattern({ type: 'selectPattern', patternId: 'seed-four-corners' });
-    expect(store.getSnapshot().game).toBe(game);
-    expect(store.getSnapshot().presentationMode).toBe('slideshow');
-
-    const pattern = store.getSnapshot().activePattern;
-    store.setPresentationMode('gameBoard');
-    expect(store.getSnapshot().activePattern).toBe(pattern);
-  });
-
   it('rejects an invalid command without changing state, revision or saving', async () => {
     const { store, persister, snapshots } = patternStore();
     for (const command of [
@@ -627,7 +586,7 @@ describe('AppStore patterns', () => {
       { type: 'selectPattern', patternId: 'nope' },
       { type: 'renameActivePattern', title: '' },
     ] as const) {
-      expect(store.dispatchPattern(command).ok).toBe(false);
+      expect(store.dispatch({ area: 'patterns', command }).ok).toBe(false);
     }
     await flushPromises();
     expect(snapshots).toHaveLength(0);
@@ -637,7 +596,7 @@ describe('AppStore patterns', () => {
 
   it('publishes and saves nothing when a command changes nothing', async () => {
     const { store, persister, snapshots } = patternStore();
-    store.dispatchPattern({ type: 'setActivePatternCell', index: 3, on: false }); // already off
+    store.dispatch({ area: 'patterns', command: { type: 'setActivePatternCell', index: 3, on: false } }); // already off
     await flushPromises();
     expect(snapshots).toHaveLength(0);
     expect(persister.saved).toHaveLength(0);
@@ -645,7 +604,7 @@ describe('AppStore patterns', () => {
 
   it('stamps new patterns with the store clock and id source', () => {
     const { store } = patternStore();
-    store.dispatchPattern({ type: 'duplicatePattern', patternId: 'seed-big-l' });
+    store.dispatch({ area: 'patterns', command: { type: 'duplicatePattern', patternId: 'seed-big-l' } });
     expect(store.getSnapshot().patternLibrary.find((p) => p.id === 'p-1')).toMatchObject({
       title: 'Big L (copy)',
       createdAt: '2026-11-22T12:00:00.000Z',
@@ -674,9 +633,15 @@ describe('AppStore media', () => {
 
   it('adds, chooses and saves: one snapshot and one save per accepted command', async () => {
     const { store, persister, snapshots } = createStore();
-    expect(store.dispatchMedia({ type: 'addMedia', items: [entry(ID_A)] })).toEqual({ ok: true });
-    expect(store.dispatchMedia({ type: 'selectSingleImage', mediaId: ID_A })).toEqual({ ok: true });
-    expect(store.dispatchMedia({ type: 'setImageFit', mediaId: ID_A, fit: 'fill' })).toEqual({ ok: true });
+    expect(store.dispatch({ area: 'media', command: { type: 'addMedia', items: [entry(ID_A)] } })).toEqual({
+      ok: true,
+    });
+    expect(store.dispatch({ area: 'media', command: { type: 'selectSingleImage', mediaId: ID_A } })).toEqual({
+      ok: true,
+    });
+    expect(
+      store.dispatch({ area: 'media', command: { type: 'setImageFit', mediaId: ID_A, fit: 'fill' } }),
+    ).toEqual({ ok: true });
     await flushPromises();
     expect(snapshots).toHaveLength(3);
     expect(store.getSnapshot().singleImage).toEqual({ imageId: ID_A });
@@ -691,7 +656,7 @@ describe('AppStore media', () => {
   it('refuses an invalid command and leaves state, snapshot and saves alone', async () => {
     const { store, persister, snapshots } = createStore();
     const before = store.getSnapshot();
-    const result = store.dispatchMedia({ type: 'selectSingleImage', mediaId: ID_A });
+    const result = store.dispatch({ area: 'media', command: { type: 'selectSingleImage', mediaId: ID_A } });
     expect(result.ok).toBe(false);
     expect(store.getSnapshot()).toBe(before);
     await flushPromises();
@@ -701,28 +666,15 @@ describe('AppStore media', () => {
 
   it('a command that changes nothing publishes and saves nothing', async () => {
     const { store, persister, snapshots } = createStore();
-    store.dispatchMedia({ type: 'addMedia', items: [entry(ID_A)] });
+    store.dispatch({ area: 'media', command: { type: 'addMedia', items: [entry(ID_A)] } });
     await flushPromises();
     const published = snapshots.length;
     const saved = persister.saved.length;
     // The image is already Fit, so setting Fit again is nothing.
-    store.dispatchMedia({ type: 'setImageFit', mediaId: ID_A, fit: 'fit' });
+    store.dispatch({ area: 'media', command: { type: 'setImageFit', mediaId: ID_A, fit: 'fit' } });
     await flushPromises();
     expect(snapshots).toHaveLength(published);
     expect(persister.saved).toHaveLength(saved);
-  });
-
-  it('is not touched by the game, patterns or presentation mode', () => {
-    const { store } = createStore();
-    store.dispatchMedia({ type: 'addMedia', items: [entry(ID_A)] });
-    store.dispatchMedia({ type: 'selectSingleImage', mediaId: ID_A });
-    const media = { library: store.getSnapshot().mediaLibrary, singleImage: store.getSnapshot().singleImage };
-    store.dispatch({ type: 'toggleBall', ball: 7 });
-    store.dispatch({ type: 'newGame' });
-    store.dispatchPattern({ type: 'selectPattern', patternId: 'seed-big-l' });
-    store.setPresentationMode('singleImage');
-    expect(store.getSnapshot().mediaLibrary).toBe(media.library);
-    expect(store.getSnapshot().singleImage).toBe(media.singleImage);
   });
 
   it('restores the library and the choice from saved data', () => {

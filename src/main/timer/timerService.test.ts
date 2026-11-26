@@ -44,15 +44,15 @@ describe('timer service', () => {
 
   it('cancels the old deadline on pause and uses the precise resumed deadline across mode changes', () => {
     const { store, schedule } = setup();
-    store.dispatchTimer({ type: 'start' });
+    store.dispatch({ area: 'timer', command: { type: 'start' } });
     vi.advanceTimersByTime(437);
-    store.dispatchTimer({ type: 'pause' });
+    store.dispatch({ area: 'timer', command: { type: 'pause' } });
     expect(vi.getTimerCount()).toBe(0);
     vi.advanceTimersByTime(5000);
     expect(store.getSnapshot().timer).toMatchObject({ status: 'paused', remainingMs: 1563 });
-    store.dispatchTimer({ type: 'resume' });
-    store.setPresentationMode('singleImage');
-    store.dispatchTimer({ type: 'setMessage', message: 'Coming up' });
+    store.dispatch({ area: 'timer', command: { type: 'resume' } });
+    store.dispatch({ area: 'presentationMode', command: { type: 'setMode', mode: 'singleImage' } });
+    store.dispatch({ area: 'timer', command: { type: 'setMessage', message: 'Coming up' } });
     expect(schedule).toHaveBeenCalledTimes(2);
     vi.advanceTimersByTime(1562);
     expect(store.getSnapshot().timer.status).toBe('running');
@@ -62,14 +62,14 @@ describe('timer service', () => {
 
   it('cancels work on reset or service shutdown', () => {
     const { store, stop, schedule } = setup();
-    store.dispatchTimer({ type: 'start' });
-    store.dispatchTimer({ type: 'reset' });
+    store.dispatch({ area: 'timer', command: { type: 'start' } });
+    store.dispatch({ area: 'timer', command: { type: 'reset' } });
     expect(vi.getTimerCount()).toBe(0);
-    store.dispatchTimer({ type: 'start' });
+    store.dispatch({ area: 'timer', command: { type: 'start' } });
     stop();
     vi.advanceTimersByTime(2000);
     expect(store.getSnapshot().timer.status).toBe('running');
-    store.dispatchTimer({ type: 'start' });
+    store.dispatch({ area: 'timer', command: { type: 'start' } });
     expect(schedule).toHaveBeenCalledTimes(2);
     expect(vi.getTimerCount()).toBe(0);
   });

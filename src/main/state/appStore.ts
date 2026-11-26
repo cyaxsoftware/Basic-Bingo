@@ -2,16 +2,17 @@
  * The authoritative application state, owned by the main process.
  *
  * Responsibilities:
- *  - apply game commands through the shared reducer (one at a time; Node's
+ *  - apply app commands through the shared reducer (one at a time; Node's
  *    event loop serializes IPC calls, so no locking is needed)
- *  - track runtime-only state (presentation window, displays, notices)
- *  - persist the durable subset after each accepted change, without blocking
+ *  - track the window state (presentation window, displays, notices, save status)
+ *  - save the app data after each change to it, without blocking
  *  - publish an immutable snapshot with a strictly increasing revision
  *
+ * The rules themselves live in src/shared/app/appState.ts, so the renderer test fake applies exactly the same ones.
  * Nothing here imports Electron, so it is fully unit-testable.
  */
 import { randomUUID } from 'node:crypto';
-import { reduceGame, type GameCommand, type GameState } from '../../shared/game/gameState';
+import { reduceAppState, type AppCommand, type AppState } from '../../shared/app/appState';
 import {
   fail,
   ok,
@@ -22,28 +23,9 @@ import {
   type PersistenceStatus,
   type PresentationStatus,
 } from '../../shared/ipc/contract';
-import type { PresentationMode } from '../../shared/presentation/presentationMode';
-import type { ControllerTheme } from '../../shared/theme/controllerTheme';
-import { applyGameChange, clearGameRecords } from '../../shared/games/gameLog';
 import { classifyStorageError, describeSaveFailure } from '../../shared/storage/storageProblem';
+import { STOPPED_SLIDESHOW } from '../../shared/media/slideshowPlayback';
 import { toPersistedState, type AppData } from '../persistence/persistedState';
-import { reduceMedia, type MediaCommand, type MediaItem } from '../../shared/media';
-import {
-  appendSlideshowImages,
-  reduceSlideshow,
-  removeImageFromSlideshows,
-  type SlideshowState,
-} from '../../shared/media/slideshow';
-import { reducePatterns, type PatternCommand } from '../../shared/patterns';
-import {
-  activeSlideshow,
-  advanceSlideshow,
-  reconcileSlideshowPlayback,
-  reduceSlideshowPlayback,
-  stopSlideshow,
-  STOPPED_SLIDESHOW,
-} from '../../shared/media/slideshowPlayback';
-import { reduceTimer, type TimerCommand, type TimerState } from '../../shared/timer/timerState';
 import type { StatePersister } from '../persistence/stateRepository';
 
 export type SnapshotListener = (snapshot: AppSnapshot) => void;
@@ -55,16 +37,37 @@ export type SaveStatus = 'saved' | 'failed' | 'pending';
 export type SaveOutcome = 'saved' | 'failed' | 'timeout';
 
 export interface AppStoreOptions {
-  /** Durable state loaded at startup (see fromPersistedState). */
+  /** The app data loaded at startup (see fromPersistedState). */
   readonly initialData: AppData;
   readonly persister: StatePersister;
   readonly initialNotices?: readonly Notice[];
   readonly now?: () => Date;
-  /** Ids for new patterns. Defaults to random UUIDs; tests pass something predictable. */
+  /** Ids for anything a command creates. Defaults to random UUIDs; tests pass something predictable. */
   readonly newId?: () => string;
 }
 
 type MutableFields = Omit<AppSnapshot, 'revision'>;
+
+/** The app state fields that are app data (saved). A change to any of them is saved; slideshow playback is not. */
+const SAVED_FIELDS = [
+  'game',
+  'presentationMode',
+  'patternLibrary',
+  'activePattern',
+  'shownPattern',
+  'mediaLibrary',
+  'singleImage',
+  'timer',
+  'slideshow',
+  'gameLog',
+  'preferredDisplayId',
+  'controllerTheme',
+] as const satisfies readonly (keyof AppState)[];
+const UNSAVED_FIELDS = ['slideshowPlayback'] as const satisfies readonly (keyof AppState)[];
+// Every app state field must be listed as saved or not: a new one fails to compile here until it is.
+type UnlistedField = Exclude<keyof AppState, (typeof SAVED_FIELDS)[number] | (typeof UNSAVED_FIELDS)[number]>;
+const everyFieldListed: [UnlistedField] extends [never] ? true : UnlistedField = true;
+void everyFieldListed;
 
 export class AppStore {
   private snapshot: AppSnapshot;
@@ -113,176 +116,19 @@ export class AppStore {
     return () => this.listeners.delete(listener);
   }
 
-  /** Validate and apply a game command. Invalid commands leave state untouched. */
-  dispatch(command: GameCommand): CommandResult {
-    let next: GameState;
-    try {
-      next = reduceGame(this.snapshot.game, command);
-    } catch (error) {
-      return fail(error instanceof Error ? error.message : String(error));
-    }
-    if (next !== this.snapshot.game) {
-      // The log sees the same change at the same moment, so the first ball, the last BINGO CALLED press and
-      // New Game are timed exactly when they happen. The game rules themselves never see a clock.
-      const gameLog = applyGameChange(this.snapshot.gameLog, {
-        command,
-        before: this.snapshot.game,
-        after: next,
-        now: this.now().getTime(),
-        patternTitle: this.snapshot.activePattern.title,
-        newId: this.newId,
-      });
-      this.update({ game: next, gameLog });
-      this.persist();
-    }
-    return ok;
-  }
-
-  /** Empty the games-played history. The game in progress keeps its timing. */
-  clearGameLog(): void {
-    const gameLog = clearGameRecords(this.snapshot.gameLog);
-    if (gameLog === this.snapshot.gameLog) return;
-    this.update({ gameLog });
-    this.persist();
-  }
-
   /**
-   * Validate and apply a pattern command (select, edit the working copy, save, library changes). Invalid
-   * commands leave state untouched. Touches no game state, so New Game and mode changes never affect patterns.
+   * Apply one app command (see reduceAppState): the game, patterns, media, slideshows, playback, the timer, the
+   * presentation mode or a setting. A refused command leaves state untouched. A change is published at once, and
+   * saved when any saved field changed (slideshow playback alone is never saved).
    */
-  dispatchPattern(command: PatternCommand): CommandResult {
-    const current = {
-      library: this.snapshot.patternLibrary,
-      active: this.snapshot.activePattern,
-      shown: this.snapshot.shownPattern,
-    };
-    let next;
-    try {
-      next = reducePatterns(current, command, { now: this.now().toISOString(), newId: this.newId });
-    } catch (error) {
-      return fail(error instanceof Error ? error.message : String(error));
-    }
-    if (next !== current) {
-      this.update({ patternLibrary: next.library, activePattern: next.active, shownPattern: next.shown });
-      this.persist();
-    }
-    return ok;
-  }
-
-  /**
-   * Validate and apply a media command (choose the Single Image, Fit / Fill, remove an image, or add what main has
-   * just imported). Invalid commands leave state untouched. Touches no game or pattern state.
-   */
-  dispatchMedia(command: MediaCommand): CommandResult {
-    const current = { library: this.snapshot.mediaLibrary, singleImage: this.snapshot.singleImage };
-    let next;
-    try {
-      next = reduceMedia(current, command);
-    } catch (error) {
-      return fail(error instanceof Error ? error.message : String(error));
-    }
-    if (next !== current) {
-      const slideshow =
-        command.type === 'removeMedia'
-          ? removeImageFromSlideshows(this.snapshot.slideshow, command.mediaId)
-          : this.snapshot.slideshow;
-      this.update({
-        mediaLibrary: next.library,
-        singleImage: next.singleImage,
-        slideshow,
-        slideshowPlayback: this.reconcileSlideshow(slideshow),
-      });
-      this.persist();
-    }
-    return ok;
-  }
-
-  dispatchSlideshow(command: unknown): CommandResult {
-    return this.changeSlideshow((state) => reduceSlideshow(state, command, this.newId));
-  }
-
-  addSlideshowImages(collectionId: string, images: readonly MediaItem[]): CommandResult {
-    return this.changeSlideshow((state) =>
-      appendSlideshowImages(state, collectionId, images, this.snapshot.mediaLibrary),
-    );
-  }
-
-  private changeSlideshow(reduce: (state: SlideshowState) => SlideshowState): CommandResult {
-    let slideshow: SlideshowState;
-    try {
-      slideshow = reduce(this.snapshot.slideshow);
-    } catch (error) {
-      return fail(error instanceof Error ? error.message : String(error));
-    }
-    if (slideshow !== this.snapshot.slideshow) {
-      this.update({ slideshow, slideshowPlayback: this.reconcileSlideshow(slideshow) });
-      this.persist();
-    }
-    return ok;
-  }
-
-  private reconcileSlideshow(slideshow: SlideshowState) {
-    if (slideshow === this.snapshot.slideshow) return this.snapshot.slideshowPlayback;
-    return reconcileSlideshowPlayback(
-      this.snapshot.slideshowPlayback,
-      this.snapshot.slideshow,
-      slideshow,
-      this.now().getTime(),
-    );
-  }
-
-  dispatchSlideshowPlayback(command: unknown): CommandResult {
-    if (this.snapshot.presentationMode !== 'slideshow') return fail('Open Slideshow to control playback.');
-    const { slideshow, slideshowPlayback } = this.snapshot;
-    try {
-      const next = reduceSlideshowPlayback(
-        slideshowPlayback,
-        activeSlideshow(slideshow),
-        command,
-        this.now().getTime(),
-      );
-      if (next !== slideshowPlayback) this.update({ slideshowPlayback: next });
-      return ok;
-    } catch (error) {
-      return fail(error instanceof Error ? error.message : String(error));
-    }
-  }
-
-  advanceSlideshow(deadline: number): void {
-    const { slideshow, slideshowPlayback } = this.snapshot;
-    const next = advanceSlideshow(
-      slideshowPlayback,
-      activeSlideshow(slideshow),
-      deadline,
-      this.now().getTime(),
-    );
-    if (next !== slideshowPlayback) this.update({ slideshowPlayback: next });
-  }
-
-  dispatchTimer(command: TimerCommand): CommandResult {
-    let timer: TimerState;
-    try {
-      timer = reduceTimer(this.snapshot.timer, command, this.now().getTime());
-    } catch (error) {
-      return fail(error instanceof Error ? error.message : String(error));
-    }
-    if (timer !== this.snapshot.timer) {
-      this.update({ timer });
-      this.persist();
-    }
-    return ok;
-  }
-
-  /** Switch what the audience display shows. Touches no game state. */
-  setPresentationMode(mode: PresentationMode): CommandResult {
-    if (mode !== this.snapshot.presentationMode) {
-      const { slideshowPlayback } = this.snapshot;
-      this.update({
-        presentationMode: mode,
-        slideshowPlayback: stopSlideshow(slideshowPlayback),
-      });
-      this.persist();
-    }
+  dispatch(command: AppCommand): CommandResult {
+    const result = reduceAppState(this.snapshot, command, { now: this.now(), newId: this.newId });
+    if (!result.ok) return fail(result.error);
+    const before = this.snapshot;
+    if (result.state === before) return ok;
+    // The reducer was given the whole snapshot, so the window state and revision come back unchanged.
+    this.update(result.state);
+    if (SAVED_FIELDS.some((field) => result.state[field] !== before[field])) this.persist();
     return ok;
   }
 
@@ -294,19 +140,6 @@ export class AppStore {
   setDisplays(displays: readonly DisplayInfo[]): void {
     if (JSON.stringify(displays) === JSON.stringify(this.snapshot.displays)) return;
     this.update({ displays });
-  }
-
-  setPreferredDisplay(displayId: number | null): void {
-    if (displayId === this.snapshot.preferredDisplayId) return;
-    this.update({ preferredDisplayId: displayId });
-    this.persist();
-  }
-
-  /** The Controller's colour theme. Saved, but never affects the game or the projector. */
-  setControllerTheme(theme: ControllerTheme): void {
-    if (theme === this.snapshot.controllerTheme) return;
-    this.update({ controllerTheme: theme });
-    this.persist();
   }
 
   /** Add or replace (by id) an operator notice. */

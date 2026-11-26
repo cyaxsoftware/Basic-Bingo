@@ -13,18 +13,15 @@
  *    snapshot whose revision is not newer than the one they already show.
  *  - Command handlers return {@link CommandResult}; they never throw across IPC.
  */
+import type { AppState } from '../app/appState';
 import type { BallNumber, BingoLetter } from '../game/balls';
-import type { FitMode, MediaItem } from '../media/media';
-import type { SingleImageState } from '../media/mediaState';
-import type { GameState } from '../game/gameState';
-import type { ActivePattern, Pattern, PatternCells, ShownPattern } from '../patterns/pattern';
+import type { FitMode } from '../media/media';
 import type { PresentationMode } from '../presentation/presentationMode';
 import type { ControllerTheme } from '../theme/controllerTheme';
-import type { GameLogState } from '../games/gameLog';
+import type { PatternCells } from '../patterns/pattern';
 import type { StorageProblemKind } from '../storage/storageProblem';
-import type { TimerState } from '../timer/timerState';
-import type { SlideshowCommand, SlideshowState } from '../media/slideshow';
-import type { SlideshowPlayback, SlideshowPlaybackCommand } from '../media/slideshowPlayback';
+import type { SlideshowCommand } from '../media/slideshow';
+import type { SlideshowPlaybackCommand } from '../media/slideshowPlayback';
 
 // ---------------------------------------------------------------------------
 // Snapshot (main -> renderers)
@@ -85,37 +82,20 @@ export interface Notice {
   readonly action?: NoticeAction;
 }
 
-export interface AppSnapshot {
+/**
+ * The app state plus the window state, sent to every window after each change (see GLOSSARY.md). The app state
+ * fields are described in src/shared/app/appState.ts.
+ */
+export interface AppSnapshot extends AppState {
   /** Strictly increasing for the lifetime of the main process. */
   readonly revision: number;
-  /** Canonical game state. Persisted. */
-  readonly game: GameState;
-  /** Persisted: which view the audience display shows. Separate from the game. */
-  readonly presentationMode: PresentationMode;
-  /** Persisted: the saved pattern library. Separate from the game. */
-  readonly patternLibrary: readonly Pattern[];
-  /** Persisted: the working copy of a pattern the game is showing (edits never touch the library by themselves). */
-  readonly activePattern: ActivePattern;
-  /** Persisted: the pattern the operator last pushed to the projector (a snapshot, not the working copy), or null. */
-  readonly shownPattern: ShownPattern | null;
-  /** Persisted: the imported images (metadata; the files are in the media folder, shown through bingo-media://). */
-  readonly mediaLibrary: readonly MediaItem[];
-  /** Persisted: which library image the Single Image mode shows (each image has its own Fit / Fill). */
-  readonly singleImage: SingleImageState;
-  readonly timer: TimerState;
-  readonly slideshow: SlideshowState;
-  readonly slideshowPlayback: SlideshowPlayback;
-  /** Persisted: the games played (when, which pattern, how long) and the clock of the game in progress. */
-  readonly gameLog: GameLogState;
-  /** Runtime-only: what the Presentation window is doing. Never persisted. */
+  /** Window state: what the Presentation window is doing. Never saved. */
   readonly presentation: PresentationStatus;
-  /** Runtime-only: currently connected displays. */
+  /** Window state: currently connected displays. */
   readonly displays: readonly DisplayInfo[];
-  /** Last display the operator projected to. Persisted as a convenience only. */
-  readonly preferredDisplayId: number | null;
-  /** Persisted: the Controller's colour theme. The Presentation window ignores it. */
-  readonly controllerTheme: ControllerTheme;
+  /** Window state: whether the last save worked. */
   readonly persistence: PersistenceStatus;
+  /** Window state: messages for the operator. */
   readonly notices: readonly Notice[];
 }
 

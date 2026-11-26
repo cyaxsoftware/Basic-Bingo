@@ -194,7 +194,7 @@ describe('registerIpcHandlers', () => {
     const channels = [IpcChannel.showBingoBanner, IpcChannel.dismissBingoBanner, IpcChannel.newGame];
 
     it.each(channels)('rejects %s from the Presentation window and leaves the game untouched', (channel) => {
-      ctx.store.dispatch({ type: 'toggleBall', ball: 7 });
+      ctx.store.dispatch({ area: 'game', command: { type: 'toggleBall', ball: 7 } });
       const before = ctx.store.getSnapshot();
       const result = ctx.ipc.invoke(PRESENTATION_ID, channel) as CommandResult;
       expect(result.ok).toBe(false);
@@ -570,7 +570,7 @@ describe('image commands over IPC', () => {
   let ctx: ReturnType<typeof setup>;
   beforeEach(() => {
     ctx = setup();
-    ctx.store.dispatchMedia({ type: 'addMedia', items: [entry(ID_A), entry(ID_B)] });
+    ctx.store.dispatch({ area: 'media', command: { type: 'addMedia', items: [entry(ID_A), entry(ID_B)] } });
   });
 
   const invoke = (channel: string, ...args: unknown[]) =>
@@ -600,7 +600,12 @@ describe('image commands over IPC', () => {
         const collectionId = slow.store.getSnapshot().slideshow.activeId;
         if (!collectionId) throw new Error('No collection was created.');
         const image = entry('cccccccc-cccc-4ccc-8ccc-cccccccccccc');
-        expect(slow.store.addSlideshowImages(collectionId, [image])).toEqual(ok);
+        expect(
+          slow.store.dispatch({
+            area: 'slideshow',
+            command: { type: 'addImages', collectionId, images: [image] },
+          }),
+        ).toEqual(ok);
         return { slow, invokeSlow, collectionId, image, finish, fail };
       }
 
@@ -654,7 +659,12 @@ describe('image commands over IPC', () => {
       if (!collectionId) throw new Error('No collection was created.');
       const first = entry('cccccccc-cccc-4ccc-8ccc-cccccccccccc');
       const second = entry('dddddddd-dddd-4ddd-8ddd-dddddddddddd');
-      expect(ctx.store.addSlideshowImages(collectionId, [first, second])).toEqual(ok);
+      expect(
+        ctx.store.dispatch({
+          area: 'slideshow',
+          command: { type: 'addImages', collectionId, images: [first, second] },
+        }),
+      ).toEqual(ok);
       for (const command of [
         { type: 'rename', name: 'Announcements' },
         { type: 'select', collectionId: null },
@@ -709,15 +719,33 @@ describe('image commands over IPC', () => {
     });
   });
 
+  it('never lets a renderer add images to a collection, which only main does after copying them', () => {
+    expect(invoke(IpcChannel.editSlideshow, { type: 'create', name: 'Sponsors' })).toEqual(ok);
+    const collectionId = ctx.store.getSnapshot().slideshow.activeId;
+    const before = ctx.store.getSnapshot();
+    const smuggled = {
+      type: 'addImages',
+      collectionId,
+      images: [entry('cccccccc-cccc-4ccc-8ccc-cccccccccccc')],
+    };
+    expect(invoke(IpcChannel.editSlideshow, smuggled).ok).toBe(false);
+    expect(ctx.store.getSnapshot()).toBe(before);
+  });
+
   it('restricts playback to the Controller and validates slide ids and commands', () => {
     const send = (command: unknown) => invoke(IpcChannel.controlSlideshow, command);
     expect(invoke(IpcChannel.editSlideshow, { type: 'create', name: 'Sponsors' })).toEqual(ok);
     const collectionId = ctx.store.getSnapshot().slideshow.activeId;
     if (!collectionId) throw new Error('No collection was created.');
     const image = entry('cccccccc-cccc-4ccc-8ccc-cccccccccccc');
-    expect(ctx.store.addSlideshowImages(collectionId, [image])).toEqual(ok);
+    expect(
+      ctx.store.dispatch({
+        area: 'slideshow',
+        command: { type: 'addImages', collectionId, images: [image] },
+      }),
+    ).toEqual(ok);
     expect(send({ type: 'start' }).ok).toBe(false);
-    ctx.store.setPresentationMode('slideshow');
+    ctx.store.dispatch({ area: 'presentationMode', command: { type: 'setMode', mode: 'slideshow' } });
     const before = ctx.store.getSnapshot();
     expect(ctx.ipc.invoke(PRESENTATION_ID, IpcChannel.controlSlideshow, { type: 'start' })).toMatchObject({
       ok: false,
@@ -728,7 +756,7 @@ describe('image commands over IPC', () => {
     expect(send({ type: 'hold', mediaId: ID_A }).ok).toBe(false);
     expect(ctx.store.getSnapshot()).toBe(before);
     expect(send({ type: 'start' })).toEqual(ok);
-    expect(ctx.store.dispatchTimer({ type: 'start' })).toEqual(ok);
+    expect(ctx.store.dispatch({ area: 'timer', command: { type: 'start' } })).toEqual(ok);
     const running = ctx.store.getSnapshot();
     expect(invoke(IpcChannel.editSlideshow, { type: 'setCountdownVisible', visible: false })).toEqual(ok);
     expect(ctx.store.getSnapshot().slideshow.showCountdown).toBe(false);

@@ -1,37 +1,19 @@
 /**
  * In-memory stand-in for the preload bridge, for renderer tests.
- * Uses the real shared reducer so game behavior matches the main process.
+ *
+ * Every change to the app state goes through the same reduceAppState the main-process store runs, so the rules
+ * renderer tests see (the games-played log, slides dropped with their image, playback stopping on a mode change)
+ * are the real ones. Only the window state (presentation window, displays, notices) is simulated here.
  */
 import { vi } from 'vitest';
+import { createInitialAppState, reduceAppState, type AppCommand } from '../../shared/app/appState';
 import type { BingoLetter } from '../../shared/game/balls';
-import { reduceGame, type GameCommand } from '../../shared/game/gameState';
-import { reduceMedia, type FitMode, type MediaCommand } from '../../shared/media';
-import {
-  blankActivePattern,
-  createDefaultLibrary,
-  reducePatterns,
-  type PatternCells,
-  type PatternCommand,
-} from '../../shared/patterns';
+import type { FitMode } from '../../shared/media';
+import type { PatternCells } from '../../shared/patterns';
 import { isPresentationMode, type PresentationMode } from '../../shared/presentation/presentationMode';
 import { isControllerTheme, type ControllerTheme } from '../../shared/theme/controllerTheme';
-import { applyGameChange, clearGameRecords, EMPTY_GAME_LOG } from '../../shared/games/gameLog';
-import { DEFAULT_TIMER, reduceTimer, type TimerCommand } from '../../shared/timer/timerState';
-import {
-  EMPTY_SLIDESHOW,
-  reduceSlideshow,
-  removeImageFromSlideshows,
-  type SlideshowCommand,
-  type SlideshowState,
-} from '../../shared/media/slideshow';
-import {
-  activeSlideshow,
-  reconcileSlideshowPlayback,
-  reduceSlideshowPlayback,
-  STOPPED_SLIDESHOW,
-  stopSlideshow,
-  type SlideshowPlaybackCommand,
-} from '../../shared/media/slideshowPlayback';
+import type { SlideshowCommand } from '../../shared/media/slideshow';
+import type { SlideshowPlaybackCommand } from '../../shared/media/slideshowPlayback';
 import {
   fail,
   ok,
@@ -63,22 +45,10 @@ export const PROJECTOR: DisplayInfo = {
 
 export function makeSnapshot(overrides: Partial<AppSnapshot> = {}): AppSnapshot {
   return {
+    ...createInitialAppState(),
     revision: 1,
-    game: { calledNumbers: [], bingoBannerVisible: false, disabledRows: [] },
-    presentationMode: 'gameBoard',
-    patternLibrary: createDefaultLibrary(),
-    activePattern: blankActivePattern(),
-    shownPattern: null,
-    mediaLibrary: [],
-    singleImage: { imageId: null },
-    timer: DEFAULT_TIMER,
-    slideshow: EMPTY_SLIDESHOW,
-    slideshowPlayback: STOPPED_SLIDESHOW,
-    gameLog: EMPTY_GAME_LOG,
     presentation: { kind: 'closed' },
     displays: [LAPTOP, PROJECTOR],
-    preferredDisplayId: null,
-    controllerTheme: 'light',
     persistence: { kind: 'ok' },
     notices: [],
     ...overrides,
@@ -99,114 +69,15 @@ export function createFakeBingoApi(initial: AppSnapshot = makeSnapshot()): FakeB
     listeners.forEach((l) => l(snapshot));
   };
 
-  let fakeGameIds = 0;
-  const dispatchGame = (command: GameCommand): CommandResult => {
-    try {
-      const game = reduceGame(snapshot.game, command);
-      // Like the real store: a no-op command publishes nothing, and the games log hears about every change.
-      if (game !== snapshot.game) {
-        const gameLog = applyGameChange(snapshot.gameLog, {
-          command,
-          before: snapshot.game,
-          after: game,
-          now: Date.now(),
-          patternTitle: snapshot.activePattern.title,
-          newId: () => `fake-game-${++fakeGameIds}`,
-        });
-        publish({ game, gameLog });
-      }
-      return ok;
-    } catch (error) {
-      return fail((error as Error).message);
-    }
-  };
-
-  const dispatchTimer = (command: TimerCommand): CommandResult => {
-    try {
-      const timer = reduceTimer(snapshot.timer, command, Date.now());
-      if (timer !== snapshot.timer) publish({ timer });
-      return ok;
-    } catch (error) {
-      return fail((error as Error).message);
-    }
-  };
-
-  const playbackFor = (slideshow: SlideshowState) =>
-    reconcileSlideshowPlayback(snapshot.slideshowPlayback, snapshot.slideshow, slideshow, Date.now());
-
-  const dispatchMedia = (command: MediaCommand): CommandResult => {
-    try {
-      const current = { library: snapshot.mediaLibrary, singleImage: snapshot.singleImage };
-      const next = reduceMedia(current, command);
-      if (next !== current) {
-        const slideshow =
-          command.type === 'removeMedia'
-            ? removeImageFromSlideshows(snapshot.slideshow, command.mediaId)
-            : snapshot.slideshow;
-        publish({
-          mediaLibrary: next.library,
-          singleImage: next.singleImage,
-          slideshow,
-          slideshowPlayback: playbackFor(slideshow),
-        });
-      }
-      return ok;
-    } catch (error) {
-      return fail((error as Error).message);
-    }
-  };
-
-  // Same shared rules as the real store; ids and time are predictable.
-  let patternIds = 0;
-  let collectionIds = 0;
-  const dispatchSlideshow = (command: SlideshowCommand): CommandResult => {
-    try {
-      const slideshow = reduceSlideshow(
-        snapshot.slideshow,
-        command,
-        () => `00000000-0000-4000-8000-${String(++collectionIds).padStart(12, '0')}`,
-      );
-      if (slideshow !== snapshot.slideshow) publish({ slideshow, slideshowPlayback: playbackFor(slideshow) });
-      return ok;
-    } catch (error) {
-      return fail((error as Error).message);
-    }
-  };
-
-  const controlSlideshow = (command: SlideshowPlaybackCommand): CommandResult => {
-    if (snapshot.presentationMode !== 'slideshow') return fail('Open Slideshow to control playback.');
-    try {
-      const next = reduceSlideshowPlayback(
-        snapshot.slideshowPlayback,
-        activeSlideshow(snapshot.slideshow),
-        command,
-        Date.now(),
-      );
-      if (next !== snapshot.slideshowPlayback) publish({ slideshowPlayback: next });
-      return ok;
-    } catch (error) {
-      return fail((error as Error).message);
-    }
-  };
-
-  const dispatchPattern = (command: PatternCommand): CommandResult => {
-    try {
-      const current = {
-        library: snapshot.patternLibrary,
-        active: snapshot.activePattern,
-        shown: snapshot.shownPattern,
-      };
-      const next = reducePatterns(current, command, {
-        now: '2026-01-02T00:00:00.000Z',
-        newId: () => `fake-pattern-${(patternIds += 1)}`,
-      });
-      if (next !== current) {
-        publish({ patternLibrary: next.library, activePattern: next.active, shownPattern: next.shown });
-      }
-      return ok;
-    } catch (error) {
-      return fail((error as Error).message);
-    }
+  // Predictable ids (valid UUIDs, which slideshow collections need); the real clock, like the store.
+  let ids = 0;
+  const newId = () => `00000000-0000-4000-8000-${String(++ids).padStart(12, '0')}`;
+  const dispatch = (command: AppCommand): CommandResult => {
+    const result = reduceAppState(snapshot, command, { now: new Date(), newId });
+    if (!result.ok) return fail(result.error);
+    // Like the real store: a command that changes nothing publishes nothing.
+    if (result.state !== snapshot) publish(result.state);
+    return ok;
   };
 
   return {
@@ -220,80 +91,97 @@ export function createFakeBingoApi(initial: AppSnapshot = makeSnapshot()): FakeB
       listeners.add(listener);
       return () => listeners.delete(listener);
     }),
-    toggleBall: vi.fn(async (ball: number) => dispatchGame({ type: 'toggleBall', ball })),
-    toggleRowDisabled: vi.fn(async (letter: BingoLetter) =>
-      dispatchGame({ type: 'toggleRowDisabled', letter }),
+    toggleBall: vi.fn(async (ball: number) =>
+      dispatch({ area: 'game', command: { type: 'toggleBall', ball } }),
     ),
-    showBingoBanner: vi.fn(async () => dispatchGame({ type: 'showBingoBanner' })),
-    dismissBingoBanner: vi.fn(async () => dispatchGame({ type: 'dismissBingoBanner' })),
-    newGame: vi.fn(async () => dispatchGame({ type: 'newGame' })),
-    setPresentationMode: vi.fn(async (mode: PresentationMode) => {
-      if (!isPresentationMode(mode)) return fail('Choose a valid presentation mode.');
-      if (mode !== snapshot.presentationMode)
-        publish({
-          presentationMode: mode,
-          slideshowPlayback: stopSlideshow(snapshot.slideshowPlayback),
-        });
-      return ok;
-    }),
+    toggleRowDisabled: vi.fn(async (letter: BingoLetter) =>
+      dispatch({ area: 'game', command: { type: 'toggleRowDisabled', letter } }),
+    ),
+    showBingoBanner: vi.fn(async () => dispatch({ area: 'game', command: { type: 'showBingoBanner' } })),
+    dismissBingoBanner: vi.fn(async () =>
+      dispatch({ area: 'game', command: { type: 'dismissBingoBanner' } }),
+    ),
+    newGame: vi.fn(async () => dispatch({ area: 'game', command: { type: 'newGame' } })),
+    // The IPC handlers' argument checks, which tests can reach by passing a bad value.
+    setPresentationMode: vi.fn(async (mode: PresentationMode) =>
+      isPresentationMode(mode)
+        ? dispatch({ area: 'presentationMode', command: { type: 'setMode', mode } })
+        : fail('Choose a valid presentation mode.'),
+    ),
+    setControllerTheme: vi.fn(async (theme: ControllerTheme) =>
+      isControllerTheme(theme)
+        ? dispatch({ area: 'settings', command: { type: 'setControllerTheme', theme } })
+        : fail('Choose light or dark.'),
+    ),
     retrySave: vi.fn(async () => ok),
     showDataFolder: vi.fn(async () => ok),
-    clearGameLog: vi.fn(async () => {
-      const gameLog = clearGameRecords(snapshot.gameLog);
-      if (gameLog !== snapshot.gameLog) publish({ gameLog });
-      return ok;
-    }),
-    setControllerTheme: vi.fn(async (theme: ControllerTheme) => {
-      if (!isControllerTheme(theme)) return fail('Choose light or dark.');
-      if (theme !== snapshot.controllerTheme) publish({ controllerTheme: theme });
-      return ok;
-    }),
-    selectPattern: vi.fn(async (patternId: string) => dispatchPattern({ type: 'selectPattern', patternId })),
+    clearGameLog: vi.fn(async () => dispatch({ area: 'gameLog', command: { type: 'clear' } })),
+    selectPattern: vi.fn(async (patternId: string) =>
+      dispatch({ area: 'patterns', command: { type: 'selectPattern', patternId } }),
+    ),
     setActivePatternCell: vi.fn(async (index: number, on: boolean) =>
-      dispatchPattern({ type: 'setActivePatternCell', index, on }),
+      dispatch({ area: 'patterns', command: { type: 'setActivePatternCell', index, on } }),
     ),
     renameActivePattern: vi.fn(async (title: string) =>
-      dispatchPattern({ type: 'renameActivePattern', title }),
+      dispatch({ area: 'patterns', command: { type: 'renameActivePattern', title } }),
     ),
-    updateSavedPattern: vi.fn(async () => dispatchPattern({ type: 'updateSavedPattern' })),
+    updateSavedPattern: vi.fn(async () =>
+      dispatch({ area: 'patterns', command: { type: 'updateSavedPattern' } }),
+    ),
     saveActivePatternAsNew: vi.fn(async (title?: string) =>
-      dispatchPattern(
-        title === undefined ? { type: 'saveActivePatternAsNew' } : { type: 'saveActivePatternAsNew', title },
-      ),
+      dispatch({
+        area: 'patterns',
+        command:
+          title === undefined
+            ? { type: 'saveActivePatternAsNew' }
+            : { type: 'saveActivePatternAsNew', title },
+      }),
     ),
     createPattern: vi.fn(async (title: string, cells: PatternCells) =>
-      dispatchPattern({ type: 'createPattern', title, cells }),
+      dispatch({ area: 'patterns', command: { type: 'createPattern', title, cells } }),
     ),
     renamePattern: vi.fn(async (patternId: string, title: string) =>
-      dispatchPattern({ type: 'renamePattern', patternId, title }),
+      dispatch({ area: 'patterns', command: { type: 'renamePattern', patternId, title } }),
     ),
     duplicatePattern: vi.fn(async (patternId: string) =>
-      dispatchPattern({ type: 'duplicatePattern', patternId }),
+      dispatch({ area: 'patterns', command: { type: 'duplicatePattern', patternId } }),
     ),
-    deletePattern: vi.fn(async (patternId: string) => dispatchPattern({ type: 'deletePattern', patternId })),
-    showPatternOnProjector: vi.fn(async () => dispatchPattern({ type: 'showPatternOnProjector' })),
-    hidePatternOnProjector: vi.fn(async () => dispatchPattern({ type: 'hidePatternOnProjector' })),
+    deletePattern: vi.fn(async (patternId: string) =>
+      dispatch({ area: 'patterns', command: { type: 'deletePattern', patternId } }),
+    ),
+    showPatternOnProjector: vi.fn(async () =>
+      dispatch({ area: 'patterns', command: { type: 'showPatternOnProjector' } }),
+    ),
+    hidePatternOnProjector: vi.fn(async () =>
+      dispatch({ area: 'patterns', command: { type: 'hidePatternOnProjector' } }),
+    ),
     // Importing needs the file dialog, which tests do not have: they put images in with api.push(makeSnapshot({...})).
     importImages: vi.fn(async () => ok),
     importPowerPoint: vi.fn(async (_collectionId: string) => ok),
     importSlideshowImages: vi.fn(async (_collectionId: string) => ok),
     selectSingleImage: vi.fn(async (mediaId: string | null) =>
-      dispatchMedia({ type: 'selectSingleImage', mediaId }),
+      dispatch({ area: 'media', command: { type: 'selectSingleImage', mediaId } }),
     ),
     setImageFit: vi.fn(async (mediaId: string, fit: FitMode) =>
-      dispatchMedia({ type: 'setImageFit', mediaId, fit }),
+      dispatch({ area: 'media', command: { type: 'setImageFit', mediaId, fit } }),
     ),
-    removeImage: vi.fn(async (mediaId: string) => dispatchMedia({ type: 'removeMedia', mediaId })),
+    removeImage: vi.fn(async (mediaId: string) =>
+      dispatch({ area: 'media', command: { type: 'removeMedia', mediaId } }),
+    ),
     setTimerDuration: vi.fn(async (durationSeconds: number) =>
-      dispatchTimer({ type: 'setDuration', durationSeconds }),
+      dispatch({ area: 'timer', command: { type: 'setDuration', durationSeconds } }),
     ),
-    setCountdownMessage: vi.fn(async (message: string) => dispatchTimer({ type: 'setMessage', message })),
-    startTimer: vi.fn(async () => dispatchTimer({ type: 'start' })),
-    pauseTimer: vi.fn(async () => dispatchTimer({ type: 'pause' })),
-    resumeTimer: vi.fn(async () => dispatchTimer({ type: 'resume' })),
-    resetTimer: vi.fn(async () => dispatchTimer({ type: 'reset' })),
-    editSlideshow: vi.fn(async (command: SlideshowCommand) => dispatchSlideshow(command)),
-    controlSlideshow: vi.fn(async (command: SlideshowPlaybackCommand) => controlSlideshow(command)),
+    setCountdownMessage: vi.fn(async (message: string) =>
+      dispatch({ area: 'timer', command: { type: 'setMessage', message } }),
+    ),
+    startTimer: vi.fn(async () => dispatch({ area: 'timer', command: { type: 'start' } })),
+    pauseTimer: vi.fn(async () => dispatch({ area: 'timer', command: { type: 'pause' } })),
+    resumeTimer: vi.fn(async () => dispatch({ area: 'timer', command: { type: 'resume' } })),
+    resetTimer: vi.fn(async () => dispatch({ area: 'timer', command: { type: 'reset' } })),
+    editSlideshow: vi.fn(async (command: SlideshowCommand) => dispatch({ area: 'slideshow', command })),
+    controlSlideshow: vi.fn(async (command: SlideshowPlaybackCommand) =>
+      dispatch({ area: 'playback', command }),
+    ),
     listDisplays: vi.fn(async () => snapshot.displays),
     openPresentation: vi.fn(async (displayId: number) => {
       const display = snapshot.displays.find((d) => d.id === displayId);

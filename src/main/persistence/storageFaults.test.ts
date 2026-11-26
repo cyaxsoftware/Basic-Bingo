@@ -79,7 +79,7 @@ describe('a storage problem while the game is running', () => {
 
       // The problem starts: the next call cannot be saved.
       fault.current = errno(code);
-      store.dispatch({ type: 'toggleBall', ball: 3 });
+      store.dispatch({ area: 'game', command: { type: 'toggleBall', ball: 3 } });
       await settled(store);
 
       const status = store.getSnapshot().persistence;
@@ -113,7 +113,7 @@ describe('a storage problem while the game is running', () => {
       fileSystem: faultyFileSystem(fault),
     });
     const store = new AppStore({ initialData: createDefaultAppData(), persister: repository });
-    store.dispatch({ type: 'toggleBall', ball: 7 });
+    store.dispatch({ area: 'game', command: { type: 'toggleBall', ball: 7 } });
     await settled(store);
     const first = store.getSnapshot().persistence;
     store.retrySave();
@@ -123,7 +123,7 @@ describe('a storage problem while the game is running', () => {
     expect(store.getSnapshot().persistence).toMatchObject({ kind: 'error', problem: 'disk-full' });
     expect(store.getSnapshot().persistence.kind === 'error' && first.kind === 'error').toBe(true);
     // Calls made while it fails are kept in memory and all reach the disk once it works.
-    store.dispatch({ type: 'toggleBall', ball: 8 });
+    store.dispatch({ area: 'game', command: { type: 'toggleBall', ball: 8 } });
     fault.current = null;
     store.retrySave();
     await settled(store);
